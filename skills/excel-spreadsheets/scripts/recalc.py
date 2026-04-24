@@ -40,9 +40,18 @@ DEFAULT_TIMEOUT = 30
 
 
 def _ensure_macro() -> bool:
+    """Install the recalculation macro into the LibreOffice user profile.
+
+    If the macro file already exists and contains the expected subroutine,
+    this is a no-op.  Otherwise it creates the macro directory (booting
+    LibreOffice once if needed to initialise the user profile) and writes
+    the ``RecalculateAndSave`` macro.
+
+    :returns: ``True`` if the macro is ready, ``False`` on write failure.
+    """
     macro_file = macro_dir() / "Module1.xba"
 
-    if macro_file.exists() and "RecalculateAndSave" in macro_file.read_text():
+    if macro_file.exists() and "RecalculateAndSave" in macro_file.read_text(encoding="utf-8"):
         return True
 
     if not macro_file.parent.exists():
@@ -57,13 +66,23 @@ def _ensure_macro() -> bool:
         macro_file.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        macro_file.write_text(RECALC_MACRO)
+        macro_file.write_text(RECALC_MACRO, encoding="utf-8")
         return True
     except Exception:
         return False
 
 
 def _snapshot_table_styles(path: Path) -> dict[str, bytes]:
+    """Capture ``<tableStyleInfo>`` elements before LibreOffice overwrites them.
+
+    LibreOffice strips Excel-specific table style info when it saves.  This
+    function reads the raw XML from the ``.xlsx`` zip archive so the styles
+    can be restored after recalculation via :func:`_restore_table_styles`.
+
+    :param path: Path to the ``.xlsx`` file.
+    :returns: Mapping of ``xl/tables/*.xml`` zip entry names to their
+              ``<tableStyleInfo …/>`` bytes.
+    """
     styles: dict[str, bytes] = {}
     with zipfile.ZipFile(path, "r") as zf:
         for name in zf.namelist():
@@ -75,16 +94,30 @@ def _snapshot_table_styles(path: Path) -> dict[str, bytes]:
 
 
 def _patch_table_style(data: bytes, style_element: bytes) -> bytes:
+    """Replace or insert a ``<tableStyleInfo>`` element in table XML.
+
+    :param data: Raw XML bytes of a single table definition.
+    :param style_element: The ``<tableStyleInfo …/>`` bytes to restore.
+    :returns: Patched XML bytes.
+    """
     if TABLE_STYLE_RE.search(data):
         return TABLE_STYLE_RE.sub(style_element, data)
     return data.replace(b"</table>", style_element + b"</table>")
 
 
 def _restore_table_styles(path: Path, styles: dict[str, bytes]) -> None:
+    """Restore ``<tableStyleInfo>`` elements that LibreOffice stripped.
+
+    Rewrites the ``.xlsx`` zip archive in-place, patching only the table
+    XML entries captured by :func:`_snapshot_table_styles`.
+
+    :param path: Path to the ``.xlsx`` file (modified in-place).
+    :param styles: Mapping returned by :func:`_snapshot_table_styles`.
+    """
     if not styles:
         return
 
-    tmp = path.with_suffix(".tmp")
+    tmp = path.parent / (path.name + ".tmp")
     try:
         with zipfile.ZipFile(path, "r") as zin, zipfile.ZipFile(tmp, "w") as zout:
             for item in zin.infolist():
@@ -99,6 +132,15 @@ def _restore_table_styles(path: Path, styles: dict[str, bytes]) -> None:
 
 
 def _scan_errors(path: Path) -> dict[str, list[str]]:
+    """Open the recalculated workbook and scan every cell for Excel errors.
+
+    Uses ``data_only=True`` so formula cells contain their computed values
+    (or error strings) rather than the formula text.
+
+    :param path: Path to the ``.xlsx`` file.
+    :returns: Mapping of error type (e.g. ``"#REF!"``) to a list of
+              ``"SheetName!CellRef"`` location strings.
+    """
     wb = load_workbook(path, data_only=True)
     found: dict[str, list[str]] = {e: [] for e in EXCEL_ERRORS}
     for sheet_name in wb.sheetnames:
@@ -114,6 +156,13 @@ def _scan_errors(path: Path) -> dict[str, list[str]]:
 
 
 def _count_formulas(path: Path) -> int:
+    """Count all formula cells in the workbook.
+
+    Uses ``data_only=False`` so formula strings are visible.
+
+    :param path: Path to the ``.xlsx`` file.
+    :returns: Total number of cells whose value starts with ``=``.
+    """
     wb = load_workbook(path, data_only=False)
     count = 0
     for sheet_name in wb.sheetnames:
@@ -126,6 +175,20 @@ def _count_formulas(path: Path) -> int:
 
 
 def recalc(filename: str, timeout: int = DEFAULT_TIMEOUT) -> dict:
+    """Recalculate all formulas in *filename* and scan for errors.
+
+    Workflow:
+    1. Ensure the LibreOffice recalculation macro is installed.
+    2. Snapshot Excel table styles (LibreOffice strips them on save).
+    3. Run LibreOffice headless to recalculate and save.
+    4. Restore the table styles.
+    5. Scan every cell for residual Excel errors.
+
+    :param filename: Path to the ``.xlsx`` file.
+    :param timeout: Maximum seconds for the LibreOffice process.
+    :returns: A dict with ``status``, ``total_errors``, ``total_formulas``,
+              and ``error_summary`` on success, or ``error`` on failure.
+    """
     path = Path(filename).resolve()
     if not path.exists():
         return {"error": f"File {filename} does not exist"}
@@ -142,7 +205,7 @@ def recalc(filename: str, timeout: int = DEFAULT_TIMEOUT) -> dict:
 
     if result.returncode not in (0, 124):
         error_msg = result.stderr or "Unknown error during recalculation"
-        if "Module1" in error_msg or "RecalculateAndSave" not in error_msg:
+        if "Module1" in error_msg:
             return {"error": "LibreOffice macro not configured properly"}
         return {"error": error_msg}
 

@@ -52,10 +52,19 @@ DEFAULT_TIMEOUT = 20
 
 
 def _esc(s: str) -> str:
+    """Escape a string for embedding in a LibreOffice Basic string literal.
+
+    Doubles internal quotes and replaces newlines with spaces.
+    """
     return s.replace('"', '""').replace("\n", " ").replace("\r", " ")
 
 
 def _parse_cell_ref(ref: str) -> tuple[int, int]:
+    """Parse an Excel cell reference (e.g. ``"B5"``) into 0-based (row, col).
+
+    :param ref: Cell reference string like ``"A1"`` or ``"BL50"``.
+    :returns: Tuple of ``(row_index, col_index)``, both 0-based.
+    """
     col = 0
     row_str = ""
     for ch in ref:
@@ -67,6 +76,15 @@ def _parse_cell_ref(ref: str) -> tuple[int, int]:
 
 
 def _install_macro(content: str) -> bool:
+    """Write a LibreOffice Basic macro to the user profile.
+
+    Creates the macro directory and ``script.xlb`` manifest if they don't
+    exist.  Boots LibreOffice once to initialise the user profile if
+    the directory is missing entirely.
+
+    :param content: Full XML content of the ``Module1.xba`` macro file.
+    :returns: ``True`` on success, ``False`` on write failure.
+    """
     mdir = macro_dir()
     macro_file = mdir / "Module1.xba"
 
@@ -84,24 +102,33 @@ def _install_macro(content: str) -> bool:
 
     script_xlb = mdir / "script.xlb"
     if not script_xlb.exists():
-        script_xlb.write_text(SCRIPT_XLB_CONTENT)
+        script_xlb.write_text(SCRIPT_XLB_CONTENT, encoding="utf-8")
 
     try:
-        macro_file.write_text(content)
+        macro_file.write_text(content, encoding="utf-8")
         return True
     except Exception:
         return False
 
 
 def _run_macro(path: Path, macro_name: str, timeout: int = DEFAULT_TIMEOUT):
-    """Run a LibreOffice Basic macro against the given file."""
-    import subprocess
+    """Run a LibreOffice Basic macro against the given file.
 
+    :param path: Resolved path to the ``.xlsx`` file.
+    :param macro_name: Name of the subroutine in ``Standard.Module1``.
+    :param timeout: Maximum seconds for the LibreOffice process.
+    :returns: :class:`subprocess.CompletedProcess` from :func:`run_soffice`.
+    """
     uri = f"vnd.sun.star.script:Standard.Module1.{macro_name}?language=Basic&location=application"
     return run_soffice(["--headless", "--norestore", uri, str(path)], timeout=timeout)
 
 
 def _count_pivots(path: Path) -> int:
+    """Count pivot table XML entries inside the ``.xlsx`` zip archive.
+
+    :param path: Path to the ``.xlsx`` file.
+    :returns: Number of ``xl/pivotTables/pivotTable*.xml`` entries found.
+    """
     try:
         with zipfile.ZipFile(path) as zf:
             return sum(1 for n in zf.namelist() if "pivotTable" in n and n.endswith(".xml"))
@@ -110,7 +137,16 @@ def _count_pivots(path: Path) -> int:
 
 
 def _fix_multi_data_pivots(path: Path) -> None:
-    tmp = path.with_suffix(".tmp")
+    """Patch pivot tables with multiple data fields so Excel shows them in columns.
+
+    LibreOffice's DataPilot omits the ``<colFields>`` element when there are
+    multiple data fields, which causes Excel to stack them in rows instead
+    of columns.  This function post-processes the ``.xlsx`` zip to inject
+    ``<colFields count="1"><field x="-2"/></colFields>``.
+
+    :param path: Path to the ``.xlsx`` file (modified in-place).
+    """
+    tmp = path.parent / (path.name + ".tmp")
     modified = False
     with zipfile.ZipFile(path, "r") as zin, zipfile.ZipFile(tmp, "w") as zout:
         for item in zin.infolist():
@@ -133,6 +169,11 @@ def _fix_multi_data_pivots(path: Path) -> None:
 
 
 def _build_field_block(config: dict) -> str:
+    """Generate LibreOffice Basic ``If`` blocks to orient DataPilot fields.
+
+    :param config: Pivot table configuration dict.
+    :returns: Multi-line Basic code string for the macro body.
+    """
     row_fields = config.get("row_fields", [])
     column_fields = config.get("column_fields", [])
     data_fields = config.get("data_fields", [])
@@ -176,6 +217,15 @@ def _build_field_block(config: dict) -> str:
 
 
 def _build_source_range_code(source_range: str) -> str:
+    """Generate Basic code to set the DataPilot source range.
+
+    When *source_range* is provided (e.g. ``"A1:E100"``), emits a fixed
+    ``CellRangeAddress``.  Otherwise emits cursor-based code that
+    auto-detects the full used area of the source sheet.
+
+    :param source_range: Optional cell range string, or empty string.
+    :returns: Multi-line Basic code string.
+    """
     if source_range:
         parts = source_range.replace("$", "").split(":")
         start_row, start_col = _parse_cell_ref(parts[0])
@@ -199,6 +249,14 @@ def _build_source_range_code(source_range: str) -> str:
 
 
 def _generate_macro(config: dict) -> str:
+    """Generate a complete LibreOffice Basic macro to create a pivot table.
+
+    The generated macro includes both ``RecalculateAndSave`` and
+    ``CreatePivotTable`` subroutines.
+
+    :param config: Pivot table configuration dict.
+    :returns: Full ``Module1.xba`` XML content.
+    """
     source_sheet = config["source_sheet"]
     target_sheet = config["target_sheet"]
     pivot_name = config.get("pivot_name", "Pivot1")
@@ -262,6 +320,12 @@ End Sub
 
 
 def _generate_delete_macro(source_sheet: str, pivot_name: str) -> str:
+    """Generate a LibreOffice Basic macro to delete a pivot table by name.
+
+    :param source_sheet: Name of the sheet that owns the DataPilot table.
+    :param pivot_name: Name of the pivot table to remove.
+    :returns: Full ``Module1.xba`` XML content.
+    """
     return f'''\
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
@@ -296,6 +360,16 @@ End Sub
 
 
 def _validate_config(path: Path, config: dict) -> str | None:
+    """Validate pivot table config against the actual workbook.
+
+    Checks that required fields are present, data field names are unique,
+    the source sheet exists, and all referenced field names appear in the
+    header row.
+
+    :param path: Path to the ``.xlsx`` file.
+    :param config: Pivot table configuration dict.
+    :returns: Error message string, or ``None`` if validation passes.
+    """
     from openpyxl import load_workbook
 
     source_sheet = config.get("source_sheet", "")
@@ -340,6 +414,17 @@ def _validate_config(path: Path, config: dict) -> str | None:
 
 
 def create_pivot(filename: str, config: dict, timeout: int = DEFAULT_TIMEOUT) -> dict:
+    """Create a pivot table in the given Excel file.
+
+    Validates the config, installs a LibreOffice Basic macro, runs it
+    headless to create the DataPilot table, and optionally patches
+    multi-data-field layout.
+
+    :param filename: Path to the ``.xlsx`` file.
+    :param config: Pivot table configuration (see module docstring).
+    :param timeout: Maximum seconds for the LibreOffice process.
+    :returns: A dict with ``status`` (``"success"`` or ``"error"``).
+    """
     path = Path(filename).resolve()
     if not path.exists():
         return {"status": "error", "error": f"File {filename} does not exist"}
@@ -377,6 +462,14 @@ def create_pivot(filename: str, config: dict, timeout: int = DEFAULT_TIMEOUT) ->
 
 
 def delete_pivot(filename: str, source_sheet: str, pivot_name: str, timeout: int = DEFAULT_TIMEOUT) -> dict:
+    """Delete a pivot table from the given Excel file.
+
+    :param filename: Path to the ``.xlsx`` file.
+    :param source_sheet: Name of the sheet that owns the DataPilot table.
+    :param pivot_name: Name of the pivot table to remove.
+    :param timeout: Maximum seconds for the LibreOffice process.
+    :returns: A dict with ``status`` (``"success"`` or ``"error"``).
+    """
     path = Path(filename).resolve()
     if not path.exists():
         return {"status": "error", "error": f"File {filename} does not exist"}
