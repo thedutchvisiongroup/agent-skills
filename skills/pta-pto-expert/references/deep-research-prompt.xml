@@ -1,0 +1,240 @@
+<research_prompt>
+  <meta>
+    <title>Diepgaand inhoudelijk vooronderzoek naar PTA, PTO, examenreglement en toetsbeleid in het Nederlands voortgezet onderwijs</title>
+    <language>Nederlands</language>
+    <output_format>Markdown</output_format>
+    <primary_goal>Verzamel uitsluitend inhoudelijke kennis als basis voor het opbouwen van een skill over PTA en PTO.</primary_goal>
+    <strict_mode>true</strict_mode>
+  </meta>
+
+  <agent_role>
+    Je bent een deep research agent die uitsluitend inhoudelijke informatie verzamelt over PTA, PTO, examenreglement en toetsbeleid in het Nederlands voortgezet onderwijs.
+    Je voert diepgaand bronnenonderzoek uit.
+    Je trekt zelf geen conclusies.
+    Je doet geen aanbevelingen op basis van eigen interpretatie.
+    Je genereert geen validatieregels, geen heuristieken en geen afgeleide normen die niet expliciet in bronnen staan.
+    Je vat informatie compact, concreet en overzichtelijk samen.
+  </agent_role>
+
+  <core_objective>
+    Stel een uitgebreid, gestructureerd en leesbaar kennisdocument op dat als gedeelde inhoudelijke basis kan dienen voor:
+    1. het ontwikkelen van een skill over PTA en PTO;
+    2. het valideren van bestaande PTA's van scholen;
+    3. het ondersteunen van ontwikkel- en kennisagents met betrouwbare inhoudelijke informatie.
+
+    De nadruk ligt op inhoudelijke kennisverzameling.
+    Niet op beleidsadvies.
+    Niet op productontwerp.
+    Niet op juridische strategie.
+    Niet op autonome interpretatie.
+  </core_objective>
+
+  <scope>
+    <primary_topics>
+      <topic>PTA (Programma van Toetsing en Afsluiting)</topic>
+      <topic>PTO (indien gebruikt als Programma van Toetsing in de onderbouw of vergelijkbare schoolinterne betekenis)</topic>
+    </primary_topics>
+
+    <secondary_context_topics>
+      <topic>Examenreglement</topic>
+      <topic>Toetsbeleid</topic>
+      <topic>Schoolexaminering</topic>
+      <topic>Relatie met examenprogramma's, syllabus, domeinen, eindtermen en leerdoelen waar relevant</topic>
+      <topic>Rolverdeling binnen schoolorganisatie voor opstellen, vaststellen, wijzigen en uitvoeren van PTA</topic>
+      <topic>Rol van medezeggenschapsraad (MR), inspectie en bevoegd gezag waar relevant</topic>
+    </secondary_context_topics>
+
+    <explicit_boundaries>
+      <boundary>Onderzoek alleen het Nederlandse voortgezet onderwijs.</boundary>
+      <boundary>Focus op feitelijke en brongebonden inhoud.</boundary>
+      <boundary>Neem PTO alleen op voor zover dit in Nederlandse onderwijspraktijk, schoolbeleid, handreikingen of voorbeelden inhoudelijk wordt beschreven.</boundary>
+      <boundary>Maak duidelijk onderscheid tussen wettelijk verplichte onderdelen, niet-wettelijke praktijkafspraken, handreikingen en schoolspecifieke invullingen.</boundary>
+      <boundary>Als bronnen onderling verschillen in terminologie of invulling, beschrijf die verschillen neutraal en brongebonden.</boundary>
+    </explicit_boundaries>
+  </scope>
+
+  <research_instructions>
+    <instruction>Verzamel diepgaande informatie over de operationele, juridische en inhoudelijke kenmerken van PTA en PTO.</instruction>
+    <instruction>Breng in kaart welke onderdelen wettelijk verplicht zijn, welke gebruikelijk zijn in de onderwijspraktijk en welke alleen als aanbeveling of handreiking voorkomen.</instruction>
+    <instruction>Onderzoek hoe PTA en PTO zich verhouden tot examenreglement, toetsbeleid, schoolexamen en centrale examens.</instruction>
+    <instruction>Onderzoek welke inhoudelijke kenmerken in gezaghebbende bronnen worden gekoppeld aan een inhoudelijk goed, helder, uitvoerbaar en verantwoord PTA of PTO.</instruction>
+    <instruction>Neem anti-patterns alleen op als deze expliciet in bronnen worden genoemd of aantoonbaar uit bronmateriaal blijken zonder eigen interpretatie.</instruction>
+    <instruction>Beschrijf verschillen tussen schooltypen, leerwegen, bovenbouw/onderbouw en vaktypen alleen als bronnen die verschillen expliciet benoemen.</instruction>
+    <instruction>Onderzoek zowel juridische vereisten als inhoudelijke kwaliteitskenmerken in een evenwichtige verhouding.</instruction>
+    <instruction>Gebruik korte zinnen en duidelijke beschrijvingen in de uiteindelijke tekst.</instruction>
+  </research_instructions>
+
+  <source_policy>
+    <general_rule>
+      Gebruik alleen controleerbare bronnen.
+      Baseer elke inhoudelijke bewering op bronmateriaal.
+      Maak onderscheid tussen primaire bronnen, secundaire toelichtingen en praktijkvoorbeelden.
+    </general_rule>
+
+    <preferred_source_types>
+      <source_type>Wet- en regelgeving van de overheid</source_type>
+      <source_type>Officiële publicaties over voortgezet onderwijs en examinering</source_type>
+      <source_type>Examenblad</source_type>
+      <source_type>SLO</source_type>
+      <source_type>Inspectie van het Onderwijs</source_type>
+      <source_type>VO-raad</source_type>
+      <source_type>Betrouwbare handreikingen en sectorpublicaties</source_type>
+    </preferred_source_types>
+
+    <source_handling_rules>
+      <rule>Ken meer gezag toe aan wetgeving, officiële overheidsinformatie en sectorbrede handreikingen dan aan individuele schooldocumenten.</rule>
+      <rule>Gebruik praktijkvoorbeelden alleen ter illustratie van bestaande varianten, niet als norm. Praktijkvoorbeelden kunnen kwalitatief ondermaats zijn (bekend probleem bij bestaande PTA's en PTO's)</rule>
+      <rule>Noteer per belangrijk onderdeel welke bronsoort is gebruikt.</rule>
+      <rule>Vermijd forumdiscussies, commerciële blogs zonder bronbasis en niet-verifieerbare interpretaties.</rule>
+      <rule>Controleer of juridische informatie actueel is.</rule>
+      <rule>Als een bron verouderd lijkt, vermeld dat expliciet.</rule>
+    </source_handling_rules>
+  </source_policy>
+
+  <critical_constraints>
+    <constraint>De agent mag zelf geen conclusies trekken.</constraint>
+    <constraint>De agent mag geen eigen oordeel formuleren over wat 'beter' is, tenzij dat expliciet uit bronnen komt.</constraint>
+    <constraint>De agent mag geen normatief kader construeren dat niet letterlijk of aantoonbaar in bronnen voorkomt.</constraint>
+    <constraint>De agent mag geen validatiemodel, beslisboom, pseudocode of regels-engine ontwerpen.</constraint>
+    <constraint>De agent mag geen samengevoegde interpretatie presenteren als feit wanneer bronnen dat niet expliciet ondersteunen.</constraint>
+    <constraint>Bij twijfel of onduidelijkheid moet de agent onzekerheid expliciet benoemen.</constraint>
+    <constraint>Als PTO niet uniform gedefinieerd blijkt, moet de agent verschillende definities of praktijkinvullingen naast elkaar zetten.</constraint>
+  </critical_constraints>
+
+  <research_questions>
+    <section name="Begrippen en afbakening">
+      <question>Wat is een PTA volgens wetgeving, officiële toelichtingen en sectorbronnen?</question>
+      <question>Wat is een PTO volgens praktijkbronnen, handreikingen en schooldocumenten?</question>
+      <question>Welke termen worden in de praktijk door elkaar gebruikt en welke verschillen worden daarbij genoemd?</question>
+      <question>Wat is het verschil tussen PTA, PTO, examenreglement, toetsbeleid en schoolexamen?</question>
+    </section>
+
+    <section name="Juridische basis">
+      <question>Welke wetten, besluiten, regelingen en officiële documenten zijn relevant voor PTA en schoolexaminering?</question>
+      <question>Welke expliciete eisen worden gesteld aan de inhoud, vaststelling, wijziging, publicatie en uitvoering van het PTA?</question>
+      <question>Welke rol spelen bevoegd gezag, examencommissie, examensecretaris, docenten, schoolleiding en medezeggenschap?</question>
+      <question>Welke juridische status heeft een PTO, voor zover bronnen dit beschrijven?</question>
+      <question>Welke relatie bestaat tussen PTA en examenreglement?</question>
+      <question>Welke verplichtingen of formele eisen gelden voor communicatie richting leerlingen en ouders?</question>
+    </section>
+
+    <section name="Inhoudelijke opbouw van PTA">
+      <question>Welke onderdelen moet of kan een PTA bevatten volgens wetgeving, handreikingen en praktijkbronnen?</question>
+      <question>Hoe worden toetsvormen, leerstofomschrijving, domeinen, eindtermen, weging, herkansing, planning en afnamemomenten beschreven?</question>
+      <question>Welke eisen of aanbevelingen bestaan rond helderheid, volledigheid, uitvoerbaarheid en leesbaarheid?</question>
+      <question>Welke relatie wordt gelegd tussen PTA en examenprogramma, syllabus en schoolexamendekking?</question>
+      <question>Hoe wordt omgegaan met praktische opdrachten, mondelingen, handelingsdelen, profielwerkstuk en vakspecifieke varianten, voor zover relevant?</question>
+    </section>
+
+    <section name="Inhoudelijke opbouw van PTO">
+      <question>Welke functie heeft een PTO in de praktijk?</question>
+      <question>Welke onderdelen bevatten PTO-documenten vaak?</question>
+      <question>Welke verschillen bestaan er tussen PTO in onderbouw, voorexamenjaren en schoolinterne varianten?</question>
+      <question>Hoe verhoudt een PTO zich tot toetsbeleid en doorlopende leerlijnen?</question>
+    </section>
+
+    <section name="Examenreglement en toetsbeleid">
+      <question>Welke onderdelen van het examenreglement zijn inhoudelijk relevant voor interpretatie van PTA's?</question>
+      <question>Welke onderdelen van toetsbeleid beïnvloeden de opzet en inhoud van PTA of PTO?</question>
+      <question>Welke koppelingen worden in bronnen gelegd tussen toetsvisie, kwaliteitszorg en inrichting van toetsprogramma's?</question>
+    </section>
+
+    <section name="Kwaliteitskenmerken">
+      <question>Welke bronnen beschrijven kenmerken van een inhoudelijk goed PTA of PTO?</question>
+      <question>Welke kwaliteitscriteria worden expliciet genoemd, bijvoorbeeld helderheid, samenhang, transparantie, afdekking van examenstof, passende weging, beperking van toetsdruk of balans in toetsvormen?</question>
+      <question>Welke kwaliteitskenmerken worden gekoppeld aan bruikbaarheid voor leerlingen, ouders, docenten, schoolleiding en inspectie?</question>
+    </section>
+
+    <section name="Anti-patterns en bekende problemen">
+      <question>Welke expliciete anti-patterns, fouten, tekortkomingen of veelvoorkomende problemen worden in bronnen genoemd?</question>
+      <question>Welke problemen worden genoemd rond onduidelijke omschrijvingen, ontbrekende examenstof, inconsistente weging, niet-passende toetsvormen, overmatige toetsdruk, onduidelijke herkansingsregels of strijdigheid met examenreglement?</question>
+      <question>Welke risico's of aandachtspunten benoemen inspectie, sectororganisaties of handreikingen?</question>
+      <question>Neem alleen op wat brongebonden aantoonbaar is.</question>
+    </section>
+
+    <section name="Praktijkvarianten">
+      <question>Welke varianten bestaan er in de praktijk tussen scholen, schooltypen, vakken of onderwijsconcepten?</question>
+      <question>Welke onderdelen zijn uniform en welke onderdelen zijn schoolspecifiek?</question>
+      <question>Welke praktijkvoorbeelden zijn bruikbaar om variatie zichtbaar te maken zonder ze als norm te presenteren?</question>
+    </section>
+
+    <section name="Bronverschillen en onzekerheden">
+      <question>Waar spreken bronnen elkaar tegen of gebruiken zij verschillende definities?</question>
+      <question>Waar is de juridische basis sterk en expliciet, en waar vooral interpretatief of praktijkgestuurd?</question>
+      <question>Welke onderdelen verdienen extra voorzichtigheid omdat de terminologie of praktijk niet eenduidig is?</question>
+    </section>
+  </research_questions>
+
+  <expected_output>
+    <format>Markdown</format>
+    <requirements>
+      <requirement>Gebruik een duidelijke titel.</requirement>
+      <requirement>Voeg een inhoudsopgave toe.</requirement>
+      <requirement>Gebruik duidelijke koppen en subkoppen.</requirement>
+      <requirement>Schrijf in eenvoudig, concreet en overzichtelijk Nederlands.</requirement>
+      <requirement>Gebruik korte zinnen.</requirement>
+      <requirement>Werk systematisch en consistent.</requirement>
+      <requirement>Geef per sectie bronverwijzingen.</requirement>
+      <requirement>Maak expliciet onderscheid tussen wettelijke eisen, handreikingen, praktijkinvullingen en onzekerheden.</requirement>
+      <requirement>Voeg geen eigen conclusies toe.</requirement>
+      <requirement>Voeg geen samenvattend eindoordeel toe dat niet direct uit bronnen komt.</requirement>
+    </requirements>
+  </expected_output>
+
+  <required_document_structure>
+    <section>1. Inleiding en afbakening</section>
+    <section>2. Onderzoeksaanpak en bronverantwoording</section>
+    <section>3. Begrippen: PTA, PTO, examenreglement, toetsbeleid, schoolexamen</section>
+    <section>4. Juridisch kader</section>
+    <section>5. PTA: doel, functie en formele status</section>
+    <section>6. PTO: doel, functie, varianten en status</section>
+    <section>7. Verhouding tussen PTA, PTO, examenreglement en toetsbeleid</section>
+    <section>8. Verplichte en veelvoorkomende onderdelen van een PTA</section>
+    <section>9. Veelvoorkomende onderdelen van een PTO</section>
+    <section>10. Kwaliteitskenmerken van een inhoudelijk goed PTA/PTO volgens bronnen</section>
+    <section>11. Brongebonden anti-patterns en veelvoorkomende problemen</section>
+    <section>12. Praktijkvarianten tussen scholen, schooltypen of vakken</section>
+    <section>13. Bronverschillen, definities en onzekerheden</section>
+    <section>14. Begrippenlijst</section>
+    <section>15. Bronnenlijst</section>
+    <section>16. Bijlage: voorbeelden van brongebonden observaties zonder interpretatie</section>
+  </required_document_structure>
+
+  <evidence_format>
+    <citation_rules>
+      <rule>Onderbouw elke belangrijke inhoudelijke claim met bronverwijzing.</rule>
+      <rule>Vermeld per bron minimaal titel, organisatie, jaartal of publicatiedatum indien beschikbaar, en URL indien beschikbaar.</rule>
+      <rule>Label bronnen waar mogelijk als: wetgeving, officiële toelichting, sectorbron, inspectiebron, handreiking, praktijkvoorbeeld.</rule>
+      <rule>Bij tegenstrijdige informatie: citeer beide kanten neutraal.</rule>
+    </citation_rules>
+  </evidence_format>
+
+  <quality_checks>
+    <check>Controleer of de output geen eigen conclusies bevat.</check>
+    <check>Controleer of anti-patterns alleen zijn opgenomen wanneer ze brongebonden zijn.</check>
+    <check>Controleer of PTO niet ten onrechte als wettelijk verplicht wordt gepresenteerd zonder bron.</check>
+    <check>Controleer of onderscheid tussen wettelijke eisen en praktijkinvulling overal helder is.</check>
+    <check>Controleer of examenreglement en toetsbeleid alleen als context worden gebruikt en niet het hoofddoel verdringen.</check>
+    <check>Controleer of de tekst begrijpelijk, compact en overzichtelijk is.</check>
+    <check>Controleer of het document bruikbaar is als inhoudelijke basis voor een skill.</check>
+  </quality_checks>
+
+  <forbidden_output>
+    <item>Geen eigen aanbevelingen aan scholen.</item>
+    <item>Geen productadvies.</item>
+    <item>Geen ontwerp van softwarelogica.</item>
+    <item>Geen juridische interpretatie zonder bronbasis.</item>
+    <item>Geen afgeleide regels of normenkaders zonder expliciete bron.</item>
+    <item>Geen speculatie.</item>
+  </forbidden_output>
+
+  <final_instruction>
+    Lever één volledig Markdown-document op.
+    Het document moet zelfstandig leesbaar zijn.
+    Het document moet dienen als inhoudelijke kennisbasis voor verdere skill-ontwikkeling.
+    Verzamel diepgaand.
+    Structureer helder.
+    Interpreteer minimaal.
+    Concludeer niet.
+  </final_instruction>
+</research_prompt>
