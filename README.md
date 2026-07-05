@@ -8,36 +8,79 @@
 
 ## Installatie
 
-De skills in de map `skills/` kunnen globaal worden geïnstalleerd in Windsurf, zodat ze beschikbaar zijn in alle workspaces en niet door eindgebruikers hoeven worden aangepast. De installatie kopieert de volledige inhoud van de `skills/`-map naar de globale Windsurf skills-map. Als er al skills aanwezig zijn in de doelmap worden deze eerst verwijderd en overschreven.
+Het script `scripts/link.py` symlinkt de skills uit `skills/` naar de globale skills-mappen van de ondersteunde agent harnesses. Omdat het symlinks zijn, blijft deze repo het enige source of truth — een wijziging aan een skill is direct zichtbaar in elke gelinkte harness.
 
-### Doelmap
+### Ondersteunde harnesses
 
-De scripts installeren naar de globale skills-map van Windsurf, op alle besturingssystemen:
+| Harness                | Global path                              | Leest `~/.agents/skills/`? |
+| ---------------------- | ---------------------------------------- | :-----------------------: |
+| Universal (`.agents`)  | `~/.agents/skills/`                      | — (is zelf het pad)      |
+| OpenCode               | `~/.config/opencode/skills/`             | ✅                        |
+| Zed                    | `~/.agents/skills/`                      | ✅                        |
+| Codex CLI              | `~/.agents/skills/`                      | ✅                        |
+| GitHub Copilot (VS Code) | `~/.copilot/skills/`                   | ✅                        |
+| Cursor                 | `~/.cursor/skills/`                      | ✅                        |
+| Gemini CLI             | `~/.gemini/skills/`                      | ✅                        |
+| Claude Code            | `~/.claude/skills/`                      | ❌                        |
+| Windsurf (Cascade)     | `~/.codeium/windsurf/skills/`            | ❌                        |
+| Google Antigravity     | `~/.gemini/config/skills/`               | ❌                        |
 
-```
-~/.codeium/windsurf/skills/
-```
+Eén symlink naar `~/.agents/skills/` dekt zes harnesses; Claude Code, Windsurf en Antigravity hebben een eigen symlink nodig.
 
-Op Windows is dit `%USERPROFILE%\.codeium\windsurf\skills\`.
+### Vereisten
 
-### Uitvoeren
+- Python ≥ 3.14
+- [uv](https://docs.astral.sh/uv/) (installeert automatisch dependencies bij de eerste run)
 
-**macOS / Linux / WSL** — voer het bash-script uit vanuit de root van deze repository:
+### Gebruik
+
+**Status bekijken** — toont per (skill × harness) of er al een symlink staat:
 
 ```bash
-bash scripts/windsurf-install.sh
+uv run scripts/link.py status
 ```
 
-**Windows** — open PowerShell en voer het volgende uit vanuit de root van deze repository:
+**Interactief linken** — kies eerst welke skills, dan welke harnesses. Het script detecteert aanwezige harnesses automatisch en pre-selecteert ze. Bestaande echte bestanden in de doelmap worden interactief afgehandeld (backup / overschrijven / skip):
 
-```powershell
-.\scripts\windsurf-install.ps1
+```bash
+uv run scripts/link.py link
 ```
+
+**Non-interactive linken** — voor scripting of CI:
+
+```bash
+uv run scripts/link.py link --skills=excel-spreadsheets,writing-skills --harnesses=agents,claude
+```
+
+**Unlinken** — verwijdert eerder aangemaakte symlinks (geen echte bestanden):
+
+```bash
+uv run scripts/link.py unlink
+uv run scripts/link.py unlink --skills=excel-spreadsheets --harnesses=agents
+```
+
+**Overzicht van harnesses en skills in de repo:**
+
+```bash
+uv run scripts/link.py list
+```
+
+### Status tabel
+
+| Symbool | Betekenis                               |
+| ------- | --------------------------------------- |
+| `✓`     | Symlink naar deze repo (correct)        |
+| `·`     | Niets aanwezig                          |
+| `↗`     | Symlink naar een andere locatie         |
+| `✗`     | Broken symlink                          |
+| `D`     | Echte map (wordt interactief afgehandeld) |
+| `F`     | Echt bestand (wordt interactief afgehandeld) |
+| `*`     | Trackt in `.link-state.json`           |
 
 ### Wat doet het script?
 
-1. Bepaalt de locatie van de `skills/`-map op basis van de scriptlocatie.
-2. Stelt de doelmap in op `~/.codeium/windsurf/skills/`.
-3. Maakt de bovenliggende map aan als deze nog niet bestaat.
-4. Verwijdert de bestaande doelmap als deze al bestaat (clear + overwrite).
-5. Kopieert de volledige `skills/`-map naar de doelmap.
+1. Ontdekt alle skills in `skills/` (elke map met een `SKILL.md`).
+2. Detecteert geïnstalleerde harnesses op basis van hun config-mappen.
+3. Per geselecteerde (skill, harness): controleert de doel-locatie.
+4. Bij een conflict (echte map/bestand) vraagt het interactief om backup, overschrijven of skip — backups krijgen de suffix `.bak-<timestamp>`.
+5. Maakt de symlink aan en houdt de link bij in `scripts/.link-state.json`.
