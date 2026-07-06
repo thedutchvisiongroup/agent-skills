@@ -7,7 +7,7 @@
 - Section 2: Executive summary
 - Section 3: Scope & objectives
 - Section 4: Stakeholders & RACI
-- Section 5: Business context & goals
+- Section 5: Business context & goals (incl. benefit hypothesis)
 - Section 6: User stories
 - Section 7: Acceptance criteria
 - Section 8: Traceability matrix
@@ -23,7 +23,9 @@
 - Section 18: Observability & logging
 - Section 19: Compliance evidence (enterprise)
 - Section 20: Migration & runbook
-- Section 21: Approvals & sign-off
+- Section 21: Glossary
+- Section 22: Crosscutting Concepts
+- Section 23: Approvals & sign-off
 - Author checklist
 
 ## How to use this template
@@ -59,7 +61,9 @@ The template below uses English placeholders. If the user chose Dutch as the out
 18. Observability & logging
 19. Compliance evidence
 20. Migration & runbook
-21. Approvals & sign-off
+21. Glossary
+22. Crosscutting Concepts
+23. Approvals & sign-off
 ```
 
 (Adjust the list to the sections actually present per scenario.)
@@ -154,7 +158,19 @@ full document.]
 - [Measurable business goal, e.g. "Conversion +10% within 6 months"]
 - [Cost saving or risk reduction]
 
-### 5.3 Constraints
+### 5.3 Benefit hypothesis
+*(project, enterprise — mandatory; feature — optional but recommended)*
+
+We believe [business outcome] will be achieved if [these users] successfully
+achieve [this user outcome] with [this feature/change].
+
+- **Business outcome (measurable):** [e.g. "Reduce support tickets by 20% within Q1"]
+- **User outcome:** [e.g. "Users complete self-service password reset without contacting support"]
+- **Validation method:** [e.g. "Track support ticket category 'password reset' over 3 months"]
+- **Baseline:** [current metric value]
+- **Target:** [target metric value]
+
+### 5.4 Constraints
 - [Budget, time, tech stack, compliance, organisational]
 ```
 
@@ -191,8 +207,9 @@ Estimable, Small, Testable). Format: "As a [role], I want [action], so that
 ```markdown
 ## 7. Acceptance criteria
 
-Acceptance criteria are bullets — one single, testable statement per bullet.
-No Gherkin.
+Acceptance criteria are written in the format chosen in Phase 1 (question 4):
+bullets (default) or EARS notation. Each criterion is a single, testable
+statement. No Gherkin. Do not mix formats within one document.
 
 ### 7.1 US-01: [title]
 - [Testable statement, e.g. "The system rejects CSV files larger than 10 MB
@@ -204,7 +221,8 @@ No Gherkin.
 - [Testable statement]
 ```
 
-See [acceptance-criteria.md](acceptance-criteria.md) for the format and examples.
+See [acceptance-criteria.md](acceptance-criteria.md) for both formats (bullets
+and EARS), INVEST, and examples.
 
 ## 8. Traceability matrix
 
@@ -556,10 +574,60 @@ Target ASVS level: [L1/L2/L3] — [reason]
 [Links to or inline runbooks for: deployment, rollback, incident response, data restore]
 ```
 
-## 21. Approvals & sign-off
+## 21. Glossary
+
+*(project, enterprise — mandatory; feature — optional)*
 
 ```markdown
-## 21. Approvals & sign-off
+## 21. Glossary
+
+A glossary of domain and technical terms used in this FTD, so all stakeholders
+share a common vocabulary ("ubiquitous language"). Include abbreviations,
+domain-specific terms, and any terms that could be ambiguous in this context.
+
+| Term / abbreviation | Definition |
+|---------------------|------------|
+| [term] | [definition] |
+| [abbreviation] | [full form + definition] |
+```
+
+## 22. Crosscutting Concepts
+
+*(enterprise — mandatory; project, feature — optional)*
+
+```markdown
+## 22. Crosscutting Concepts
+
+Cross-cutting concerns that apply across multiple building blocks and sections
+of the design. Document each concept that is relevant; omit sections that do
+not apply with a brief justification.
+
+### 22.1 Security concepts
+[Cross-references to §15 Security-by-design; domain models, security patterns and styles relevant across the system]
+
+### 22.2 Persistence and data access
+[ORM, repository pattern, caching strategy, transaction management — where used across multiple components]
+
+### 22.3 Logging and observability
+[Cross-reference to §18 Observability; logging schema, correlation IDs, tracing conventions used consistently]
+
+### 22.4 Error and exception handling
+[Consistent error model, error codes, HTTP status code conventions, retry policies]
+
+### 22.5 Internationalisation (i18n) and localisation
+[UI label strategy, date/number formatting, multi-language content handling]
+
+### 22.6 Domain models and business rules
+[Ubiquitous language, domain-driven design patterns, shared business rule engines]
+
+### 22.7 Architecture and design patterns
+[Patterns consistently applied across the system: e.g. CQRS, event sourcing, saga, hexagonal architecture]
+```
+
+## 23. Approvals & sign-off
+
+```markdown
+## 23. Approvals & sign-off
 
 | Role | Name | Date | Signature (digital) |
 |------|------|------|----------------------|
@@ -579,12 +647,16 @@ Before delivering, verify:
 - [ ] All E-sections present (enterprise)
 - [ ] No `[PLACEHOLDER]` left unfilled
 - [ ] User stories INVEST-checked
-- [ ] Acceptance criteria as bullets, testable
+- [ ] Acceptance criteria in chosen format (bullets or EARS), testable, consistent
 - [ ] Traceability matrix complete
 - [ ] NFRs measurable (Metric + Threshold + Verification)
 - [ ] Privacy-by-design populated (not boilerplate)
 - [ ] Security-by-design populated (not boilerplate)
 - [ ] Mermaid diagrams render
 - [ ] Table of contents present and accurate
+- [ ] Benefit hypothesis present and measurable (project/enterprise)
+- [ ] Glossary present (project/enterprise)
+- [ ] Crosscutting Concepts present (enterprise)
+- [ ] DoD explicit (always mandatory, regardless of scenario)
 - [ ] Approvals table filled
 - [ ] `python scripts/validate.py <file> --scenario <scenario>` passes

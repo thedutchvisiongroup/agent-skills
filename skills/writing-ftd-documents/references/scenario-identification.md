@@ -3,7 +3,9 @@
 ## Contents
 - Decision criteria
 - Toggle matrix (which sections are mandatory per scenario)
+- Feature flexibility († and ‡ rules)
 - Conflict resolution
+- Scenario-conditional rules
 
 ## Decision criteria
 
@@ -41,18 +43,19 @@ Legend: **M** = mandatory, **O** = optional (recommended), **—** = not require
 | Scope & objectives (in/out, success criteria) | M | M | M |
 | Stakeholders & RACI | — | M | M |
 | Business context & goals | O | M | M |
+| Benefit hypothesis | O | M | M |
 | User stories (INVEST-checked) | M | M | M |
-| Acceptance criteria (bullets) | M | M | M |
-| Traceability matrix | M | M | M |
-| Definition of Ready / Definition of Done | M | M | M |
-| Architecture — C4 Context (L1) | M | M | M |
+| Acceptance criteria (bullets or EARS) | M | M | M |
+| Traceability matrix | O† | M | M |
+| Definition of Ready / Definition of Done | M‡ | M | M |
+| Architecture — C4 Context (L1) | O† | M | M |
 | Architecture — C4 Container (L2) | O | M | M |
 | Architecture — C4 Component (L3) | — | O | M |
 | Sequence diagrams (key flows) | O | M | M |
 | Data model (ERD) | O | M | M |
 | API summary (inline + OpenAPI ref) | O | M | M |
 | Integration & data flows | — | O | M |
-| NFRs (ISO 25010, measurable) | M | M | M |
+| NFRs (ISO 25010, measurable) | O† | M | M |
 | Privacy-by-design section | M | M | M |
 | Security-by-design section | M | M | M |
 | Risk register | — | M | M |
@@ -65,7 +68,13 @@ Legend: **M** = mandatory, **O** = optional (recommended), **—** = not require
 | Accessibility audit (WCAG 2.1 AA) | — | O | M |
 | Migration & runbook | — | O | M |
 | Backwards compatibility notes | O | M | M |
+| Glossary | O | M | M |
+| Crosscutting Concepts | O | O | M |
 | Approvals & sign-off | M | M | M |
+
+**† Feature flexibility:** in the `feature` scenario, the agent MAY drop or condense optional sections marked with † (traceability matrix, C4 Context, NFRs) for trivial single-story features with no performance, security, or data impact — based on the agent's judgement of the feature's complexity. When in doubt, keep the section.
+
+**‡ DoD is ALWAYS mandatory,** regardless of feature size or complexity. DoR follows the same rule. PbD and SbD are also always mandatory and never optional.
 
 ## Conflict resolution
 
@@ -78,6 +87,6 @@ If the user's stated scenario conflicts with the criteria (e.g. they say "featur
 
 ## Scenario-conditional rules
 
-- **feature**: no sign-off gate in Phase 1. Condensed template. Risk register replaced with "impacted teams" note.
-- **project**: sign-off gate (Scope Summary) mandatory. Full template. arc42 design decisions section added.
-- **enterprise**: sign-off gate mandatory. Full template + all enterprise-only (E) sections. DPIA, threat model, and compliance evidence are non-negotiable.
+- **feature**: no sign-off gate in Phase 1. Condensed template. Risk register replaced with "impacted teams" note. The agent MAY drop optional sections († in toggle matrix) for trivial single-story features with no performance, security, or data impact. **DoD, DoR, PbD, SbD, scope, user stories, acceptance criteria, and approvals are always mandatory and never dropped.** Benefit hypothesis optional but recommended if the feature has a measurable outcome.
+- **project**: sign-off gate (Scope Summary) mandatory. Full template. arc42 design decisions section added. Glossary mandatory. Benefit hypothesis mandatory and measurable.
+- **enterprise**: sign-off gate mandatory. Full template + all enterprise-only (E) sections. DPIA, threat model, and compliance evidence are non-negotiable. Glossary and Crosscutting Concepts mandatory. Benefit hypothesis mandatory and measurable.

@@ -1,7 +1,8 @@
-# NFR Taxonomy (ISO/IEC 25010)
+# NFR Taxonomy (ISO/IEC 25010 + ISO/IEC/IEEE 29148)
 
 ## Contents
-- The 8 quality characteristics
+- The 8 quality characteristics (ISO 25010)
+- ISO/IEC/IEEE 29148: requirements qualities
 - Measurable NFR format
 - Worked examples per characteristic
 - Compliance overlays (AVG, WCAG, NEN 7510, BIO, ISO 27001)
@@ -20,6 +21,27 @@ ISO/IEC 25010 defines software quality across 8 characteristics. Every FTD must 
 | 6 | Security | Confidentiality, integrity, non-repudiation, accountability, authenticity |
 | 7 | Maintainability | Modularity, reusability, analysability, modifiability, testability |
 | 8 | Portability | Adaptability, installability, replaceability |
+
+## ISO/IEC/IEEE 29148: requirements qualities
+
+ISO/IEC/IEEE 29148:2018 is the international standard for systems and software requirements engineering — the broader RE standard that encompasses ISO 25010. Where ISO 25010 defines *what* quality characteristics to measure, 29148 defines the *qualities that every requirement* (functional or non-functional) must satisfy to be fit for purpose.
+
+Every requirement and acceptance criterion in the FTD should be checked against these 8 qualities:
+
+| Quality | What it means | FTD check |
+|---------|---------------|-----------|
+| **Unambiguous** | Has only one interpretation | No "fast", "secure", "user-friendly" — use EARS or measurable bullets |
+| **Complete** | Contains all info needed for implementation | Includes boundary values, error paths, preconditions |
+| **Singular** | One requirement per statement | No compound "and" statements; split into separate criteria |
+| **Feasible** | Achievable within constraints | NFR thresholds match budget, tech stack, timeline |
+| **Necessary** | Removing it causes loss of value or introduces risk | No gold-plating; every requirement traces to a business goal or compliance control |
+| **Verifiable** | Can be confirmed by test, inspection, or analysis | Every NFR has Metric + Threshold + Verification |
+| **Correct** | Accurately reflects the actual need | Validated with stakeholders during intake |
+| **Consistent** | Does not conflict with other requirements | Cross-checked in traceability matrix |
+
+**How to apply:** use these qualities as a self-review checklist during Phase 3 (Validate). For each acceptance criterion and NFR, ask: "Is it unambiguous? Complete? Singular? Feasible? Necessary? Verifiable? Correct? Consistent?" If any answer is "no" or "not sure", revise.
+
+This standard does not replace ISO 25010 for NFR taxonomy — it complements it by raising the bar on *requirement quality* across the FTD, including functional requirements and acceptance criteria.
 
 ## Measurable NFR format
 

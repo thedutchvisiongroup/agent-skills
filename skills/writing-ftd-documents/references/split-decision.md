@@ -5,12 +5,17 @@
 - When to keep combined
 - Decision tree
 - Traceability rule when splitting
+- Note on terminology
+
+## Note on terminology
+
+This skill uses **TSD** (Technical Specification Document) for the technical part of a split. The acronym **TDD** is avoided because in a development context it is the standard abbreviation for Test-Driven Development, which causes ambiguity. "TSD" and "TDD" should never be used interchangeably in an FTD.
 
 ## When to split into separate documents
 
-Produce a separate **Functional Design Document (FSD)** and **Technical Design Document (TDD)** when ANY of:
+- Produce a separate **Functional Design Document (FSD)** and **Technical Specification Document (TSD)** when ANY of:
 
-- Multiple suppliers or teams with separate approval flows (e.g. business approves FSD, architecture approves TDD)
+- Multiple suppliers or teams with separate approval flows (e.g. business approves FSD, architecture approves TSD)
 - Regulatory or procurement traceability requires separate functional and technical sign-off
 - The functional design is stable but technical decisions are still evolving (or vice versa)
 - The FSD will be shared with stakeholders who should not see technical detail (procurement, legal, end-user representatives)
@@ -35,7 +40,7 @@ Start
 Is this an enterprise scenario with multiple suppliers
 or separate approval workflows?
   │
-  ├─ YES → SPLIT (FSD + TDD)
+  ├─ YES → SPLIT (FSD + TSD)
   │
   └─ NO
        │
@@ -43,7 +48,7 @@ or separate approval workflows?
   Does a regulatory or procurement framework require
   separate functional vs technical traceability?
        │
-       ├─ YES → SPLIT (FSD + TDD)
+       ├─ YES → SPLIT (FSD + TSD)
        │
        └─ NO
             │
@@ -51,7 +56,7 @@ or separate approval workflows?
        Will the functional design be shared with
        stakeholders who should not see technical detail?
             │
-            ├─ YES → SPLIT (FSD + TDD)
+            ├─ YES → SPLIT (FSD + TSD)
             │
             └─ NO → COMBINED FTD
 ```
@@ -62,19 +67,19 @@ or separate approval workflows?
 |----------|------------------|-----------|
 | feature | Combined FTD | Single team, small scope, no separation benefit |
 | project | Combined FTD (unless multiple suppliers) | One approval flow usually sufficient |
-| enterprise | Propose SPLIT | Multiple suppliers, compliance traceability, separate approval flows likely |
+| enterprise | Propose SPLIT (FSD + TSD) | Multiple suppliers, compliance traceability, separate approval flows likely |
 
-**The user always decides.** The agent proposes based on the tree; the user confirms or overrides. Record the decision and rationale in the FTD's documentbeheer section.
+**The user always decides.** The agent proposes based on the tree; the user confirms or overrides. Record the decision and rationale in the FTD's document control section.
 
 ## Traceability rule when splitting
 
-When producing separate FSD and TDD:
+When producing separate FSD and TSD:
 
 - The **FSD** owns: scope, user stories, acceptance criteria, business rules, wireframes, business context, traceability matrix (requirements side)
-- The **TDD** owns: architecture, data model, API, NFRs, privacy-by-design, security-by-design, deployment, observability, risk register
-- A **shared traceability matrix** links every FSD requirement to its TDD design component and test
+- The **TSD** owns: architecture, data model, API, NFRs, privacy-by-design, security-by-design, deployment, observability, risk register
+- A **shared traceability matrix** links every FSD requirement to its TSD design component and test
 - Both documents reference each other by ID and version
-- The FSD is approved first; the TDD references the approved FSD version
+- The FSD is approved first; the TSD references the approved FSD version
 
 ```
 FSD v1.0 (approved)
@@ -87,7 +92,7 @@ FSD v1.0 (approved)
         Traceability matrix
               │
               ▼
-  TDD v1.0 (references FSD v1.0)
+  TSD v1.0 (references FSD v1.0)
     ├── Component A implements US-01, US-02
     ├── Component B implements US-03
     └── Tests TC-01..TC-05 verify US-01..US-03

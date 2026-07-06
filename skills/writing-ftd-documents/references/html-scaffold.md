@@ -14,7 +14,7 @@
 When the user requests HTML output (or both Markdown + HTML), generate ONE self-contained `.html` file from the Markdown draft. Constraints:
 
 - **One file.** All CSS inline in `<style>`. All JS inline in `<script>`. No external assets except the Mermaid CDN (with fallback).
-- **Mermaid via CDN** (`https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js`) with a fallback: if Mermaid fails to load, the raw diagram code is shown in a `<pre>` so the content is still readable offline.
+- **Mermaid via CDN** (`https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs`) with a fallback: if Mermaid fails to load, the raw diagram code is shown in a `<pre>` so the content is still readable offline.
 - **Sticky TOC** on the left (desktop) / top (mobile).
 - **Tabs** for top-level sections.
 - **Collapsible** subsections within tabs.
@@ -308,10 +308,14 @@ Below is the scaffold. Replace `[CONTENT]` placeholders with the FTD content. Th
 <script type="module">
   const mermaidBlocks = document.querySelectorAll('pre.mermaid');
   try {
-    await import('https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs');
-    window.mermaid.initialize({ startOnLoad: true, theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default' });
+    const mermaid = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+    mermaid.default.initialize({
+      startOnLoad: true,
+      theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+    });
   } catch (e) {
     // Fallback: show the raw diagram code so content is still readable
+    console.warn('Mermaid CDN failed to load:', e);
     mermaidBlocks.forEach(b => {
       const fb = document.createElement('pre');
       fb.className = 'mermaid-fallback';
@@ -338,9 +342,11 @@ sequenceDiagram
 </pre>
 ```
 
-If the CDN fails to load, the fallback script replaces each `<pre class="mermaid">` with a plain `<pre>` showing the raw diagram code. The content remains readable, just not rendered.
+The Mermaid v11 ESM module is imported via CDN. The module's `default` export provides `initialize()` and renders all `<pre class="mermaid">` blocks on load. If the CDN fails (offline, blocked, network error), the fallback script replaces each `<pre class="mermaid">` with a plain `<pre>` showing the raw diagram code. The content remains readable, just not rendered.
 
 **Important:** the raw Mermaid code MUST be present inside the `<pre>` tag. Do not escape it further. Mermaid parses the text content of the element.
+
+**Mermaid v11 note:** v11 uses ESM (`mermaid.esm.min.mjs`) as the primary distribution. The `default` export is the mermaid API — call `mermaid.default.initialize(...)` and it auto-renders `<pre class="mermaid">` blocks when `startOnLoad: true`.
 
 ## CSS-box wireframe components
 
