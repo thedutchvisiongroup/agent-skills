@@ -5,15 +5,11 @@ description: Creates, validates, and manages Architecture Decision Records (ADRs
 
 # Writing Architecture Decision Records (ADRs)
 
-## Iron Law
-
-**You MUST ask clarifying questions before writing any ADR.**
-
 ## Process
 
 ### Phase 1: Discover ADR Location (REQUIRED)
 
-Before writing anything, determine WHERE ADRs live in this project.
+Determine WHERE ADRs live by inferring context, not by asking.
 
 1. **Search for existing ADRs** using these patterns:
    - `**/adr/**/*.md`, `**/adrs/**/*.md`, `**/decisions/**/*.md`
@@ -21,41 +17,58 @@ Before writing anything, determine WHERE ADRs live in this project.
    - Files matching `NNNN-*.md` in any directory
 
 2. **If ADRs exist:**
-   - Confirm the directory with the user
+   - Use that directory
    - Determine the next sequence number from existing files
    - Proceed to Phase 2
 
-3. **If no ADRs found:**
-   - ASK the user where to create the ADR directory
-   - Suggest common locations: `docs/adr/`, `adr/`, `decisions/`
-   - Create the directory and an `index.md` after user confirms
+3. **If no ADRs found — infer the logical location:**
+   - Look at what part of the codebase the decision affects (the context)
+   - If working in `src/database/`, place ADRs in `src/database/adr/`
+   - If working in `services/auth/`, place ADRs in `services/auth/adr/`
+   - If the decision is project-wide, use `docs/adr/` or `adr/` at the repo root
+   - Create the directory and an `index.md`
    - Proceed to Phase 2
 
+### Phase 2: Gather Decision Context (REQUIRED)
+
+Gather context from available sources BEFORE drafting. Minimize questions.
+
+**Gather from these sources first:**
+
+1. **Git diffs** — Read recent commits and diffs to understand what changed and why
+2. **Session summaries** — Check for any session summaries or compactions that explain the decision context
+3. **Code context** — Read the surrounding code, comments, and related files
+4. **Existing ADRs** — Check if any related decisions are already documented
+
+**Then assess what you know vs. what's missing:**
+
+| Field | Source | Ask? |
+|-------|--------|------|
+| Decision | Git diff / session context | Only if unclear |
+| Context & Problem | Git diff / code / session | Only if rationale is missing |
+| Decision Drivers | Inferred from code and context | Only if ambiguous |
+| Considered Options | Git diff / session / code comments | Only if alternatives aren't evident |
+| Decision Outcome | From the implemented change | No — read from code |
+| Consequences | Inferred from the change | Only if impact is unclear |
+| **Deciders** | — | **ALWAYS ASK** |
+| **Status** | — | **ALWAYS ASK** |
+
+**When to ask the user:**
+
+- The user requested a change without explaining why → ask for the rationale
+- Multiple valid interpretations of the decision exist → ask to disambiguate
+- The "considered options" are not evident from context → ask what alternatives were evaluated
+- **Always ask: who are the deciders?**
+- **Always ask: what is the status?** (proposed / accepted / deprecated / superseded)
+
 ```
-STOP. Have you checked for existing ADRs?
-- [ ] Yes, I searched for existing ADR files
-- [ ] Yes, I confirmed the directory with the user (or asked where to create it)
-- [ ] Yes, I know the next sequence number
-If any box is unchecked: GO BACK.
-```
-
-### Phase 2: Clarify the Decision (REQUIRED)
-
-Before drafting, gather the decision context. Ask the user:
-
-1. **What is the decision?** — One sentence describing the architectural choice
-2. **What is the context?** — Why does this decision need to be made now?
-3. **What options exist?** — At minimum, 2 alternatives (including "do nothing")
-4. **Who are the deciders?** — Who was involved in making this decision?
-5. **What is the status?** — `proposed` (default), or another valid status?
-
-```
-STOP. Have you clarified the decision?
-- [ ] Yes, I know what decision is being made
-- [ ] Yes, I know the context and problem
-- [ ] Yes, I know at least 2 options
-- [ ] Yes, I know the deciders
-If any box is unchecked: GO BACK.
+STOP. Before drafting, verify:
+- [ ] I gathered context from git diffs and session history
+- [ ] I know the decision and its rationale (or I asked)
+- [ ] I know the deciders (ASKED the user)
+- [ ] I know the status (ASKED the user)
+- [ ] I have at least 2 options documented (or asked the user)
+If any box is unchecked: gather the missing information first.
 ```
 
 ### Phase 3: Write the ADR
@@ -188,5 +201,7 @@ An ADR is conformant if:
 |------|--------|
 | Find existing ADRs | Search `**/adr/**/*.md`, `**/decisions/**/*.md` |
 | Determine next number | Find highest `NNNN` prefix, increment by 1 |
+| Infer location | Place ADRs near the code they affect |
+| Gather context | Read git diffs, session summaries, surrounding code |
 | Validate an ADR | Run `validate_adr.py` on the file |
 | Supersede an ADR | Create new ADR, update old ADR status to `superseded by [ADR-NNNN]` |
