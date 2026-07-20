@@ -23,6 +23,7 @@ type: ADR
 title: "<display name>"
 description: "<one-line summary>"
 tags: [<tag>, <tag>]
+deciders: [<person>, <person>]
 timestamp: <ISO 8601 datetime>
 ---
 ```
@@ -33,6 +34,7 @@ timestamp: <ISO 8601 datetime>
 - `title` — Human-readable display name. MUST match the H1 heading.
 - `description` — Single sentence summarizing the ADR.
 - `tags` — YAML list of short strings for categorization.
+- `deciders` — YAML list of people involved in making the decision.
 - `timestamp` — ISO 8601 datetime of last meaningful change.
 
 **Extensions:** Additional keys MAY be included. Consumers MUST NOT reject
@@ -69,7 +71,7 @@ When an ADR makes claims from external sources, list them under `# Citations`:
 An ADR is OKF-conformant if:
 
 1. [x] The file starts with a parseable YAML frontmatter block (`---` delimited)
-2. [x] The frontmatter contains `type: ADR`, `title`, `description`, `tags`, and `timestamp`
+2. [x] The frontmatter contains `type: ADR`, `title`, `description`, `tags`, `deciders`, and `timestamp`
 3. [x] The file is UTF-8 encoded
 4. [x] The file is valid markdown
 5. [x] All required MADR body sections are present

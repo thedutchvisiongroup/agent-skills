@@ -83,6 +83,7 @@ type: ADR
 title: "<short imperative title>"
 description: "<one-line summary>"
 tags: [<relevant>, <tags>]
+deciders: [<person>, <person>]
 timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 ---
 ```
@@ -91,6 +92,7 @@ timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 - `title` MUST match the markdown H1 heading
 - `description` MUST be a single sentence
 - `tags` MUST be a YAML list of relevant tags
+- `deciders` MUST be a YAML list of people involved in the decision
 - `timestamp` MUST be ISO 8601 of last meaningful change
 
 #### MADR Body (REQUIRED sections)
@@ -189,7 +191,7 @@ Fix any errors reported by the script. A valid ADR MUST pass all checks.
 
 An ADR is conformant if:
 1. The file contains valid YAML frontmatter delimited by `---`
-2. The frontmatter contains `type: ADR`, `title`, `description`, `tags`, and `timestamp`
+2. The frontmatter contains `type: ADR`, `title`, `description`, `tags`, `deciders`, and `timestamp`
 3. All required body sections are present (see Phase 3)
 4. The status is one of the valid values
 5. The `Deciders` and `Date` fields are present in the body

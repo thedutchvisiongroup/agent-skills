@@ -10,6 +10,7 @@ type: ADR
 title: "<short imperative title>"
 description: "<one-line summary of the decision>"
 tags: [<domain>, <technology>, <component>]
+deciders: [<person>, <person>]
 timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 ---
 
@@ -99,6 +100,7 @@ type: ADR
 title: "Use PostgreSQL for primary database"
 description: "Select PostgreSQL as the primary relational database for the application."
 tags: [database, postgresql, infrastructure]
+deciders: [Alice (Tech Lead), Bob (DBA)]
 timestamp: 2026-07-20T10:00:00Z
 ---
 
