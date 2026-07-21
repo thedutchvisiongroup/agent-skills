@@ -24,8 +24,8 @@ documents.
 |------|------------|
 | **Knowledge Bundle** | A self-contained, hierarchical collection of knowledge documents |
 | **Concept** | A single unit of knowledge within a bundle. One markdown file. |
-| **Concept ID** | Path of the file within the bundle, with `.md` removed |
-| **Frontmatter** | YAML metadata block delimited by `---` |
+| **Concept ID** | Path of the file within the bundle, with `.md` removed (e.g. `tables/users`) |
+| **Frontmatter** | YAML metadata block delimited by `---` on its own line |
 | **Body** | Everything after the frontmatter |
 | **Link** | Standard markdown link from one concept to another |
 | **Citation** | Link to an external source that supports a claim |
@@ -44,11 +44,17 @@ bundle/
         └── …
 ```
 
+A bundle MAY be distributed as:
+
+- A git repository (recommended — provides history, attribution, diffs)
+- A tarball or zip archive of the directory
+- A subdirectory within a larger repository
+
 ## Reserved Filenames
 
 | Filename | Purpose | Rules |
 |----------|---------|-------|
-| `index.md` | Directory listing | No frontmatter. Sections with bullet lists. |
+| `index.md` | Directory listing | No frontmatter — EXCEPT an optional `okf_version` key in the bundle-ROOT `index.md` (see Versioning). Sections with bullet lists. |
 | `log.md` | Update history | No frontmatter. Date-grouped entries, newest first. |
 
 ## Concept Document Structure
@@ -71,16 +77,17 @@ timestamp: <ISO 8601 datetime>     # Recommended
 **Recommended (in priority order):**
 - `title` — Human-readable display name
 - `description` — Single sentence summary
-- `resource` — URI for the underlying asset
+- `resource` — URI for the underlying asset (absent for abstract concepts)
 - `tags` — YAML list for categorization
 - `timestamp` — ISO 8601 datetime of last change
 
-**Extensions:** Additional keys MAY be included. Consumers MUST preserve unknown keys.
+**Extensions:** Additional keys MAY be included. Consumers SHOULD preserve unknown
+keys when round-tripping and SHOULD NOT reject documents with unrecognized fields.
 
 ### Body
 
 Standard markdown. SHOULD favor structural markdown (headings, lists, tables, code blocks)
-over freeform prose.
+over freeform prose. There are no required body sections.
 
 Conventional headings:
 
@@ -102,6 +109,9 @@ See the [customers table](/tables/customers.md) for the join key.
 See the [neighboring concept](./other.md).
 ```
 
+A link asserts a relationship; the kind is conveyed by surrounding prose.
+Consumers MUST tolerate broken links — the target may be not-yet-written knowledge.
+
 ## Index Files
 
 ```markdown
@@ -115,6 +125,8 @@ See the [neighboring concept](./other.md).
 * [Subdirectory](subdir/) - short description of the subdirectory
 ```
 
+Entries SHOULD include the `description` from the linked concept's frontmatter.
+
 ## Log Files
 
 ```markdown
@@ -127,6 +139,15 @@ See the [neighboring concept](./other.md).
 ## 2026-07-15
 * **Initialization**: Created foundational directory structure.
 ```
+
+Date headings MUST use ISO 8601 `YYYY-MM-DD` form. The leading bold word
+(`**Update**`, `**Creation**`, `**Deprecation**`) is a convention, not a requirement.
+
+## Citations
+
+Sources backing claims SHOULD be listed, numbered, under a `# Citations` heading.
+Citation links MAY be absolute URLs, bundle-relative paths, or paths into a
+`references/` subdirectory that mirrors external material as first-class OKF concepts.
 
 ## Conformance
 
@@ -143,3 +164,12 @@ Consumers MUST NOT reject a bundle because of:
 - Unknown additional frontmatter keys
 - Broken cross-links
 - Missing `index.md` files
+
+## Versioning (§11)
+
+- Minor version bumps introduce backward-compatible additions; major bumps may break.
+- Bundles MAY declare the targeted OKF version with `okf_version: "0.1"` in a
+  bundle-ROOT `index.md` frontmatter block — the ONLY place frontmatter is
+  permitted in an `index.md`.
+- Consumers that do not understand the declared version SHOULD attempt
+  best-effort consumption rather than refusing the bundle.

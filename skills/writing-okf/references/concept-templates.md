@@ -1,5 +1,9 @@
 # Concept Document Templates
 
+These templates are starting points, not mandatory structures. `type` values are
+not registered anywhere: pick descriptive, self-explanatory values, reuse `type`
+values already present in the bundle, and adapt the sections to the concept at hand.
+
 ## Generic Concept
 
 ```markdown
@@ -33,10 +37,10 @@ timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 
 ```markdown
 ---
-type: BigQuery Table
+type: Table
 title: "<Table Name>"
 description: "<One-line summary of what each row represents>"
-resource: https://console.cloud.google.com/bigquery?p=<project>&d=<dataset>&t=<table>
+resource: <URI of the asset, e.g. a database or catalog URL>
 tags: [<domain>, <data>]
 timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 ---
@@ -51,7 +55,7 @@ timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 |---------------|-----------|------------------------------|
 | `id`          | STRING    | Unique identifier.           |
 | `created_at`  | TIMESTAMP | When the record was created. |
-| `value`       | NUMERIC   | The measured value.          |
+| `value`       | DECIMAL   | The measured value.          |
 
 # Joins
 

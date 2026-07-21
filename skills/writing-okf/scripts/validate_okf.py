@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Validate OKF documents against the Open Knowledge Format specification.
+"""Validate OKF documents against the Open Knowledge Format specification
+plus house conventions.
+
+Every finding is labelled:
+    [SPEC]  — violates OKF v0.1 conformance (always fix)
+    [HOUSE] — violates a house convention (fix unless the user waives it)
 
 Usage:
     python3 validate_okf.py <path-to-file>
@@ -15,7 +20,6 @@ import sys
 import re
 import os
 import glob
-from pathlib import Path
 
 try:
     import yaml
@@ -24,20 +28,35 @@ except ImportError:
 
 RESERVED_FILES = {"index.md", "log.md"}
 
+# House rule: concept filenames use lowercase-kebab-case (not part of the OKF spec).
 FILENAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*\.md$")
+
+# Frontmatter delimiters must appear on their own line (spec §4). Matching the
+# closing delimiter at line start prevents '---' inside quoted YAML values from
+# terminating the block early.
+FRONTMATTER_PATTERN = re.compile(
+    r"\A---[ \t]*\r?\n(.*?)^---[ \t]*$", re.DOTALL | re.MULTILINE
+)
 
 
 class ValidationResult:
     def __init__(self, filepath):
         self.filepath = filepath
-        self.errors = []
-        self.warnings = []
+        self.findings = []  # list of (level, label, message)
 
-    def error(self, msg):
-        self.errors.append(msg)
+    def error(self, msg, label="SPEC"):
+        self.findings.append(("ERROR", label, msg))
 
-    def warn(self, msg):
-        self.warnings.append(msg)
+    def warn(self, msg, label="SPEC"):
+        self.findings.append(("WARN", label, msg))
+
+    @property
+    def errors(self):
+        return [f for f in self.findings if f[0] == "ERROR"]
+
+    @property
+    def warnings(self):
+        return [f for f in self.findings if f[0] == "WARN"]
 
     @property
     def passed(self):
@@ -45,16 +64,16 @@ class ValidationResult:
 
 
 def parse_frontmatter(content):
-    """Extract YAML frontmatter from markdown content."""
-    if not content.startswith("---"):
-        return None, content
+    """Extract YAML frontmatter from markdown content.
 
-    end = content.find("---", 3)
-    if end == -1:
+    Returns (yaml_str, body), or (None, content) when no valid delimited
+    block is present. The closing '---' must be on its own line.
+    """
+    match = FRONTMATTER_PATTERN.match(content)
+    if not match:
         return None, content
-
-    yaml_str = content[3:end].strip()
-    body = content[end + 3:].strip()
+    yaml_str = match.group(1).strip()
+    body = content[match.end():].strip()
     return yaml_str, body
 
 
@@ -64,25 +83,43 @@ def is_reserved_file(filepath):
     return filename in RESERVED_FILES
 
 
+def reserved_frontmatter_keys(yaml_str):
+    """Return the set of top-level frontmatter keys, or None if undetermined."""
+    if yaml is not None:
+        try:
+            fm = yaml.safe_load(yaml_str)
+        except yaml.YAMLError:
+            return None
+        return set(fm.keys()) if isinstance(fm, dict) else None
+    # Fallback without PyYAML: collect top-level 'key:' names.
+    keys = set()
+    for line in yaml_str.splitlines():
+        match = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s*:", line)
+        if match:
+            keys.add(match.group(1))
+    return keys or None
+
+
 def validate_frontmatter(yaml_str, result):
     """Validate OKF frontmatter requirements."""
     if yaml_str is None:
-        result.error("Missing YAML frontmatter. File must start with '---' block.")
+        result.error(
+            "Missing or unterminated YAML frontmatter. File must start with a "
+            "'---' block closed by '---' on its own line."
+        )
         return None
 
     if yaml is None:
-        result.warn("PyYAML not installed; using basic string checks. Install with: pip install pyyaml")
+        result.warn(
+            "PyYAML not installed; using basic string checks. Install with: pip install pyyaml",
+            label="HOUSE",
+        )
         # Manual string-based checks
         if not re.search(r"^type:", yaml_str, re.MULTILINE):
             result.error("Frontmatter missing required 'type' field.")
-        if not re.search(r"^title:", yaml_str, re.MULTILINE):
-            result.warn("Frontmatter missing recommended 'title' field.")
-        if not re.search(r"^description:", yaml_str, re.MULTILINE):
-            result.warn("Frontmatter missing recommended 'description' field.")
-        if not re.search(r"^tags:", yaml_str, re.MULTILINE):
-            result.warn("Frontmatter missing recommended 'tags' field.")
-        if not re.search(r"^timestamp:", yaml_str, re.MULTILINE):
-            result.warn("Frontmatter missing recommended 'timestamp' field.")
+        for field in ("title", "description", "tags", "timestamp"):
+            if not re.search(rf"^{field}:", yaml_str, re.MULTILINE):
+                result.warn(f"Frontmatter missing recommended '{field}' field.")
         return None
 
     try:
@@ -101,21 +138,16 @@ def validate_frontmatter(yaml_str, result):
     elif not fm["type"] or not str(fm["type"]).strip():
         result.error("Frontmatter 'type' field must not be empty.")
 
-    # Recommended fields (warnings)
-    if "title" not in fm:
-        result.warn("Frontmatter missing recommended 'title' field.")
-    if "description" not in fm:
-        result.warn("Frontmatter missing recommended 'description' field.")
-    if "tags" not in fm:
-        result.warn("Frontmatter missing recommended 'tags' field.")
-    if "timestamp" not in fm:
-        result.warn("Frontmatter missing recommended 'timestamp' field.")
+    # Recommended fields (spec §4.1)
+    for field in ("title", "description", "tags", "timestamp"):
+        if field not in fm:
+            result.warn(f"Frontmatter missing recommended '{field}' field.")
 
     return fm
 
 
 def validate_filename(filepath, result):
-    """Validate file naming convention."""
+    """Validate file naming convention (house rule, not part of the OKF spec)."""
     filename = os.path.basename(filepath)
 
     # Reserved files are exempt from naming convention
@@ -125,33 +157,40 @@ def validate_filename(filepath, result):
     if not FILENAME_PATTERN.match(filename):
         result.error(
             f"Filename '{filename}' does not match lowercase-kebab-case.md convention. "
-            f"Example: my-concept.md"
+            f"Example: my-concept.md",
+            label="HOUSE",
         )
 
 
 def validate_body(body, result, is_reserved):
     """Validate the markdown body."""
     if not body:
-        result.error("Document body is empty.")
+        result.error("Document body is empty.", label="HOUSE")
         return
 
-    # For index.md: check for section headings
+    # For index.md: check for section headings (spec §6 structure)
     if is_reserved and os.path.basename(result.filepath) == "index.md":
-        # Index files should have at least one heading
         if not re.search(r"^#\s+.+", body, re.MULTILINE):
-            result.warn("index.md has no section headings. Consider organizing content under headings.")
+            result.warn(
+                "index.md has no section headings. Consider organizing content under headings."
+            )
         return
 
-    # For log.md: check for date entries
+    # For log.md: date headings are required by spec §7 ("MUST use ISO 8601")
     if is_reserved and os.path.basename(result.filepath) == "log.md":
         if not re.search(r"^##\s+\d{4}-\d{2}-\d{2}", body, re.MULTILINE):
-            result.warn("log.md has no date entries. Expected headings like '## 2026-07-20'.")
+            result.error(
+                "log.md has no date entries. Expected headings like '## 2026-07-20' (spec §7)."
+            )
         return
 
-    # For concept documents: check for H1 heading
+    # For concept documents: H1 heading is a house convention
     h1_match = re.search(r"^#\s+.+", body, re.MULTILINE)
     if not h1_match:
-        result.warn("No H1 title heading found. Consider adding a top-level heading.")
+        result.warn(
+            "No H1 title heading found. Consider adding a top-level heading.",
+            label="HOUSE",
+        )
 
 
 def validate_encoding(filepath, result):
@@ -184,7 +223,7 @@ def validate_okf_file(filepath):
     # 1. Encoding
     validate_encoding(filepath, result)
 
-    # 2. Filename convention
+    # 2. Filename convention (house rule)
     validate_filename(filepath, result)
 
     # 3. Check if reserved file
@@ -193,10 +232,17 @@ def validate_okf_file(filepath):
     # 4. Parse and validate frontmatter
     yaml_str, body = parse_frontmatter(content)
 
-    # Reserved files (index.md, log.md) have no frontmatter
     if reserved:
+        # Reserved files have no frontmatter — EXCEPT an okf_version key in a
+        # bundle-root index.md (spec §11), the only legal index frontmatter.
         if yaml_str is not None:
-            result.warn(f"Reserved file has frontmatter. {os.path.basename(filepath)} files typically have no frontmatter.")
+            filename = os.path.basename(filepath)
+            keys = reserved_frontmatter_keys(yaml_str)
+            if not (filename == "index.md" and keys is not None and keys <= {"okf_version"}):
+                result.warn(
+                    "Reserved file has frontmatter. Only an 'okf_version' key in the "
+                    "bundle-root index.md is permitted (spec §11)."
+                )
     else:
         # Concept documents must have frontmatter
         validate_frontmatter(yaml_str, result)
@@ -212,11 +258,8 @@ def print_result(result):
     status = "PASS" if result.passed else "FAIL"
     print(f"\n[{status}] {result.filepath}")
 
-    for error in result.errors:
-        print(f"  ERROR: {error}")
-
-    for warning in result.warnings:
-        print(f"  WARN:  {warning}")
+    for level, label, message in result.findings:
+        print(f"  {level} [{label}]: {message}")
 
 
 def main():
@@ -237,21 +280,18 @@ def main():
         print(f"Error: {target} is not a file or directory")
         sys.exit(2)
 
-    all_passed = True
-    for filepath in files:
-        result = validate_okf_file(filepath)
+    results = [validate_okf_file(filepath) for filepath in files]
+    for result in results:
         print_result(result)
-        if not result.passed:
-            all_passed = False
 
-    total = len(files)
-    passed = sum(1 for f in files if validate_okf_file(f).passed)
+    total = len(results)
+    passed = sum(1 for r in results if r.passed)
     failed = total - passed
 
     print(f"\n{'='*50}")
     print(f"Results: {passed}/{total} passed, {failed} failed")
 
-    sys.exit(0 if all_passed else 1)
+    sys.exit(0 if failed == 0 else 1)
 
 
 if __name__ == "__main__":
