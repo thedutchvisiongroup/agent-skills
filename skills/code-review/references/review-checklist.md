@@ -1,272 +1,120 @@
-# Code Review Checklist
+# Code Review Master Checklist
+
+The complete checklist for a thorough review, mirroring the six phases of `SKILL.md`. Copy it, track it, and do not skip items — a checklist without tracking is decoration.
+
+**Reminder: you advise, you never edit. Security is out of scope — see the handoff items below.**
+
+## Contents
+
+- Pre-Review Setup
+- Phase 1: Understand the Change
+- Phase 2: Automated Checks
+- Phase 3: Test Suite Review
+- Phase 4: Logic and Correctness
+- Phase 5: Design and Maintainability
+- Phase 6: Report and Verdict
+- Post-Review
+- Review Etiquette
 
 ## Pre-Review Setup
 
-### 1. Understand Context
+- [ ] Read the change description; understand the problem being solved
+- [ ] Identify change type: feature / fix / refactor / dependency / config
+- [ ] Count changed files; identify critical vs. supporting files
+- [ ] Confirm how to run lint, types, format check, and tests in this project
+- [ ] Confirm coverage expectations (threshold or config)
+- [ ] **Ask the security question:** "Security is out of scope for this review. Do you want me to start a separate security-review agent in parallel?"
 
-- [ ] Read PR description / change summary
-- [ ] Understand the problem being solved
-- [ ] Check for related issues or PRs
-- [ ] Identify the type of change (feature, fix, refactor)
+## Phase 1: Understand the Change
 
-### 2. Identify Scope
+- [ ] Know what the change does and why
+- [ ] Know what is NOT tested
+- [ ] Sensitive paths noted (auth, payments, personal data, crypto, secrets, uploads, external input) — for handoff only, never for security review
 
-- [ ] How many files changed?
-- [ ] Which files are critical?
-- [ ] Which files are supporting (tests, config)?
-- [ ] What's the estimated review time?
+## Phase 2: Automated Checks (ALWAYS)
 
-## Phase 1: Static Analysis (ALWAYS)
-
-### Linting
-
-- [ ] Run project linter
-- [ ] Check for lint errors
-- [ ] Check for lint warnings
-- [ ] Verify all issues are reported
-
-### Type Checking
-
-- [ ] Run type checker (if available)
-- [ ] Check for type errors
-- [ ] Verify type annotations are correct
-
-### Formatting
-
-- [ ] Run formatter check (if available)
-- [ ] Check for formatting violations
-- [ ] Verify consistent style
-
-### Results
+- [ ] Tooling detected (config files + CI configuration)
+- [ ] Linter run — all errors/warnings reported
+- [ ] Type checker run (or: reported missing + user asked)
+- [ ] Format check run (or: reported missing + user asked)
+- [ ] Full test suite run
+- [ ] Missing tooling: reported AND asked — nothing skipped silently
+- [ ] Failing tests: review STOPPED, failures reported, user consulted
+- [ ] **Nothing fixed, formatted, or edited**
 
 ```
-Lint:      [ ] PASS  [ ] FAIL (___ errors, ___ warnings)
-Types:     [ ] PASS  [ ] FAIL (___ errors)
-Format:    [ ] PASS  [ ] FAIL (___ violations)
+Lint:    [ ] PASS  [ ] FAIL (___ errors, ___ warnings)  [ ] not available
+Types:   [ ] PASS  [ ] FAIL (___ errors)                [ ] not available
+Format:  [ ] PASS  [ ] FAIL (___ violations)            [ ] not available
+Tests:   [ ] PASS  [ ] FAIL (___ passed, ___ failed, ___ skipped)
 ```
 
-## Phase 2: Tests (ALWAYS)
+## Phase 3: Test Suite Review (ALWAYS when a suite exists)
 
-### Test Execution
+See `test-quality.md` and `coverage-strategies.md`.
 
-- [ ] Run full test suite
-- [ ] Check for test failures
-- [ ] Check for skipped tests
-- [ ] Verify test results
-
-### Test Quality
-
-- [ ] Tests cover happy path
-- [ ] Tests cover error paths
-- [ ] Tests cover edge cases
-- [ ] Tests are readable
-- [ ] Tests are maintainable
-
-### Results
+- [ ] Flakiness signals checked (sleeps, wall-clock, randomness, order dependence, shared state)
+- [ ] Retry config isn't masking instability
+- [ ] Skipped tests have reasons and owners
+- [ ] Test smells checked (assertion roulette, mystery guest, eager test, over-mocking, implementation-detail testing)
+- [ ] Core question applied: would each test FAIL if the code were broken?
+- [ ] One behavior per test; assertions specific and on outcomes
+- [ ] Coverage run; gaps in changed files identified and prioritized
+- [ ] User asked about each significant coverage gap
 
 ```
-Tests:     [ ] PASS  [ ] FAIL (___ passed, ___ failed, ___ skipped)
+Tests quality: [ ] reviewed   Flakiness: [ ] none found / [ ] suspects reported
+Coverage:      ___% (___ gaps identified, ___ questions asked)
 ```
 
-## Phase 3: Coverage (ALWAYS)
+## Phase 4: Logic and Correctness
 
-### Coverage Analysis
+See `logic-patterns.md` and `error-handling.md`.
 
-- [ ] Run coverage tool
-- [ ] Check coverage of changed files
-- [ ] Identify coverage gaps
-- [ ] Prioritize gaps
+- [ ] Every changed line read in context (whole file where needed)
+- [ ] Off-by-one, null handling, boolean logic, race conditions, coercion, boundaries, floats
+- [ ] Edge cases: empty, boundary, large, invalid, concurrent inputs
+- [ ] No error swallowing; resources released on all paths
+- [ ] Propagation, retries, timeouts, partial-failure cleanup reviewed
+- [ ] Error messages actionable and traceable
 
-### Coverage Questions
+## Phase 5: Design and Maintainability
 
-For each gap:
-- [ ] Is this gap intentional?
-- [ ] Should tests be added?
-- [ ] Is this covered elsewhere?
+See `design-principles.md`, `complexity-metrics.md`, `naming-and-readability.md`, `dead-code.md`, `performance-review.md`, `documentation-review.md`.
 
-### Results
+- [ ] Knowledge duplication flagged; look-alike code left alone (wrong-abstraction nuance applied)
+- [ ] Implementations minimal for the stated requirement
+- [ ] SOLID checked where the paradigm fits — not forced
+- [ ] No speculative generality (YAGNI): every option/hook/abstraction has a current consumer
+- [ ] Complexity signals examined; acceptable complexity verified against tests + docs
+- [ ] Names reveal intent; no misleading names; magic numbers extracted
+- [ ] Dead-code candidates reported with evidence + confidence level (CERTAIN / LIKELY / NEEDS CONFIRMATION)
+- [ ] Clear performance patterns flagged (N+1, O(n²), unbounded results); evidence demanded for the rest
+- [ ] Public APIs documented; comments explain WHY; external docs synced with behavior changes
+- [ ] Architectural consistency: existing patterns followed, right layer for the logic
 
-```
-Coverage:  [ ] PASS (>= ___%)  [ ] FAIL (___%)
+## Phase 6: Report and Verdict
 
-Gaps identified:
-- File: ___, Lines: ___ — [ ] Intentional  [ ] Needs tests  [ ] Covered elsewhere
-- File: ___, Lines: ___ — [ ] Intentional  [ ] Needs tests  [ ] Covered elsewhere
-```
+See `feedback-format.md`.
 
-## Phase 4: Code Logic
-
-### Correctness
-
-- [ ] Logic is correct
-- [ ] No off-by-one errors
-- [ ] No null/undefined issues
-- [ ] No boolean logic errors
-
-### Edge Cases
-
-- [ ] Empty input handled
-- [ ] Boundary values handled
-- [ ] Large inputs handled
-- [ ] Invalid input handled
-
-### Error Handling
-
-- [ ] Errors caught appropriately
-- [ ] Error messages helpful
-- [ ] Errors propagated correctly
-- [ ] Cleanup on error
-
-### Performance
-
-- [ ] No O(n²) loops where O(n) possible
-- [ ] No N+1 query patterns
-- [ ] Missing indexes identified
-- [ ] Unnecessary allocations avoided
-
-### Security
-
-- [ ] Input validated
-- [ ] SQL injection prevented
-- [ ] XSS prevented
-- [ ] Auth checks present
-- [ ] No hardcoded secrets
-- [ ] Sensitive data protected
-
-### Architecture
-
-- [ ] Follows existing patterns
-- [ ] Responsibilities separated
-- [ ] Right layer for logic
-- [ ] No unnecessary coupling
-
-## Phase 5: Code Quality
-
-### Readability
-
-- [ ] Code is self-documenting
-- [ ] Names are descriptive
-- [ ] Comments explain WHY, not WHAT
-- [ ] No magic numbers/strings
-
-### Maintainability
-
-- [ ] Code is DRY (Don't Repeat Yourself)
-- [ ] Functions are small and focused
-- [ ] Classes have single responsibility
-- [ ] Easy to modify
-
-### Consistency
-
-- [ ] Follows project style guide
-- [ ] Consistent naming conventions
-- [ ] Consistent patterns
-- [ ] Consistent error handling
-
-## Phase 6: Documentation
-
-### Code Comments
-
-- [ ] Complex logic explained
-- [ ] Non-obvious decisions documented
-- [ ] Public APIs documented
-- [ ] TODOs tracked
-
-### External Documentation
-
-- [ ] README updated (if needed)
-- [ ] API docs updated (if needed)
-- [ ] Changelog updated (if needed)
-- [ ] Migration guide (if needed)
-
-## Phase 7: Final Review
-
-### Summary
-
-```
-Change: [description]
-Files: [count] changed
-
-Automated Checks:
-- Lint:    [PASS/FAIL]
-- Types:   [PASS/FAIL]
-- Tests:   [PASS/FAIL]
-- Coverage: [PASS/FAIL] (___%)
-
-Issues Found:
-- Critical: [count]
-- Warnings: [count]
-- Suggestions: [count]
-
-Coverage Gaps:
-- [count] gaps identified, [count] questions for user
-
-Recommendation:
-[ ] APPROVE
-[ ] REQUEST CHANGES
-[ ] COMMENT
-```
-
-### Issue Categories
-
-**Critical (MUST fix):**
-- [ ] Logic errors
-- [ ] Security vulnerabilities
-- [ ] Test failures
-- [ ] Missing critical tests
-
-**Warnings (SHOULD fix):**
-- [ ] Code quality issues
-- [ ] Missing edge case tests
-- [ ] Performance concerns
-- [ ] Style inconsistencies
-
-**Suggestions (Consider):**
-- [ ] Minor improvements
-- [ ] Alternative approaches
-- [ ] Documentation gaps
-- [ ] Refactoring opportunities
+- [ ] Every finding labeled (issue/suggestion/nitpick/question/todo/praise/thought) + decoration (blocking/non-blocking)
+- [ ] Every finding has location, what, why (because…), and recommendation
+- [ ] Automated check results table complete (including "not available")
+- [ ] Coverage gaps include the user's answers
+- [ ] Security handoff section present: user's answer + sensitive-path recommendation if triggered
+- [ ] At least one sincere praise (never manufactured)
+- [ ] Verdict matches severity mapping: blocking → REQUEST CHANGES; questions → COMMENT; else APPROVE
+- [ ] **The codebase is untouched — review delivered as advice only**
 
 ## Post-Review
 
-### Documentation
-
-- [ ] Review findings documented
-- [ ] Questions for user listed
-- [ ] Next steps defined
-
-### Follow-up
-
-- [ ] Critical issues addressed
-- [ ] Warnings addressed
-- [ ] Coverage gaps discussed
-- [ ] User questions answered
-
-## Quick Reference
-
-| Check | Tool | Command |
-|-------|------|---------|
-| Lint | Varies | `npm run lint`, `ruff check .`, `cargo clippy` |
-| Types | Varies | `npm run typecheck`, `mypy .`, `cargo check` |
-| Format | Varies | `npm run format:check`, `ruff format --check .` |
-| Tests | Varies | `npm test`, `pytest`, `cargo test` |
-| Coverage | Varies | `npm run test:coverage`, `pytest --cov` |
-| Security | Varies | `npm audit`, `pip audit`, `cargo audit` |
+- [ ] All user questions answered or recorded as open
+- [ ] Accepted coverage-gap recommendations recorded for follow-up
+- [ ] Security-review agent started if the user requested it
+- [ ] Any fix work confirmed as a SEPARATE task — never silently merged into the review
 
 ## Review Etiquette
 
-### DO
+**DO:** be specific · give rationale · acknowledge good work · ask questions instead of assuming · focus on code, never the author
 
-- Be specific about issues
-- Provide examples of fixes
-- Acknowledge good work
-- Ask questions, don't assume
-- Focus on code, not author
-
-### DON'T
-
-- Nitpick style (let linter handle it)
-- Block on opinions without evidence
-- Review when tired or rushed
-- Skip phases because "it looks fine"
-- Assume tests pass without running
+**DON'T:** nitpick formatting (the formatter owns it) · block on opinion without evidence · skip phases because "it looks fine" · assume tests pass without running · review security (out of scope) · edit the code under review

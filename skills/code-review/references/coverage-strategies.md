@@ -1,5 +1,19 @@
 # Coverage Strategies
 
+> This file is about coverage **quantity** — how much code is exercised. For coverage **quality** (flakiness, test smells, assertion strength), see `test-quality.md`. Remember: you advise, you never write the tests yourself — recommend additions to the user.
+
+## Contents
+
+- Why Coverage Matters
+- Types of Coverage
+- Identifying Coverage Gaps
+- Common Coverage Gaps
+- Coverage Thresholds
+- Asking About Gaps
+- Recommending Coverage Improvements
+- Coverage Anti-Patterns
+- Coverage Checklist
+
 ## Why Coverage Matters
 
 Test coverage measures how much of your code is exercised by tests. Low coverage means untested code — and untested code is broken code waiting to happen.
@@ -273,9 +287,11 @@ Questions:
 - Gap is in modified code
 - Gap is unexplained
 
-## Improving Coverage
+## Recommending Coverage Improvements
 
-### 1. Add Tests for Missing Lines
+The reviewer NEVER writes the missing tests. You identify the gap and recommend the concrete test to add — the examples below show what a good recommendation looks like.
+
+### 1. Recommend tests for missing lines
 
 ```python
 # If line 45-50 is not covered:
@@ -284,7 +300,7 @@ def test_invalid_credentials():
         login("user", "wrong_password")
 ```
 
-### 2. Add Tests for Missing Branches
+### 2. Recommend tests for missing branches
 
 ```python
 # If else branch is not covered:
@@ -292,7 +308,7 @@ def test_unknown_status_code():
     assert get_status(500) == "Unknown"
 ```
 
-### 3. Add Tests for Missing Functions
+### 3. Recommend tests for missing functions
 
 ```python
 # If delete_user is not covered:
@@ -364,5 +380,5 @@ For each review:
 - [ ] Identify gaps in changed files
 - [ ] Prioritize gaps (errors > branches > lines)
 - [ ] Ask user about each gap
-- [ ] Verify gaps are addressed
+- [ ] Recommend concrete tests for each accepted gap
 - [ ] Confirm coverage meets threshold

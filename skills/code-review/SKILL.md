@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Performs comprehensive code reviews including linting, testing, logic analysis, and test coverage checks. Use when reviewing pull requests, validating code changes, or performing pre-merge quality checks. Covers static analysis, test execution, coverage gaps, security patterns, and architectural consistency. Always asks clarifying questions when issues are found.
+description: Performs advisory-only, language-agnostic code reviews. Runs linters, formatters, and tests, then analyzes logic, design (DRY, SOLID, YAGNI), complexity, naming, dead code, performance, documentation, and test-suite quality (flakiness, test smells, coverage). Use when reviewing pull requests, validating code changes, or performing pre-merge quality checks. The reviewer NEVER modifies code — it only reports findings. Security review is out of scope; the reviewer asks the user whether a separate security-review agent should be started.
 ---
 
 # Comprehensive Code Review
@@ -8,12 +8,29 @@ description: Performs comprehensive code reviews including linting, testing, log
 ## The Iron Law
 
 ```
-NO REVIEW IS COMPLETE WITHOUT RUNNING: LINT, TESTS, AND LOGIC CHECKS
+NO REVIEW IS COMPLETE WITHOUT RUNNING: LINTERS, FORMATTERS, AND TESTS
+THE REVIEWER ADVISES. THE REVIEWER NEVER EDITS CODE.
+SECURITY IS OUT OF SCOPE. ALWAYS ASK ABOUT A SEPARATE SECURITY REVIEW.
 ```
 
 A code review that only reads code is not a review. It is a glance.
 
 **You MUST execute all verification steps before providing your review.**
+
+## Advisory-Only — Non-Negotiable
+
+- You MUST NEVER edit, fix, refactor, reformat, or "quickly correct" any file under review. **No exceptions.**
+- Your ONLY outputs are findings, questions, and recommendations.
+- If the user asks you to fix something, that is a NEW task. Finish and deliver the review first, then confirm the fix as separate work.
+- "Just this once" does not exist. A reviewer who edits is an author — and authors cannot review their own code.
+
+## Security Is Out of Scope
+
+This skill does NOT perform security review. A dedicated security review is a separate discipline.
+
+- You MUST ask the user in the clarification step whether a separate security-review agent should be started.
+- You MUST NOT check for vulnerabilities, injection, auth flaws, or secrets yourself. If you notice something that looks security-relevant, you note it as a handoff trigger — nothing more.
+- See Phase 1 for sensitive-path detection, and Phase 6 for the handoff recommendation.
 
 ## Before You Start
 
@@ -21,19 +38,20 @@ You MUST confirm the following before beginning review:
 
 - [ ] **Scope**: What files/changes are being reviewed?
 - [ ] **Context**: What is the purpose of this change? (feature, fix, refactor)
-- [ ] **Test commands**: How do you run tests and lints in this project?
+- [ ] **Commands**: How do you run lints, formatters, and tests in this project? (You will also detect this yourself in Phase 2 — ask if detection fails.)
 - [ ] **Coverage expectations**: Is there a coverage threshold or config?
+- [ ] **Security review**: Ask: "Security is out of scope for this review. Do you want me to start a separate security-review agent in parallel?" — ALWAYS ask this.
 
 **If any are unclear, ASK the user before proceeding.**
 
 ## Overview
 
-Code review is not just reading diff. It is systematic verification that code:
+Code review is not just reading a diff. It is systematic verification that code:
 
 1. **Works** — tests pass, logic is correct
-2. **Conforms** — lints clean, style consistent
-3. **Is complete** — edge cases handled, tests exist, coverage adequate
-4. **Is safe** — no security issues, no data leaks, no regressions
+2. **Conforms** — lints clean, formatting verified, style consistent
+3. **Is complete** — edge cases handled, tests exist and are well-designed, coverage adequate
+4. **Is maintainable** — DRY, SOLID where relevant, no dead code, documented, no needless complexity
 
 **Core principle:** ALWAYS verify, never assume. "Looks correct" is not verified.
 
@@ -62,6 +80,7 @@ Use for ANY code change review:
 
 ## When NOT to Use
 
+- **Security audits** — Out of scope. Recommend a dedicated security-review agent instead.
 - **Trivial formatting-only changes** — If only whitespace/formatting changed with no logic impact
 - **Generated code** — Auto-generated files that aren't hand-edited
 - **Vendor code** — Third-party libraries (review the dependency, not the code)
@@ -95,126 +114,110 @@ You MUST complete each phase before proceeding to the next.
    - What is NOT tested?
    - Are there integration tests?
 
+5. **Detect Sensitive Paths** (security handoff trigger)
+   - Scan the changed files for: authentication, authorization, payments, personal data, cryptography, secrets, file uploads, external input handling, permission checks.
+   - If found: note them. You will NOT review them for security — but you MUST include a security-review recommendation in your final report (Phase 6).
+
 ```
 STOP. Do you understand the change?
 - [ ] Yes, I know what this change does
 - [ ] Yes, I know why it was made
 - [ ] Yes, I know which files are critical
 - [ ] Yes, I know what tests exist
+- [ ] Yes, I noted any sensitive paths (for handoff only)
 If any box is unchecked: read more context before reviewing code.
 ```
 
-### Phase 2: Run Static Analysis (ALWAYS)
+### Phase 2: Run Automated Checks (ALWAYS)
 
-**You MUST run linters and static analysis. NO EXCEPTIONS.**
+**You MUST run linters, formatters, type checkers, and tests. NO EXCEPTIONS.**
 
 1. **Discover Available Tools**
 
-   Check for configuration files:
-   - `package.json` → `npm run lint`, `npm run typecheck`
-   - `pyproject.toml` → `ruff`, `mypy`, `pylint`
-   - `Makefile` → `make lint`, `make check`
-   - `.eslintrc*` → `eslint`
-   - `Cargo.toml` → `cargo clippy`
-   - `go.mod` → `golangci-lint`
+   Detect the project's tooling from configuration files. Also check CI configuration (e.g. `.github/workflows`, `.gitlab-ci.yml`) — it reveals the exact commands the project considers authoritative.
 
-2. **Run Linting**
+   | Config file | Typical commands |
+   |-------------|------------------|
+   | `package.json` | `npm run lint`, `npm run typecheck`, `npm run format:check`, `npm test` |
+   | `pyproject.toml` | the project's lint/type/format/test commands |
+   | `Makefile` | `make lint`, `make check`, `make test` |
+   | `Cargo.toml` | `cargo clippy`, `cargo fmt --check`, `cargo test` |
+   | `go.mod` | the project's lint command, `go test ./...` |
 
-   ```bash
-   # Detect and run project linter
-   # Examples:
-   npm run lint
-   ruff check .
-   cargo clippy
-   golangci-lint run
-   ```
+2. **Run Everything You Found**
+   - Linting
+   - Type checking (if available)
+   - Formatting check (if available) — run the formatter in CHECK mode only. NEVER apply formatting.
+   - Full test suite
 
-3. **Run Type Checking**
+3. **If Tooling Is Missing: Detect → Report → Ask**
 
-   ```bash
-   # If available:
-   npm run typecheck
-   mypy .
-   cargo check
-   ```
+   - If a category (lint, format, types, or tests) has no detectable tooling, you MUST:
+     1. Report it explicitly in your review as "not available"
+     2. Ask the user how (or whether) it should be run
+   - NEVER skip a category silently.
 
-4. **Run Formatting Check**
-
-   ```bash
-   # If available:
-   npm run format:check
-   ruff format --check .
-   cargo fmt --check
-   ```
-
-5. **Report ALL Issues**
-
+4. **Report ALL Issues**
    - List every lint error/warning
    - List every type error
    - List every formatting violation
-   - Do NOT fix silently — report to user
+   - Do NOT fix anything — report to the user
 
-```
-STOP. Did you run all static analysis?
-- [ ] Yes, I ran the linter
-- [ ] Yes, I ran the type checker (if available)
-- [ ] Yes, I ran the formatter check (if available)
-- [ ] Yes, I reported all issues
-If any box is unchecked: GO BACK and run them.
-```
-
-### Phase 3: Run Tests (ALWAYS)
-
-**You MUST run the test suite. NO EXCEPTIONS.**
-
-1. **Discover Test Framework**
-
-   Check for configuration files:
-   - `package.json` → `npm test`, `npm run test`
-   - `pyproject.toml` → `pytest`
-   - `Makefile` → `make test`
-   - `Cargo.toml` → `cargo test`
-   - `go.mod` → `go test ./...`
-
-2. **Run Full Test Suite**
-
-   ```bash
-   # Detect and run project tests
-   # Examples:
-   npm test
-   pytest
-   cargo test
-   go test ./...
-   ```
-
-3. **Analyze Results**
-
-   - How many tests passed/failed?
-   - Are there skipped tests? Why?
-   - Are there new test failures?
-   - Are flaky tests masking real failures?
-
-4. **If Tests Fail**
+5. **If Tests Fail**
 
    **STOP REVIEW. Tests must pass before code review continues.**
 
-   - Report which tests failed
-   - Provide the failure messages
-   - Ask: "Should I fix these, or are they known failures?"
-
-5. **Check for Missing Tests**
-
-   - New functions without tests?
-   - New branches without test coverage?
-   - Edge cases not tested?
-   - Error paths not tested?
+   - Report which tests failed, with failure messages
+   - Ask: "Are these known failures, or caused by this change?"
+   - Do NOT fix the tests. Do NOT continue reviewing on a red suite without explicit user confirmation.
 
 ```
-STOP. Did you run the tests?
+STOP. Did you run all automated checks?
+- [ ] Yes, I ran the linter
+- [ ] Yes, I ran the type checker (or reported it missing + asked)
+- [ ] Yes, I ran the formatter check (or reported it missing + asked)
 - [ ] Yes, I ran the full test suite
-- [ ] Yes, I know which tests passed/failed
-- [ ] Yes, I identified missing test coverage
-If any box is unchecked: GO BACK and run them.
+- [ ] Yes, I reported all issues — and fixed NOTHING
+If any box is unchecked: GO BACK and complete them.
+```
+
+### Phase 3: Test Suite Review (ALWAYS when a suite exists)
+
+**Passing tests prove nothing about test quality. A green suite of bad tests is false confidence.**
+
+If the project has tests, you MUST review the tests themselves. This is as important as reviewing the production code.
+
+1. **Review Test Quality**
+
+   See `references/test-quality.md` for the full catalog.
+
+   - **Flakiness signals** — sleeps, wall-clock time, randomness, network, order dependence, shared state
+   - **Test smells** — assertion roulette, mystery guest, eager test, over-mocking, testing implementation details
+   - **Assertion quality** — does each test assert one behavior with meaningful assertions?
+   - **The core question** — would this test actually FAIL if the production code were broken?
+
+2. **Run Coverage Analysis**
+
+   See `references/coverage-strategies.md` for details.
+
+   - Run the project's coverage tool (detect it the same way as Phase 2)
+   - Focus on coverage of CHANGED files
+   - Identify gaps: new functions, branches, error paths, edge cases
+
+3. **Ask About Coverage Gaps**
+
+   For each coverage gap, ASK the user:
+   - "Is this gap intentional?"
+   - "Should tests be added for this?"
+   - "Is this covered by integration tests elsewhere?"
+
+```
+STOP. Did you review the test suite itself?
+- [ ] Yes, I checked for flakiness signals and test smells
+- [ ] Yes, I verified tests would fail if the code were broken
+- [ ] Yes, I ran coverage and identified gaps in changed files
+- [ ] Yes, I asked the user about each significant gap
+If any box is unchecked: GO BACK and review the tests.
 ```
 
 ### Phase 4: Logic and Correctness Review
@@ -222,165 +225,156 @@ If any box is unchecked: GO BACK and run them.
 **Now that automated checks pass, review the actual code logic:**
 
 1. **Read Every Changed Line**
-
    - Don't skim diffs
-   - Understand each change in context
+   - Understand each change in context — read the whole file when needed, not just the diff hunk
    - Check surrounding code for consistency
 
 2. **Check for Logic Errors**
 
    See `references/logic-patterns.md` for common patterns.
 
-   - **Off-by-one errors** — Loop bounds, array indices, range checks
-   - **Null/undefined handling** — Missing null checks, optional chaining
-   - **Boolean logic** — De Morgan's law violations, inverted conditions
-   - **Race conditions** — Shared mutable state, async ordering
-   - **Resource leaks** — Unclosed files, connections, streams
-   - **Error swallowing** — Empty catch blocks, ignored errors
+   - Off-by-one errors, null/undefined handling, boolean logic
+   - Race conditions and async ordering
+   - Type coercion, boundary issues, floating point
 
-3. **Check Edge Cases**
+3. **Check Error Handling**
 
+   See `references/error-handling.md` for the full catalog.
+
+   - Error swallowing, resource leaks
+   - Propagation and cleanup on error
+   - Retries, timeouts, error message quality
+
+4. **Check Edge Cases**
    - Empty input (null, undefined, empty array, empty string)
-   - Boundary values (0, 1, -1, MAX_INT, MIN_INT)
+   - Boundary values (0, 1, -1, MAX, MIN)
    - Large inputs (performance, memory)
    - Concurrent access (if applicable)
    - Invalid input (wrong types, malformed data)
 
-4. **Check Error Handling**
+```
+STOP. Did you verify correctness?
+- [ ] Yes, I read every changed line in context
+- [ ] Yes, I checked logic patterns and error handling
+- [ ] Yes, I traced the edge cases
+If any box is unchecked: GO BACK and verify.
+```
 
-   - Are errors caught appropriately?
-   - Are error messages helpful?
-   - Are errors propagated correctly?
-   - Is cleanup performed on error?
+### Phase 5: Design and Maintainability Review
 
-5. **Check Security Patterns**
+**Correct code can still be bad code. Review design with the same rigor as logic.**
 
-   See `references/security-patterns.md` for details.
+1. **DRY and Duplication**
 
-   - **Input validation** — All user input validated?
-   - **SQL injection** — Parameterized queries used?
-   - **XSS** — Output properly escaped?
-   - **Auth checks** — Permissions verified?
-   - **Secrets** — No hardcoded credentials?
-   - **Sensitive data** — Properly masked in logs?
+   See `references/design-principles.md`.
 
-6. **Check Performance**
+   - Is knowledge duplicated (same rule in multiple places)?
+   - Nuance: is this harmful duplication, or acceptable look-alike code? The wrong abstraction is costlier than duplication.
+   - Are implementations as MINIMAL as the requirement allows?
 
-   - O(n²) loops that could be O(n)?
-   - N+1 query patterns?
-   - Missing indexes?
-   - Unnecessary allocations?
-   - Missing caching where appropriate?
+2. **SOLID (where relevant)**
 
-7. **Check Architectural Consistency**
+   See `references/design-principles.md` for per-principle heuristics.
 
+   - Applies to OO-style code. Use judgment for functional/procedural code — do not force OO principles where they don't fit.
+
+3. **YAGNI / Over-Engineering**
+
+   - Speculative generality, unused parameters "for the future", abstractions with a single implementation
+   - Solve the problem that exists NOW, not the imagined future one
+
+4. **Complexity**
+
+   See `references/complexity-metrics.md`.
+
+   - Function length, nesting depth, parameter count, cyclomatic/cognitive complexity signals
+   - Flag what "can't be understood quickly by code readers"
+
+5. **Naming and Readability**
+
+   See `references/naming-and-readability.md`.
+
+   - Intention-revealing names, magic numbers, misleading names
+   - Self-documenting code over comments
+
+6. **Dead Code**
+
+   See `references/dead-code.md`.
+
+   - Unused functions, methods, classes, files, exports, parameters
+   - Zombie dependencies, commented-out code, unreachable branches
+   - REPORT candidates with evidence. NEVER delete anything.
+
+7. **Performance**
+
+   See `references/performance-review.md`.
+
+   - N+1 patterns, hidden O(n²), repeated I/O in loops, unbounded result sets
+   - Flag only clear algorithmic issues — require evidence for anything subtler
+
+8. **Documentation**
+
+   See `references/documentation-review.md`.
+
+   - Public APIs documented (purpose, params, returns, errors)
+   - Comments explain WHY, not WHAT
+   - README/changelog/migration docs updated when behavior changes
+
+9. **Architectural Consistency**
    - Does this follow existing patterns?
-   - Does this introduce new patterns without justification?
    - Is this the right layer for this logic?
-   - Are responsibilities properly separated?
-
-### Phase 5: Test Coverage Analysis (ALWAYS)
-
-**You MUST check test coverage. NO EXCEPTIONS.**
-
-1. **Discover Coverage Tools**
-
-   Check for configuration:
-   - `package.json` → `npm run test:coverage`, `jest --coverage`
-   - `pyproject.toml` → `pytest --cov`
-   - `Makefile` → `make coverage`
-   - `Cargo.toml` → `cargo tarpaulin`
-
-2. **Run Coverage Analysis**
-
-   ```bash
-   # Detect and run coverage
-   # Examples:
-   npm run test:coverage
-   pytest --cov=src --cov-report=term-missing
-   cargo tarpaulin
-   ```
-
-3. **Analyze Coverage Gaps**
-
-   - Which changed files have LOW coverage?
-   - Which new functions are NOT covered?
-   - Which branches are NOT tested?
-   - Which error paths are NOT covered?
-
-4. **Report Coverage Findings**
-
-   List every coverage gap found:
-
-   ```
-   File: src/auth/login.py
-   - Line 45-50: Login validation not tested
-   - Line 67: Error path for invalid credentials not tested
-   - Line 89: Token refresh logic has no tests
-
-   File: src/utils/parser.py
-   - Line 23: Empty input handling not tested
-   - Line 34-38: Malformed input error path not tested
-   ```
-
-5. **Ask About Coverage Gaps**
-
-   **For each coverage gap, ASK the user:**
-
-   - "Is this gap intentional?"
-   - "Should I add tests for this?"
-   - "Is this covered by integration tests elsewhere?"
+   - Does it introduce new patterns without justification?
 
 ```
-STOP. Did you check test coverage?
-- [ ] Yes, I ran the coverage tool
-- [ ] Yes, I identified all coverage gaps
-- [ ] Yes, I asked the user about each gap
-If any box is unchecked: GO BACK and run coverage.
+STOP. Did you review design and maintainability?
+- [ ] Yes, I checked DRY, SOLID (where relevant), and YAGNI
+- [ ] Yes, I checked complexity, naming, and readability
+- [ ] Yes, I searched for dead code and reported candidates
+- [ ] Yes, I checked documentation completeness
+- [ ] Yes, I checked performance for clear algorithmic issues
+If any box is unchecked: GO BACK and complete the review.
 ```
 
 ### Phase 6: Synthesize Review
 
-**After completing all phases, provide a comprehensive review:**
+**After completing all phases, provide a comprehensive review. You advise — the user decides.**
 
-1. **Summary**
+See `references/feedback-format.md` for the full format, labels, and tone guidelines.
 
-   Brief overview of the change and your assessment.
+1. **Summary** — Brief overview of the change and your assessment.
 
 2. **Automated Check Results**
 
    ```
    Lint:      ✓ PASS (0 errors, 0 warnings)
    Types:     ✓ PASS (0 errors)
+   Format:    ✓ PASS
    Tests:     ✓ PASS (42/42 passed)
    Coverage:  ⚠ 78% (3 gaps identified)
    ```
 
-3. **Critical Issues** (MUST fix before merge)
+3. **Findings, Labeled** — Every finding gets a Conventional Comments label:
 
-   - Issue 1: [description] — [file:line]
-   - Issue 2: [description] — [file:line]
+   - `issue (blocking):` — MUST fix before merge
+   - `issue (non-blocking):` / `suggestion:` — SHOULD fix or consider
+   - `nitpick:` — trivial, preference-based, non-blocking by nature
+   - `question:` — you need the author's intent before judging
+   - `praise:` — what was done well (include at least one sincere praise)
 
-4. **Warnings** (SHOULD fix, but not blocking)
+   Each finding includes: file:line, what, why it matters, and a concrete recommendation.
 
-   - Warning 1: [description] — [file:line]
-   - Warning 2: [description] — [file:line]
+4. **Coverage Gaps** — With the user's answers from Phase 3.
 
-5. **Suggestions** (Consider, optional)
+5. **Security Handoff**
+   - Restate the answer to the Before-You-Start security question.
+   - If sensitive paths were detected in Phase 1, you MUST explicitly recommend: "This change touches [auth/payments/user data/...]. I did not review security. I recommend starting a separate security-review agent."
 
-   - Suggestion 1: [description]
-   - Suggestion 2: [description]
+6. **Verdict** (advisory — the user makes the call):
+   - `APPROVE` — no blocking findings
+   - `COMMENT` — questions or discussion pending
+   - `REQUEST CHANGES` — blocking findings present
 
-6. **Coverage Gaps** (with user questions)
-
-   - Gap 1: [description] — [file:line] — "Is this intentional?"
-   - Gap 2: [description] — [file:line] — "Should I add tests?"
-
-7. **Positive Observations**
-
-   - What was done well?
-   - Good patterns followed?
-   - Clean abstractions?
+**Reminder: deliver the review. Do not start fixing anything.**
 
 ## Red Flags — STOP and Follow Process
 
@@ -388,22 +382,25 @@ If you catch yourself thinking:
 - "LGTM, looks fine" — You didn't run checks
 - "Tests probably pass" — You didn't verify
 - "I don't need to run lint" — You're skipping Phase 2
-- "Coverage is fine, I trust the author" — You didn't check
-- "This is too simple to break" — Simple changes break things
+- "Tests pass, so the tests are good" — You skipped Phase 3's quality review
+- "I'll just fix this typo myself" — You NEVER edit code. Report it.
+- "The user will appreciate me fixing it" — They asked for a review, not an edit
+- "This dead code might be needed later" — Version control keeps history. Report it.
+- "Let me quickly check security too" — Out of scope. Recommend a security-review agent.
 - "The CI will catch it" — Review should catch issues before CI
 - "I'll just read the diff" — Reading is not reviewing
-- "I don't understand but it looks right" — Ask questions
 
-**ALL of these mean: STOP. Return to Phase 1.**
+**ALL of these mean: STOP. Return to the relevant phase.**
 
 ## User Signals You're Doing It Wrong
 
 **Watch for these redirections:**
 - "Did you actually run the tests?" — You assumed without running
-- "What about the lint errors?" — You skipped Phase 2
-- "Is that all the coverage?" — You didn't check thoroughly
-- "What about edge case X?" — You missed Phase 4.3
-- "That's not what the change does" — You didn't understand Phase 1
+- "Why did you change that file?" — You edited code. You NEVER edit code.
+- "Did you look at the tests themselves?" — You skipped Phase 3's quality review
+- "What about edge case X?" — You missed Phase 4
+- "Is any of this code still used?" — You missed dead code in Phase 5
+- "I asked about security?" — You reviewed security yourself, or forgot the handoff question
 
 **When you see these:** STOP. Return to the relevant phase.
 
@@ -414,30 +411,42 @@ If you catch yourself thinking:
 | "Tests are slow, skip them" | Slow tests are better than broken code. Run them. |
 | "Lint is noisy, ignore warnings" | Warnings exist for a reason. Report them all. |
 | "Coverage doesn't matter for this" | All code matters. Check coverage. |
+| "Tests pass, so they must be good" | Green tests can still be flaky, shallow, or over-mocked. Review them. |
 | "Author said tests pass" | Verify independently. Trust but verify. |
 | "It's a small change" | Small changes cause big outages. Review thoroughly. |
-| "I'll just check the critical parts" | Non-critical parts hide bugs too. Check everything. |
+| "I'll just fix it quickly" | You advise, you never edit. Report the finding instead. |
+| "Duplication is always bad" | The wrong abstraction is costlier. Evaluate objectively. |
 | "This pattern is fine, I've seen it before" | Past patterns can be wrong. Evaluate objectively. |
 
 ## Quick Reference
 
 | Phase | Key Activities | Success Criteria |
 |-------|---------------|------------------|
-| **1. Understand** | Read description, identify files, check context | Know what and why |
-| **2. Static Analysis** | Run lint, typecheck, format check | All clean or issues reported |
-| **3. Tests** | Run full test suite, check for failures | All pass or failures reported |
-| **4. Logic** | Review each line, check edges, security, performance | No logic errors found |
-| **5. Coverage** | Run coverage, identify gaps, ask user | All gaps identified and discussed |
-| **6. Synthesize** | Compile findings, categorize issues | Comprehensive review delivered |
+| **1. Understand** | Read description, identify files, detect sensitive paths | Know what and why; handoff triggers noted |
+| **2. Automated Checks** | Run lint, types, format check, tests | All clean or issues reported; nothing fixed |
+| **3. Test Review** | Test quality, flakiness, smells, coverage gaps | Tests verified trustworthy; gaps discussed |
+| **4. Logic** | Every line, logic patterns, error handling, edges | No correctness errors found |
+| **5. Design** | DRY, SOLID, YAGNI, complexity, naming, dead code, performance, docs | Maintainability verified |
+| **6. Synthesize** | Labeled findings, verdict, security handoff | Advisory review delivered; nothing edited |
 
-## Supporting Techniques
+## Reference Index
 
-These techniques are available in this directory:
+Load these files as needed during the matching phase:
 
-- **`references/logic-patterns.md`** — Common logic error patterns to watch for
-- **`references/security-patterns.md`** — Security review checklist
-- **`references/coverage-strategies.md`** — How to identify and address coverage gaps
-- **`references/review-checklist.md`** — Complete checklist for thorough reviews
+| Reference | Read during | Contents |
+|-----------|-------------|----------|
+| `references/test-quality.md` | Phase 3 | Flaky tests, test smells, assertion quality, mutation mindset |
+| `references/coverage-strategies.md` | Phase 3 | Coverage types, gap analysis, thresholds |
+| `references/logic-patterns.md` | Phase 4 | Off-by-one, null, boolean, race, coercion, boundaries |
+| `references/error-handling.md` | Phase 4 | Swallowing, leaks, propagation, retries, messages |
+| `references/design-principles.md` | Phase 5 | DRY nuance, SOLID heuristics, YAGNI, over-engineering |
+| `references/complexity-metrics.md` | Phase 5 | Complexity signals, thresholds, remedies |
+| `references/naming-and-readability.md` | Phase 5 | Naming heuristics, magic numbers, self-documenting code |
+| `references/dead-code.md` | Phase 5 | Unused code, zombie dependencies, safe-removal advice |
+| `references/performance-review.md` | Phase 5 | N+1, O(n²), I/O patterns, when to demand benchmarks |
+| `references/documentation-review.md` | Phase 5 | Comments, docstrings, README/changelog sync |
+| `references/feedback-format.md` | Phase 6 | Conventional Comments, report template, tone |
+| `references/review-checklist.md` | All phases | Master checklist for the full review |
 
-Base directory for this skill: /home/abej/proj/agent-skills/skills/code-review
+Base directory for this skill: /root/htdocs/projects-tdvg/agent-skills/skills/code-review
 Relative paths in this skill (e.g., references/) are relative to this base directory.

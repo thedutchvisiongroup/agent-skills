@@ -1,5 +1,18 @@
 # Common Logic Error Patterns
 
+Read this during Phase 4 (Logic and Correctness). For error swallowing, resource leaks, retries, and error propagation, see `error-handling.md`.
+
+## Contents
+
+- Off-by-One Errors
+- Null/Undefined Handling
+- Boolean Logic Errors
+- Race Conditions
+- Type Coercion Issues
+- String/Array Boundary Issues
+- Floating Point Issues
+- Review Checklist
+
 ## Off-by-One Errors
 
 **Loop bounds:**
@@ -143,79 +156,17 @@ async def process():
         await save(result)
 ```
 
-## Resource Leaks
-
-**Unclosed resources:**
+**Check-then-act:**
 ```python
-# WRONG: File not closed on error
-def read_file(path):
-    f = open(path)
-    data = f.read()
-    return data  # File never closed if error occurs
+# WRONG: TOCTOU race — file may vanish between check and use
+if os.path.exists(path):
+    data = open(path).read()
 
-# CORRECT: Use context manager
-def read_file(path):
-    with open(path) as f:
-        return f.read()
-```
-
-**Connection leaks:**
-```javascript
-// WRONG: Connection not released on error
-async function query(sql) {
-  const conn = await pool.getConnection();
-  const result = await conn.execute(sql);
-  conn.release();
-  return result;
-}
-
-// CORRECT: Always release
-async function query(sql) {
-  const conn = await pool.getConnection();
-  try {
-    return await conn.execute(sql);
-  } finally {
-    conn.release();
-  }
-}
-```
-
-## Error Swallowing
-
-**Empty catch blocks:**
-```javascript
-// WRONG: Error silently ignored
-try {
-  await riskyOperation();
-} catch (e) {
-  // Silently swallowed
-}
-
-// WRONG: Only logging, not handling
-try {
-  await riskyOperation();
-} catch (e) {
-  console.log(e);  // What happens next?
-}
-
-// CORRECT: Handle or rethrow
-try {
-  await riskyOperation();
-} catch (e) {
-  logger.error('Operation failed', { error: e });
-  throw new AppError('Operation failed', { cause: e });
-}
-```
-
-**Ignored promise rejections:**
-```javascript
-// WRONG: Unhandled rejection
-fetchData();  // No .catch(), no await
-
-// CORRECT: Handle or await
-await fetchData();
-// Or:
-fetchData().catch(handleError);
+# CORRECT: Act and handle the error
+try:
+    data = open(path).read()
+except FileNotFoundError:
+    data = None
 ```
 
 ## Type Coercion Issues
@@ -294,12 +245,11 @@ total = Decimal('0.3')
 
 For each logic pattern, verify:
 
-- [ ] Off-by-one: Loop bounds correct?
+- [ ] Off-by-one: Loop bounds, slices, and ranges correct?
 - [ ] Null: All nullable values handled?
-- [ ] Boolean: Logic is correct and readable?
-- [ ] Race: No shared mutable state issues?
-- [ ] Resources: All resources properly closed?
-- [ ] Errors: All errors handled or rethrown?
-- [ ] Types: No type coercion surprises?
+- [ ] Boolean: Logic is correct and readable? De Morgan respected?
+- [ ] Race: No shared mutable state or check-then-act issues?
+- [ ] Types: No type coercion surprises? No mutable defaults?
 - [ ] Boundaries: Empty inputs handled?
-- [ ] Floats: No exact comparisons?
+- [ ] Floats: No exact comparisons? Decimal for money?
+- [ ] Errors: See `error-handling.md` — swallowing, leaks, propagation, retries
