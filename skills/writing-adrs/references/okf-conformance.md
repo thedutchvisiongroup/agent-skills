@@ -9,85 +9,92 @@ documents.
 
 Source: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md
 
-## OKF Requirements Applied to ADRs
+## How ADRs Map onto OKF
 
-An ADR is an OKF **concept document**. It MUST satisfy these conformance rules:
+An ADR is an OKF **concept document** with `type: ADR`. Important nuance:
 
-### 1. Frontmatter (Section 4.1)
+- **OKF itself (§4.1) requires only one frontmatter field: `type`.** Fields
+  like `title`, `description`, `tags`, and `timestamp` are *recommended* by
+  OKF, not required.
+- **This skill tightens the recommendation into a requirement** and adds
+  ADR-specific extension fields. OKF explicitly permits this: producers MAY
+  include additional keys, and consumers MUST tolerate unknown keys (§4.1
+  Extensions, §9 Conformance).
 
-Every ADR file MUST start with a YAML frontmatter block delimited by `---`:
+### Frontmatter (OKF §4.1 + ADR extensions)
 
 ```yaml
 ---
-type: ADR
-title: "<display name>"
-description: "<one-line summary>"
-tags: [<tag>, <tag>]
-deciders: [<person>, <person>]
-timestamp: <ISO 8601 datetime>
+type: ADR                    # REQUIRED by OKF
+title: "<display name>"      # recommended by OKF → REQUIRED by this skill
+description: "<one-liner>"   # recommended by OKF → REQUIRED by this skill
+tags: [<tag>, <tag>]         # recommended by OKF → REQUIRED by this skill
+timestamp: <ISO 8601>        # recommended by OKF → REQUIRED by this skill
+deciders: [<person>]         # ADR extension (OKF-unknown key) → REQUIRED by this skill
+status: <lifecycle value>    # ADR extension (OKF-unknown key) → REQUIRED by this skill
+superseded_by: <path>        # ADR extension → REQUIRED when status is superseded
 ---
 ```
 
-**Required fields:**
-- `type` — MUST be `ADR`. This is the OKF concept type that enables routing,
-  filtering, and presentation by consumers.
-- `title` — Human-readable display name. MUST match the H1 heading.
-- `description` — Single sentence summarizing the ADR.
-- `tags` — YAML list of short strings for categorization.
-- `deciders` — YAML list of people involved in making the decision.
-- `timestamp` — ISO 8601 datetime of last meaningful change.
+Notes on the extension fields:
 
-**Extensions:** Additional keys MAY be included. Consumers MUST NOT reject
-documents with unrecognized fields.
+- `deciders` plays the role MADR 4.0 calls `decision-makers`. This skill uses
+  the shorter `deciders` for consistency with OKF's terse naming style.
+- MADR 4.0's optional `consulted` and `informed` MAY be added as further
+  extension keys.
+- MADR 4.0's optional `date` field is intentionally omitted: OKF's `timestamp`
+  already records the last meaningful change, and two date fields invite drift.
 
-### 2. Body (Section 4.2)
+### Body (OKF §4.2)
 
-The body is standard markdown after the frontmatter. OKF recommends structural
-markdown (headings, lists, tables) over freeform prose.
+OKF requires no specific body sections; it recommends structural markdown over
+freeform prose. This skill requires the MADR 4.0 core sections
+(`## Context and Problem Statement`, `## Considered Options`,
+`## Decision Outcome`) and allows the remaining MADR 4.0 sections as optional.
 
-The ADR body follows the MADR template with these conventional sections defined
-by the skill (not by OKF itself).
+OKF's conventional `# Citations` heading (§8) maps naturally onto MADR 4.0's
+`## More Information` section; use either when citing external sources.
 
-### 3. Cross-linking (Section 5)
+### Cross-linking (OKF §5)
 
-ADRs MAY link to other ADRs or external resources using standard markdown links:
+ADRs link with standard markdown links. Because ADR numbers are only unique
+within their directory, links between ADRs MUST include the path, not just the
+number:
 
-- **Bundle-relative:** `[customers table](/tables/customers.md)` — recommended
-- **Relative:** `[other ADR](./0002-other-decision.md)`
+- **Relative:** `[ADR-0004](./0004-use-postgresql.md)` — within one directory
+- **Bundle-relative:** `[auth ADR-0001](/services/auth/adr/0001-ldap.md)` — across directories
 
-### 4. Citations (Section 8)
+Per OKF §5.3, consumers MUST tolerate broken links; the validator only warns
+about a missing `superseded_by` target, never errors.
 
-When an ADR makes claims from external sources, list them under `# Citations`:
+## Conformance Checklist
 
-```markdown
-# Citations
+An ADR is conformant when ALL of these hold:
 
-[1] [BigQuery public dataset announcement](https://cloud.google.com/blog/...)
-[2] [Internal data quality runbook](https://wiki.acme.internal/data/quality)
-```
+- [ ] Parseable YAML frontmatter block delimited by `---` (OKF §9.1)
+- [ ] `type: ADR` present (OKF §9.2)
+- [ ] `title`, `description`, `tags`, `timestamp` present (skill-tightened OKF recommendations)
+- [ ] `deciders` and `status` present (skill extensions)
+- [ ] Frontmatter `title` matches the H1 heading
+- [ ] Required MADR 4.0 sections present; no duplicated metadata block in the body
+- [ ] `status: superseded` implies `superseded_by`
+- [ ] Filename matches `NNNN-kebab-case-title.md`
+- [ ] UTF-8 encoded, valid markdown
 
-## OKF Conformance Checklist
+Consumers MUST NOT reject an ADR because of (OKF §9):
 
-An ADR is OKF-conformant if:
-
-1. [x] The file starts with a parseable YAML frontmatter block (`---` delimited)
-2. [x] The frontmatter contains `type: ADR`, `title`, `description`, `tags`, `deciders`, and `timestamp`
-3. [x] The file is UTF-8 encoded
-4. [x] The file is valid markdown
-5. [x] All required MADR body sections are present
-6. [x] The `Deciders` and `Date` fields are present in the body
-
-Consumers MUST NOT reject an ADR because of:
 - Unknown additional frontmatter keys
 - Broken cross-links
-- Missing citations
+- Missing optional MADR sections or citations
 
 ## Differences from Generic OKF
 
-| Aspect | Generic OKF | ADR Skill |
-|--------|-------------|----------|
-| `type` field | Any descriptive string | MUST be `ADR` |
-| Body sections | No required sections | MADR sections required |
-| Status | Not specified | Must be one of: proposed, accepted, deprecated, superseded |
+| Aspect | Generic OKF | This ADR Skill |
+|--------|-------------|----------------|
+| Required frontmatter | Only `type` | `type` + `title`, `description`, `tags`, `timestamp` (tightened) + `deciders`, `status` (extensions) |
+| `type` value | Any descriptive string | MUST be `ADR` |
+| Body sections | None required | MADR 4.0 core required, rest optional |
+| Status | Not specified | Frontmatter `status`: proposed / rejected / accepted / deprecated / superseded |
 | File naming | Any `.md` except reserved | `NNNN-kebab-case-title.md` |
-| Reserved files | `index.md`, `log.md` | Same, plus ADR-specific `index.md` |
+| Reserved files | `index.md`, `log.md` | Same; validator skips them in directory mode |
+| `index.md` | Optional, frontmatter-free listing | Required per ADR directory; table with ADR / Title / Status |

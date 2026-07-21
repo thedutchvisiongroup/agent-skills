@@ -1,9 +1,11 @@
 ---
 name: writing-adrs
-description: Creates, validates, and manages Architecture Decision Records (ADRs) using the MADR template with OKF-compliant YAML frontmatter. Use when the user needs to document an architectural decision, create a new ADR, review existing ADRs, validate ADR structure, or establish an ADR directory in a project. Covers discovery of existing ADR locations, ADR lifecycle management (proposed/accepted/deprecated/superseded), and ensures conformance with Open Knowledge Format (OKF) frontmatter requirements.
+description: Creates, validates, and manages Architecture Decision Records (ADRs) using the MADR 4.0 template with OKF-compliant YAML frontmatter. Use when the user needs to document an architectural decision, create a new ADR, review or supersede existing ADRs, validate ADR structure, or establish an ADR directory in a project. Covers discovery of existing ADR locations, ADR lifecycle management (proposed/rejected/accepted/deprecated/superseded), per-directory numbering rules, and conformance with Open Knowledge Format (OKF) frontmatter requirements.
 ---
 
 # Writing Architecture Decision Records (ADRs)
+
+Every ADR combines **OKF frontmatter** (metadata, machine-readable) with a **MADR 4.0 body** (the decision narrative). All metadata lives in the frontmatter — never duplicate it in the body.
 
 ## Process
 
@@ -18,7 +20,7 @@ Determine WHERE ADRs live by inferring context, not by asking.
 
 2. **If ADRs exist:**
    - Use that directory
-   - Determine the next sequence number from existing files
+   - Determine the next sequence number from existing files (highest `NNNN` + 1)
    - Proceed to Phase 2
 
 3. **If no ADRs found — infer the logical location:**
@@ -26,7 +28,14 @@ Determine WHERE ADRs live by inferring context, not by asking.
    - If working in `src/database/`, place ADRs in `src/database/adr/`
    - If working in `services/auth/`, place ADRs in `services/auth/adr/`
    - If the decision is project-wide, use `docs/adr/` or `adr/` at the repo root
-   - Create the directory and an `index.md`
+   - Create the directory and an `index.md` with this table header:
+
+     ```markdown
+     # ADR Index
+
+     | ADR | Title | Status |
+     |-----|-------|--------|
+     ```
    - Proceed to Phase 2
 
 ### Phase 2: Gather Decision Context (REQUIRED)
@@ -50,6 +59,7 @@ Gather context from available sources BEFORE drafting. Minimize questions.
 | Considered Options | Git diff / session / code comments | Only if alternatives aren't evident |
 | Decision Outcome | From the implemented change | No — read from code |
 | Consequences | Inferred from the change | Only if impact is unclear |
+| `timestamp` | Current time (ISO 8601) | No — generate it |
 | **Deciders** | — | **ALWAYS ASK** |
 | **Status** | — | **ALWAYS ASK** |
 
@@ -59,7 +69,7 @@ Gather context from available sources BEFORE drafting. Minimize questions.
 - Multiple valid interpretations of the decision exist → ask to disambiguate
 - The "considered options" are not evident from context → ask what alternatives were evaluated
 - **Always ask: who are the deciders?**
-- **Always ask: what is the status?** (proposed / accepted / deprecated / superseded)
+- **Always ask: what is the status?** (proposed / rejected / accepted / deprecated / superseded)
 
 ```
 STOP. Before drafting, verify:
@@ -73,7 +83,7 @@ If any box is unchecked: gather the missing information first.
 
 ### Phase 3: Write the ADR
 
-Use this exact structure. Every ADR has two parts: OKF frontmatter and MADR body.
+Every ADR has two parts: OKF frontmatter and MADR 4.0 body. For the fully annotated template and worked examples (minimal, rejected, supersede pair), read [references/adr-template.md](references/adr-template.md).
 
 #### OKF Frontmatter (REQUIRED)
 
@@ -84,83 +94,61 @@ title: "<short imperative title>"
 description: "<one-line summary>"
 tags: [<relevant>, <tags>]
 deciders: [<person>, <person>]
+status: <proposed | rejected | accepted | deprecated | superseded>
 timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 ---
 ```
 
 - `type` MUST be `ADR`
-- `title` MUST match the markdown H1 heading
+- `title` MUST match the markdown H1 heading exactly
 - `description` MUST be a single sentence
 - `tags` MUST be a YAML list of relevant tags
 - `deciders` MUST be a YAML list of people involved in the decision
-- `timestamp` MUST be ISO 8601 of last meaningful change
+- `status` MUST be one of the lifecycle values (see Status Lifecycle)
+- `timestamp` MUST be ISO 8601 of last meaningful change — bump it on every meaningful edit
+- When `status: superseded`, `superseded_by: <relative path to the superseding ADR>` is REQUIRED
+- Optional MADR fields: `consulted: [<person>]` (two-way input) and `informed: [<person>]` (one-way updates) MAY be added
 
-#### MADR Body (REQUIRED sections)
+#### MADR 4.0 Body
+
+Sections marked REQUIRED must always be present; optional sections may be removed when they add no value. Use the full annotated template in [references/adr-template.md](references/adr-template.md).
 
 ```markdown
-# <short title of solved problem and solution>
+# <short title, representative of solved problem and found solution>   ← MUST equal frontmatter title
 
-- Status: <proposed | accepted | deprecated | superseded by [ADR-NNNN](link)>
-- Deciders: <list everyone involved>
-- Date: <YYYY-MM-DD>
+## Context and Problem Statement          (REQUIRED)
 
-Technical Story: <description | ticket/issue URL>
+## Decision Drivers                       (optional)
 
-## Context and Problem Statement
+## Considered Options                     (REQUIRED)
 
-<2-3 sentences describing context and problem. May be phrased as a question.>
+## Decision Outcome                       (REQUIRED)
 
-## Decision Drivers
+### Consequences                          (optional — "Good/Bad/Neutral, because …")
 
-- <driver 1, e.g., a force, facing concern>
-- <driver 2>
-- ...
+### Confirmation                          (optional — how compliance will be verified)
 
-## Considered Options
+## Pros and Cons of the Options           (optional — per option: "Good/Bad/Neutral, because …")
 
-- <option 1>
-- <option 2>
-- ...
-
-## Decision Outcome
-
-Chosen option: "<option>", because <justification>.
-
-### Positive Consequences
-
-- <e.g., improvement of quality attribute>
-
-### Negative Consequences
-
-- <e.g., compromising quality attribute, follow-up decisions required>
-
-## Pros and Cons of the Options
-
-### <option 1>
-
-<description>
-
-- Good, because <argument>
-- Bad, because <argument>
-
-### <option 2>
-
-<description>
-
-- Good, because <argument>
-- Bad, because <argument>
-
-## Links
-
-- <Link type> <Link to ADR or resource>
+## More Information                       (optional — evidence, team agreement, "Supersedes …", links)
 ```
 
-#### File Naming
+**Metadata discipline (MADR 4.0 style):** status, deciders and date live ONLY in the frontmatter. Do NOT add a `- Status:` / `- Deciders:` / `- Date:` block or a `Technical Story:` line to the body. Ticket/issue links go in `## More Information` or the Context section.
 
-Use: `NNNN-kebab-case-title.md`
+#### File Naming & Numbering
 
-- `NNNN` = zero-padded sequence number (e.g., `0001`, `0002`)
-- Title uses lowercase with hyphens (e.g., `use-postgresql-for-primary-database.md`)
+- Use: `NNNN-kebab-case-title.md` (e.g., `0001-use-postgresql-for-primary-database.md`)
+- `NNNN` = zero-padded sequence number, unique **per ADR directory**
+- Numbers are sequential, monotonic, and **NEVER reused** — not even after deprecation or superseding
+- Because numbers repeat across directories, cross-references between ADRs MUST use path + number: `[ADR-0001](../auth/adr/0001-ldap-for-authentication.md)`
+
+#### Update the Index (REQUIRED)
+
+After writing the ADR file:
+
+1. Add a row to the directory's `index.md`: `| [NNNN](NNNN-kebab-case-title.md) | <title> | <status> |`
+2. If the directory has a `log.md`, add a dated entry there too
+3. When superseding, also update the OLD ADR's row status
 
 ### Phase 4: Validate
 
@@ -168,9 +156,17 @@ After writing, run the validation script:
 
 ```bash
 python3 <skill-dir>/scripts/validate_adr.py <path-to-adr-file>
+python3 <skill-dir>/scripts/validate_adr.py <adr-directory>  # validates all ADRs; index.md/log.md are skipped
 ```
 
 Fix any errors reported by the script. A valid ADR MUST pass all checks.
+
+## Superseding an ADR
+
+1. Create the new ADR with the next sequence number. In its `## More Information` section, link back: `Supersedes [ADR-NNNN](<path-to-old-adr>)`.
+2. In the OLD ADR's frontmatter: set `status: superseded`, add `superseded_by: <relative path to the new ADR>`, and bump `timestamp`.
+3. Update both rows in `index.md`.
+4. NEVER delete the old ADR and NEVER reuse its number — the history is the point.
 
 ## When NOT to Use This Skill
 
@@ -183,27 +179,44 @@ Fix any errors reported by the script. A valid ADR MUST pass all checks.
 | Status | Meaning | When to use |
 |--------|---------|-------------|
 | `proposed` | Under discussion | Default for new ADRs |
+| `rejected` | Proposal was considered and explicitly declined | Keep as record of the considered-and-rejected decision |
 | `accepted` | Approved and in effect | After stakeholder agreement |
 | `deprecated` | No longer relevant | Replaced by newer thinking, no superseding ADR |
-| `superseded` | Replaced by another ADR | Link to the superseding ADR |
+| `superseded` | Replaced by another ADR | Requires `superseded_by` in frontmatter + link back in the new ADR |
 
 ## Conformance
 
 An ADR is conformant if:
+
 1. The file contains valid YAML frontmatter delimited by `---`
-2. The frontmatter contains `type: ADR`, `title`, `description`, `tags`, `deciders`, and `timestamp`
-3. All required body sections are present (see Phase 3)
-4. The status is one of the valid values
-5. The `Deciders` and `Date` fields are present in the body
-6. The file follows the `NNNN-kebab-case-title.md` naming convention
+2. The frontmatter contains `type: ADR`, `title`, `description`, `tags`, `deciders`, `status`, and `timestamp`
+3. The frontmatter `title` matches the H1 heading
+4. The required MADR 4.0 body sections are present: `## Context and Problem Statement`, `## Considered Options`, `## Decision Outcome`
+5. `status` is one of the valid lifecycle values; `status: superseded` implies a `superseded_by` path
+6. The body contains no duplicated metadata block (`- Status:` / `- Deciders:` / `- Date:`)
+7. The file follows the `NNNN-kebab-case-title.md` naming convention
+8. The directory's `index.md` lists the ADR
+
+For how these requirements map onto the OKF specification (and which are ADR-specific extensions), see [references/okf-conformance.md](references/okf-conformance.md).
+
+## References
+
+| Reference | When to read |
+|-----------|--------------|
+| [references/adr-template.md](references/adr-template.md) | Full annotated MADR 4.0 + OKF template; worked examples: minimal, rejected, supersede pair |
+| [references/okf-conformance.md](references/okf-conformance.md) | OKF spec mapping: which fields OKF requires vs. which this skill adds as ADR extensions |
+
+The skill's own architectural decisions live in [adr/](adr/index.md) — dogfooding this exact format.
 
 ## Quick Reference
 
 | Task | Action |
 |------|--------|
 | Find existing ADRs | Search `**/adr/**/*.md`, `**/decisions/**/*.md` |
-| Determine next number | Find highest `NNNN` prefix, increment by 1 |
+| Determine next number | Highest `NNNN` in that directory + 1; never reuse numbers |
 | Infer location | Place ADRs near the code they affect |
 | Gather context | Read git diffs, session summaries, surrounding code |
-| Validate an ADR | Run `validate_adr.py` on the file |
-| Supersede an ADR | Create new ADR, update old ADR status to `superseded by [ADR-NNNN]` |
+| Write an ADR | OKF frontmatter + MADR 4.0 body; see [references/adr-template.md](references/adr-template.md) |
+| Link between ADRs | Use path + number: `[ADR-0001](../other/adr/0001-title.md)` |
+| Validate an ADR | Run `validate_adr.py` on the file or directory |
+| Supersede an ADR | See "Superseding an ADR" — update both ADRs + index |
