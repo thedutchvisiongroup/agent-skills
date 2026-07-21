@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Link AI agent skills from this repo into harness-specific global directories.
+"""Link AI agent skills and OpenCode config from this repo into global directories.
 
 Usage:
     uv run scripts/link.py status
@@ -7,10 +7,19 @@ Usage:
     uv run scripts/link.py unlink
     uv run scripts/link.py list
 
-The script symlinks individual skill folders from `<repo>/skills/<name>/` into
-the global skills directory of each selected agent harness. It is idempotent:
-existing correct symlinks are kept, broken symlinks are repaired, and real
-files/dirs trigger an interactive prompt before being replaced.
+Two kinds of things are synced:
+
+1. **Skills** — individual skill folders from `<repo>/skills/<name>/` are
+   symlinked into the global skills directory of each selected agent harness.
+2. **OpenCode items** — files from `<repo>/opencode/` are symlinked per file
+   into `~/.config/opencode/` (e.g. `agents/code-reviewer.md`). The reserved
+   subfolder `<repo>/opencode/configs/` is NOT copied 1:1; each file in it has
+   a fixed target mapping (see CONFIG_FILE_MAP), including the managed layer
+   in `/etc/opencode/` (requires root).
+
+The script is idempotent: existing correct symlinks are kept, broken symlinks
+are repaired, and real files/dirs trigger an interactive prompt before being
+replaced.
 """
 
 from __future__ import annotations
@@ -35,6 +44,25 @@ SKILLS_SOURCE_DIR = REPO_ROOT / "skills"
 STATE_FILE = REPO_ROOT / "scripts" / ".link-state.json"
 BACKUP_SUFFIX = ".bak"
 
+HOME = Path.home()
+AGENTS_GLOBAL = HOME / ".agents" / "skills"
+
+# OpenCode sync: <repo>/opencode/** → ~/.config/opencode/** (per file).
+# The reserved subfolder opencode/configs/ is NOT copied 1:1; see CONFIG_FILE_MAP.
+OPENCODE_SOURCE_DIR = REPO_ROOT / "opencode"
+OPENCODE_RESERVED_DIR = "configs"
+OPENCODE_TARGET_DIR = HOME / ".config" / "opencode"
+MANAGED_TARGET_DIR = Path("/etc") / "opencode"
+
+# Fixed targets for the reserved opencode/configs/ files.
+# OpenCode loads and merges (later wins):
+#   ~/.config/opencode/config.json  → opencode.json → opencode.jsonc  (global)
+#   /etc/opencode/opencode.json(c)                                   (managed)
+CONFIG_FILE_MAP: dict[str, Path] = {
+    "tdvg-standards.json": OPENCODE_TARGET_DIR / "config.json",
+    "tdvg-required.json": MANAGED_TARGET_DIR / "opencode.jsonc",
+}
+
 
 @dataclass(frozen=True)
 class Harness:
@@ -49,8 +77,15 @@ class Harness:
     note: str = ""
 
 
-HOME = Path.home()
-AGENTS_GLOBAL = HOME / ".agents" / "skills"
+@dataclass(frozen=True)
+class SyncItem:
+    """A single repo file synced to a fixed target via symlink."""
+
+    key: str  # repo-relative posix path, e.g. "opencode/agents/code-reviewer.md"
+    label: str  # short human label for the UI
+    source: Path  # absolute path inside the repo
+    target: Path  # absolute symlink target path
+    managed: bool = False  # True when the target requires root (e.g. /etc/...)
 
 
 def _harnesses() -> dict[str, Harness]:
@@ -108,7 +143,7 @@ console = Console()
 
 
 # --------------------------------------------------------------------------- #
-# Skill discovery
+# Discovery
 # --------------------------------------------------------------------------- #
 
 
@@ -129,17 +164,77 @@ def discover_repo_skills() -> list[str]:
     return names
 
 
+def _item_target_for_key(key: str) -> Optional[Path]:
+    """Reconstruct the symlink target for an item key, even if the repo file
+    no longer exists (needed for unlinking stale state)."""
+    prefix = "opencode/"
+    if not key.startswith(prefix):
+        return None
+    rel = key[len(prefix):]
+    parts = rel.split("/")
+    if parts[0] == OPENCODE_RESERVED_DIR:
+        return CONFIG_FILE_MAP.get(parts[-1])
+    return OPENCODE_TARGET_DIR.joinpath(*parts)
+
+
+def discover_opencode_items() -> list[SyncItem]:
+    """Return all OpenCode sync items available in <repo>/opencode/.
+
+    Every file under opencode/ maps 1:1 (per file) into ~/.config/opencode/,
+    EXCEPT the reserved configs/ subfolder, whose files map via CONFIG_FILE_MAP
+    (tdvg-standards.json → ~/.config/opencode/config.json, tdvg-required.json →
+    /etc/opencode/opencode.jsonc).
+    """
+    items: list[SyncItem] = []
+    if not OPENCODE_SOURCE_DIR.is_dir():
+        return items
+
+    # 1:1 content (everything except the reserved configs/ dir).
+    for path in sorted(OPENCODE_SOURCE_DIR.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(OPENCODE_SOURCE_DIR)
+        if rel.parts[0] == OPENCODE_RESERVED_DIR:
+            continue
+        items.append(
+            SyncItem(
+                key=path.relative_to(REPO_ROOT).as_posix(),
+                label=f"opencode/{rel.as_posix()}",
+                source=path.resolve(),
+                target=OPENCODE_TARGET_DIR.joinpath(*rel.parts),
+            )
+        )
+
+    # Reserved configs with fixed targets.
+    configs_dir = OPENCODE_SOURCE_DIR / OPENCODE_RESERVED_DIR
+    if configs_dir.is_dir():
+        for name, target in CONFIG_FILE_MAP.items():
+            src = configs_dir / name
+            if not src.is_file():
+                continue
+            items.append(
+                SyncItem(
+                    key=src.relative_to(REPO_ROOT).as_posix(),
+                    label=f"opencode/{OPENCODE_RESERVED_DIR}/{name}",
+                    source=src.resolve(),
+                    target=target,
+                    managed=target.is_relative_to(MANAGED_TARGET_DIR),
+                )
+            )
+    return items
+
+
 # --------------------------------------------------------------------------- #
 # Path / conflict helpers
 # --------------------------------------------------------------------------- #
 
 
-def classify_target(path: Path) -> str:
+def classify_target(path: Path, expected_source: Path) -> str:
     """Classify what currently sits at a target path.
 
     Returns one of:
       - "missing"        nothing there
-      - "symlink_ok"     symlink pointing at the expected repo skill
+      - "symlink_ok"     symlink pointing at the expected repo source
       - "symlink_other"  symlink pointing somewhere else
       - "symlink_broken"  symlink that resolves to nothing
       - "real_dir"       real directory (not a symlink)
@@ -149,10 +244,9 @@ def classify_target(path: Path) -> str:
         return "missing"
     if path.is_symlink():
         target = path.resolve()
-        expected = (SKILLS_SOURCE_DIR / path.name).resolve()
         if not target.exists():
             return "symlink_broken"
-        if target == expected:
+        if target == expected_source.resolve():
             return "symlink_ok"
         return "symlink_other"
     if path.is_dir():
@@ -189,10 +283,8 @@ def make_backup(path: Path) -> Path:
     return backup
 
 
-def create_symlink(skill: str, harness: Harness) -> Path:
-    """Create a symlink <harness.global_dir>/<skill> -> repo/skills/<skill>."""
-    target = expected_target(skill, harness)
-    source = (SKILLS_SOURCE_DIR / skill).resolve()
+def create_symlink(source: Path, target: Path) -> Path:
+    """Create a symlink <target> -> <source>, replacing any existing link."""
     ensure_parent_dir(target)
     if target.is_symlink() or target.exists():
         target.unlink()
@@ -200,35 +292,50 @@ def create_symlink(skill: str, harness: Harness) -> Path:
     return target
 
 
-def remove_symlink(skill: str, harness: Harness) -> bool:
-    """Remove a symlink for a skill in a harness dir. Returns True if removed."""
-    target = expected_target(skill, harness)
+def remove_symlink(target: Path) -> bool:
+    """Remove a symlink at target. Returns True if removed."""
     if target.is_symlink():
         target.unlink()
         return True
     return False
 
 
+def is_root() -> bool:
+    """True when running with root privileges (needed for managed targets)."""
+    geteuid = getattr(os, "geteuid", None)
+    return geteuid is not None and geteuid() == 0
+
+
 # --------------------------------------------------------------------------- #
 # State persistence
 # --------------------------------------------------------------------------- #
 
-STATE_VERSION = 1
+STATE_VERSION = 2
 
 
 def load_state() -> dict:
-    """Load persisted link state: which (skill, harness) pairs were linked."""
+    """Load persisted link state.
+
+    v2: {"version": 2, "linked": [[skill, harness], ...],
+         "linked_items": [item_key, ...]}
+    v1 files ({"version": 1, "linked": [...]}) are migrated transparently.
+    """
     import json
 
+    fresh = {"version": STATE_VERSION, "linked": [], "linked_items": []}
     if not STATE_FILE.exists():
-        return {"version": STATE_VERSION, "linked": []}
+        return fresh
     try:
         data = json.loads(STATE_FILE.read_text())
     except (json.JSONDecodeError, OSError):
-        return {"version": STATE_VERSION, "linked": []}
-    if data.get("version") != STATE_VERSION:
-        return {"version": STATE_VERSION, "linked": []}
+        return fresh
+    version = data.get("version", 1)
+    if version == 1:
+        data = {"version": STATE_VERSION, "linked": data.get("linked", [])}
+    elif version != STATE_VERSION:
+        return fresh
     data.setdefault("linked", [])
+    data.setdefault("linked_items", [])
     return data
 
 
@@ -249,6 +356,16 @@ def state_forget(state: dict, skill: str, harness_key: str) -> None:
     pair = [skill, harness_key]
     while pair in state["linked"]:
         state["linked"].remove(pair)
+
+
+def state_record_item(state: dict, item_key: str) -> None:
+    if item_key not in state["linked_items"]:
+        state["linked_items"].append(item_key)
+
+
+def state_forget_item(state: dict, item_key: str) -> None:
+    while item_key in state["linked_items"]:
+        state["linked_items"].remove(item_key)
 
 
 # --------------------------------------------------------------------------- #
@@ -297,6 +414,28 @@ def validate_harness_path(harness: Harness) -> Optional[str]:
 # Rendering
 # --------------------------------------------------------------------------- #
 
+STATUS_MARKS = {
+    "missing": "[dim]·[/dim]",
+    "symlink_ok": "[green]✓[/green]",
+    "symlink_other": "[yellow]↗[/yellow]",
+    "symlink_broken": "[red]✗[/red]",
+    "real_dir": "[red]D[/red]",
+    "real_file": "[red]F[/red]",
+}
+
+STATUS_LEGEND = (
+    "[green]✓[/green]=linked  [dim]·[/dim]=missing  "
+    "[yellow]↗[/yellow]=symlink→other  [red]✗[/red]=broken  "
+    "[red]D[/red]=real dir  [red]F[/red]=real file  [blue]*[/blue]=tracked"
+)
+
+
+def _shorten_home(path: Path) -> str:
+    try:
+        return "~/" + str(path.relative_to(HOME))
+    except ValueError:
+        return str(path)
+
 
 def render_status(skills: list[str], harnesses: dict[str, Harness]) -> None:
     """Print a table of every (skill, harness) cell and its current state."""
@@ -313,25 +452,34 @@ def render_status(skills: list[str], harnesses: dict[str, Harness]) -> None:
         for key in HARNESS_ORDER:
             harness = harnesses[key]
             target = expected_target(skill, harness)
-            cls = classify_target(target)
-            mark = {
-                "missing": "[dim]·[/dim]",
-                "symlink_ok": "[green]✓[/green]",
-                "symlink_other": "[yellow]↗[/yellow]",
-                "symlink_broken": "[red]✗[/red]",
-                "real_dir": "[red]D[/red]",
-                "real_file": "[red]F[/red]",
-            }[cls]
+            cls = classify_target(target, SKILLS_SOURCE_DIR / skill)
+            mark = STATUS_MARKS[cls]
             tracked = (skill, key) in linked_pairs
             tag = "[blue]*[/blue]" if tracked else " "
             row.append(f"{mark} {tag}")
         table.add_row(*row)
     console.print(table)
-    console.print(
-        "[green]✓[/green]=linked  [dim]·[/dim]=missing  "
-        "[yellow]↗[/yellow]=symlink→other  [red]✗[/red]=broken  "
-        "[red]D[/red]=real dir  [red]F[/red]=real file  [blue]*[/blue]=tracked"
-    )
+
+
+def render_items_status(items: list[SyncItem]) -> None:
+    """Print a table of every OpenCode sync item and its current state."""
+    table = Table(title="OpenCode sync status", show_lines=False)
+    table.add_column("Item", style="bold")
+    table.add_column("Target")
+    table.add_column("Managed")
+    table.add_column("Status")
+
+    state = load_state()
+    tracked_keys = set(state["linked_items"])
+
+    for item in items:
+        cls = classify_target(item.target, item.source)
+        mark = STATUS_MARKS[cls]
+        tag = "[blue]*[/blue]" if item.key in tracked_keys else " "
+        managed = "[magenta]root[/magenta]" if item.managed else "[dim]·[/dim]"
+        table.add_row(item.label, _shorten_home(item.target), managed, f"{mark} {tag}")
+    console.print(table)
+    console.print(STATUS_LEGEND)
 
 
 # --------------------------------------------------------------------------- #
@@ -340,10 +488,9 @@ def render_status(skills: list[str], harnesses: dict[str, Harness]) -> None:
 
 
 def prompt_skills(skills: list[str]) -> list[str]:
-    """Step 1: choose which skills to link."""
+    """Step: choose which skills to link."""
     choices = []
     for skill in skills:
-        target = (SKILLS_SOURCE_DIR / skill).resolve()
         choices.append(Choice(title=skill, value=skill, checked=True))
     selected = questionary.checkbox(
         "Select skills to link:",
@@ -354,11 +501,30 @@ def prompt_skills(skills: list[str]) -> list[str]:
     return selected
 
 
+def prompt_items(items: list[SyncItem]) -> list[SyncItem]:
+    """Step: choose which OpenCode items to link."""
+    choices = []
+    for item in items:
+        suffix = "  [managed → /etc, needs root]" if item.managed else ""
+        choices.append(
+            Choice(title=f"{item.label} → {_shorten_home(item.target)}{suffix}",
+                   value=item.key, checked=True)
+        )
+    selected = questionary.checkbox(
+        "Select OpenCode items to link:",
+        choices=choices,
+    ).ask()
+    if selected is None:
+        return []
+    chosen = set(selected)
+    return [item for item in items if item.key in chosen]
+
+
 def prompt_harnesses(
     harnesses: dict[str, Harness],
     detected: set[str],
 ) -> list[str]:
-    """Step 2: choose which harnesses to link into."""
+    """Step: choose which harnesses to link into."""
     choices = []
     for key in HARNESS_ORDER:
         h = harnesses[key]
@@ -380,16 +546,15 @@ def prompt_harnesses(
     return selected
 
 
-def prompt_conflict(skill: str, harness: Harness, cls: str) -> str:
+def prompt_conflict(label: str, target: Path, cls: str) -> str:
     """Ask what to do with an existing real file/dir at the target.
 
     Returns one of: "backup", "overwrite", "skip".
     """
-    target = expected_target(skill, harness)
-    label = {"real_dir": "real directory", "real_file": "real file"}[cls]
+    kind = {"real_dir": "real directory", "real_file": "real file"}[cls]
     return questionary.select(
-        f"Conflict for [bold]{skill}[/bold] in {target.parent}: "
-        f"a {label} already exists. What now?",
+        f"Conflict for [bold]{label}[/bold] in {target.parent}: "
+        f"a {kind} already exists. What now?",
         choices=[
             Choice("Backup then replace (recommended)", value="backup"),
             Choice("Overwrite (delete without backup)", value="overwrite"),
@@ -403,45 +568,79 @@ def prompt_conflict(skill: str, harness: Harness, cls: str) -> str:
 # --------------------------------------------------------------------------- #
 
 
-def cmd_link(skills_arg: Optional[list[str]], harness_arg: Optional[list[str]]) -> int:
+def cmd_link(
+    skills_arg: Optional[list[str]],
+    harness_arg: Optional[list[str]],
+    opencode_arg: Optional[list[str]],
+    skip_skills: bool,
+    skip_opencode: bool,
+) -> int:
     harnesses = _harnesses()
     skills = discover_repo_skills()
-    if not skills:
-        console.print("[red]No skills found in[/red] " + str(SKILLS_SOURCE_DIR))
+    items = discover_opencode_items()
+    if not skills and not items:
+        console.print(
+            "[red]Nothing found to link[/red] — no skills in "
+            + str(SKILLS_SOURCE_DIR)
+            + " and no OpenCode items in "
+            + str(OPENCODE_SOURCE_DIR)
+        )
         return 1
 
     # --- Step 1: skills ---
-    if skills_arg:
+    chosen_skills: list[str] = []
+    if skip_skills:
+        console.print("[dim]↷ skipping skills (--skip-skills)[/dim]")
+    elif skills_arg:
         unknown = set(skills_arg) - set(skills)
         if unknown:
             console.print(f"[red]Unknown skills:[/red] {', '.join(unknown)}")
             return 1
         chosen_skills = skills_arg
-    else:
+    elif skills:
         chosen_skills = prompt_skills(skills)
-        if not chosen_skills:
-            console.print("[yellow]No skills selected. Aborting.[/yellow]")
-            return 0
 
-    # --- Step 2: harnesses ---
-    detected = detect_harnesses()
-    if harness_arg:
-        unknown = set(harness_arg) - set(harnesses)
+    # --- Step 2: OpenCode items ---
+    chosen_items: list[SyncItem] = []
+    if skip_opencode:
+        console.print("[dim]↷ skipping OpenCode items (--skip-opencode)[/dim]")
+    elif opencode_arg:
+        known = {item.key for item in items}
+        unknown = set(opencode_arg) - known
         if unknown:
-            console.print(f"[red]Unknown harnesses:[/red] {', '.join(unknown)}")
+            console.print(
+                f"[red]Unknown OpenCode items:[/red] {', '.join(sorted(unknown))}"
+            )
             return 1
-        chosen_harness_keys = harness_arg
-    else:
-        chosen_harness_keys = prompt_harnesses(harnesses, detected)
-        if not chosen_harness_keys:
-            console.print("[yellow]No harnesses selected. Aborting.[/yellow]")
-            return 0
+        chosen_items = [item for item in items if item.key in set(opencode_arg)]
+    elif items:
+        chosen_items = prompt_items(items)
 
-    # Validate harness paths.
-    for key in chosen_harness_keys:
-        warn = validate_harness_path(harnesses[key])
-        if warn:
-            console.print(f"[yellow]Warning ({harnesses[key].name}): {warn}[/yellow]")
+    if not chosen_skills and not chosen_items:
+        console.print("[yellow]Nothing selected. Aborting.[/yellow]")
+        return 0
+
+    # --- Step 3: harnesses (only relevant for skills) ---
+    chosen_harness_keys: list[str] = []
+    if chosen_skills:
+        detected = detect_harnesses()
+        if harness_arg:
+            unknown = set(harness_arg) - set(harnesses)
+            if unknown:
+                console.print(f"[red]Unknown harnesses:[/red] {', '.join(unknown)}")
+                return 1
+            chosen_harness_keys = harness_arg
+        else:
+            chosen_harness_keys = prompt_harnesses(harnesses, detected)
+            if not chosen_harness_keys:
+                console.print("[yellow]No harnesses selected. Aborting.[/yellow]")
+                return 0
+
+        # Validate harness paths.
+        for key in chosen_harness_keys:
+            warn = validate_harness_path(harnesses[key])
+            if warn:
+                console.print(f"[yellow]Warning ({harnesses[key].name}): {warn}[/yellow]")
 
     state = load_state()
     created = 0
@@ -449,40 +648,74 @@ def cmd_link(skills_arg: Optional[list[str]], harness_arg: Optional[list[str]]) 
     backed_up = 0
     already_ok = 0
 
+    def link_one(label: str, source: Path, target: Path) -> str:
+        """Link a single (source → target) pair, handling conflicts.
+
+        Returns one of: "ok" | "created" | "backup" | "skip" | "error".
+        """
+        cls = classify_target(target, source)
+        if cls == "symlink_ok":
+            return "ok"
+        outcome = "created"
+        if cls in ("real_dir", "real_file"):
+            action = prompt_conflict(label, target, cls)
+            if action == "skip":
+                return "skip"
+            if action == "backup":
+                backup = make_backup(target)
+                console.print(f"[blue]⟲ backup → {backup.name}[/blue]")
+                outcome = "backup"
+            # overwrite: fall through and replace
+        try:
+            create_symlink(source, target)
+        except OSError as exc:
+            console.print(f"[red]✗ {label}: {exc}[/red]")
+            return "error"
+        return outcome
+
+    def report(outcome: str, label: str) -> bool:
+        """Update counters and print the result. Returns True if link is in place."""
+        nonlocal created, skipped, backed_up, already_ok
+        if outcome == "ok":
+            already_ok += 1
+            console.print(f"[green]✓[/green] {label} (already linked)")
+            return True
+        if outcome == "skip":
+            skipped += 1
+            console.print(f"[dim]↷ skip {label}[/dim]")
+            return False
+        if outcome == "error":
+            return False
+        if outcome == "backup":
+            backed_up += 1
+        created += 1
+        console.print(f"[green]✓ link {label}[/green]")
+        return True
+
+    # --- Link skills ---
     for skill in chosen_skills:
         for key in chosen_harness_keys:
             harness = harnesses[key]
-            target = expected_target(skill, harness)
-            cls = classify_target(target)
-            if cls == "symlink_ok":
+            outcome = link_one(
+                skill,
+                (SKILLS_SOURCE_DIR / skill).resolve(),
+                expected_target(skill, harness),
+            )
+            if report(outcome, f"{skill} → {key}"):
                 state_record(state, skill, key)
-                already_ok += 1
-                console.print(
-                    f"[green]✓[/green] {skill} → {key} (already linked)"
-                )
-                continue
-            if cls in ("real_dir", "real_file"):
-                action = prompt_conflict(skill, harness, cls)
-                if action == "skip":
-                    skipped += 1
-                    console.print(f"[dim]↷ skip {skill} → {key}[/dim]")
-                    continue
-                if action == "backup":
-                    backup = make_backup(target)
-                    backed_up += 1
-                    console.print(
-                        f"[blue]⟲ backup → {backup.name}[/blue]"
-                    )
-                # overwrite: just unlink below
-            # cls is missing / symlink_broken / symlink_other / after backup
-            try:
-                create_symlink(skill, harness)
-            except OSError as exc:
-                console.print(f"[red]✗ {skill} → {key}: {exc}[/red]")
-                continue
-            state_record(state, skill, key)
-            created += 1
-            console.print(f"[green]✓ link {skill} → {key}[/green]")
+
+    # --- Link OpenCode items ---
+    for item in chosen_items:
+        if item.managed and not is_root():
+            skipped += 1
+            console.print(
+                f"[yellow]↷ skip {item.label}: managed target {item.target} "
+                f"requires root. Re-run as root to link it.[/yellow]"
+            )
+            continue
+        outcome = link_one(item.label, item.source, item.target)
+        if report(outcome, item.label):
+            state_record_item(state, item.key)
 
     save_state(state)
     console.print(
@@ -495,12 +728,14 @@ def cmd_link(skills_arg: Optional[list[str]], harness_arg: Optional[list[str]]) 
 def cmd_unlink(
     skills_arg: Optional[list[str]],
     harness_arg: Optional[list[str]],
+    opencode_arg: Optional[list[str]],
 ) -> int:
     harnesses = _harnesses()
     state = load_state()
     linked = list(state["linked"])
+    linked_items = list(state["linked_items"])
 
-    if not linked:
+    if not linked and not linked_items:
         console.print("[yellow]Nothing tracked as linked. Nothing to do.[/yellow]")
         return 0
 
@@ -514,8 +749,10 @@ def cmd_unlink(
                 continue
             filtered.append((skill, key))
         linked = filtered
+    if opencode_arg:
+        linked_items = [k for k in linked_items if k in set(opencode_arg)]
 
-    if not linked:
+    if not linked and not linked_items:
         console.print("[yellow]No matching tracked links to unlink.[/yellow]")
         return 0
 
@@ -525,16 +762,28 @@ def cmd_unlink(
         if not harness:
             continue
         target = expected_target(skill, harness)
-        cls = classify_target(target)
+        cls = classify_target(target, SKILLS_SOURCE_DIR / skill)
         if cls in ("symlink_ok", "symlink_broken", "symlink_other"):
             target.unlink()
             removed += 1
             console.print(f"[green]✓ unlinked {skill} from {key}[/green]")
         else:
-            console.print(
-                f"[dim]↷ {skill} in {key} is {cls}, leaving as-is[/dim]"
-            )
+            console.print(f"[dim]↷ {skill} in {key} is {cls}, leaving as-is[/dim]")
         state_forget(state, skill, key)
+
+    for item_key in linked_items:
+        target = _item_target_for_key(item_key)
+        if target is None:
+            console.print(f"[dim]↷ {item_key}: unknown item, dropping from state[/dim]")
+            state_forget_item(state, item_key)
+            continue
+        if target.is_symlink():
+            target.unlink()
+            removed += 1
+            console.print(f"[green]✓ unlinked {item_key}[/green]")
+        else:
+            console.print(f"[dim]↷ {item_key} is not a symlink, leaving as-is[/dim]")
+        state_forget_item(state, item_key)
 
     save_state(state)
     console.print(f"\n[bold]Done.[/bold] removed={removed}")
@@ -565,16 +814,33 @@ def cmd_list() -> int:
     console.print(f"\n[bold]Skills in repo ({len(skills)}):[/bold]")
     for s in skills:
         console.print(f"  - {s}")
+
+    items = discover_opencode_items()
+    console.print(f"\n[bold]OpenCode items in repo ({len(items)}):[/bold]")
+    for item in items:
+        managed = "  [magenta]managed → /etc, needs root[/magenta]" if item.managed else ""
+        console.print(f"  - {item.label} → {_shorten_home(item.target)}{managed}")
     return 0
 
 
 def cmd_status() -> int:
     harnesses = _harnesses()
     skills = discover_repo_skills()
-    if not skills:
-        console.print("[red]No skills found in[/red] " + str(SKILLS_SOURCE_DIR))
+    items = discover_opencode_items()
+    if not skills and not items:
+        console.print(
+            "[red]Nothing found[/red] — no skills in "
+            + str(SKILLS_SOURCE_DIR)
+            + " and no OpenCode items in "
+            + str(OPENCODE_SOURCE_DIR)
+        )
         return 1
-    render_status(skills, harnesses)
+    if skills:
+        render_status(skills, harnesses)
+    if items:
+        render_items_status(items)
+    elif skills:
+        console.print(STATUS_LEGEND)
     return 0
 
 
@@ -595,17 +861,18 @@ def build_parser():
 
     p = argparse.ArgumentParser(
         prog="link.py",
-        description="Symlink AI skills from this repo into harness global dirs.",
+        description="Symlink AI skills and OpenCode config from this repo "
+        "into global directories.",
     )
     sub = p.add_subparsers(dest="command", required=True)
 
-    p_status = sub.add_parser("status", help="Show current link status table.")
+    p_status = sub.add_parser("status", help="Show current link status tables.")
     p_status.set_defaults(func=lambda a: cmd_status())
 
-    p_list = sub.add_parser("list", help="List supported harnesses and skills.")
+    p_list = sub.add_parser("list", help="List supported harnesses, skills and items.")
     p_list.set_defaults(func=lambda a: cmd_list())
 
-    p_link = sub.add_parser("link", help="Create skill symlinks.")
+    p_link = sub.add_parser("link", help="Create symlinks for skills and OpenCode items.")
     p_link.add_argument(
         "--skills",
         help="Comma-separated skill names (default: interactive prompt).",
@@ -614,11 +881,31 @@ def build_parser():
         "--harnesses",
         help="Comma-separated harness keys (default: interactive prompt).",
     )
+    p_link.add_argument(
+        "--opencode",
+        help="Comma-separated OpenCode item keys (default: interactive prompt).",
+    )
+    p_link.add_argument(
+        "--skip-skills",
+        action="store_true",
+        help="Do not link any skills (OpenCode items only).",
+    )
+    p_link.add_argument(
+        "--skip-opencode",
+        action="store_true",
+        help="Do not link any OpenCode items (skills only).",
+    )
     p_link.set_defaults(
-        func=lambda a: cmd_link(_parse_csv(a.skills), _parse_csv(a.harnesses))
+        func=lambda a: cmd_link(
+            _parse_csv(a.skills),
+            _parse_csv(a.harnesses),
+            _parse_csv(a.opencode),
+            a.skip_skills,
+            a.skip_opencode,
+        )
     )
 
-    p_unlink = sub.add_parser("unlink", help="Remove tracked skill symlinks.")
+    p_unlink = sub.add_parser("unlink", help="Remove tracked symlinks.")
     p_unlink.add_argument(
         "--skills",
         help="Comma-separated skill names to unlink.",
@@ -627,8 +914,14 @@ def build_parser():
         "--harnesses",
         help="Comma-separated harness keys to unlink from.",
     )
+    p_unlink.add_argument(
+        "--opencode",
+        help="Comma-separated OpenCode item keys to unlink.",
+    )
     p_unlink.set_defaults(
-        func=lambda a: cmd_unlink(_parse_csv(a.skills), _parse_csv(a.harnesses))
+        func=lambda a: cmd_unlink(
+            _parse_csv(a.skills), _parse_csv(a.harnesses), _parse_csv(a.opencode)
+        )
     )
 
     return p
@@ -642,4 +935,3 @@ def main(argv: Optional[list[str]] = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
