@@ -199,7 +199,7 @@ Use **STRIDE** for security threats and **LINDDUN** for privacy threats. For ent
 - SIEM integration: [yes/no + reference]
 
 ### 15.8 Threat model
-*(enterprise — mandatory)*
+*(E — enterprise-required; R — recommended for project)*
 [See STRIDE + LINDDUN template above]
 
 ### 15.9 ASVS level

@@ -5,7 +5,7 @@
 - Scope dimension
 - Functional dimension
 - Technical dimension
-- Output dimension (the four mandatory questions)
+- Output dimension (the five mandatory questions)
 - Probing techniques
 
 ## How to use this reference
@@ -63,9 +63,9 @@ Goal: understand the existing world and what changes.
 - Are there migrations from existing systems? (Data, users, cutover)
 - What is backwards-compatibility expectation? (API consumers, stored data)
 
-## Output dimension (the four mandatory questions)
+## Output dimension (the five mandatory questions)
 
-These MUST be asked in every intake, regardless of scenario:
+These MUST be asked in every intake, regardless of scenario. If the user already answered one unprompted, confirm it explicitly rather than skipping it.
 
 ### 1. FSD/TSD split vs combined FTD
 
@@ -84,11 +84,17 @@ Propose a default based on the scenario and the [split-decision.md](split-decisi
 
 ### 3. Output mode
 
-> "Which output mode: Markdown only, HTML only, or both? Markdown is the agent-facing baseline with Mermaid diagrams; HTML is a self-contained portable file for human presentation. If both, I draft Markdown first then generate HTML from it."
+> "Which output mode: Markdown only, HTML only, or both? Markdown is the baseline with OKF frontmatter and Mermaid diagrams (for humans AND agents); HTML is a self-contained portable file for human presentation. If both, I draft Markdown first then generate HTML from it."
 
-### 4. Filename and storage location
+### 4. Acceptance criteria format
 
-> "What filename convention should I use? Suggested: `FTD-[project]-[feature]-vX.Y.{md,html}`. Where should I save the file(s)?"
+> "Which acceptance criteria format: simple bullet lists (default) or EARS notation? EARS is recommended for enterprise and regulated contexts where unambiguous requirement sentences are needed."
+
+See [acceptance-criteria.md](acceptance-criteria.md) for both formats. **The user always decides.** Record the choice — it is written into the document as an `<!-- ac-format: bullets|ears -->` marker.
+
+### 5. Filename and storage location
+
+> "What filename convention should I use? Suggested: `FTD-[project]-[feature]-vX.Y.{md,html}` — or, for enterprise, the bundle directory `FTD-[project]/`. Where should I save the file(s)?"
 
 ## Probing techniques
 

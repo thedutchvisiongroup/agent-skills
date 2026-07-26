@@ -11,6 +11,15 @@
 
 This skill uses **TSD** (Technical Specification Document) for the technical part of a split. The acronym **TDD** is avoided because in a development context it is the standard abbreviation for Test-Driven Development, which causes ambiguity. "TSD" and "TDD" should never be used interchangeably in an FTD.
 
+## Note: FSD/TSD split vs multi-file bundle
+
+Two orthogonal "splits" exist — do not conflate them:
+
+- **FSD/TSD split (this reference):** split by **audience and approval flow** (functional vs technical stakeholders, separate sign-off). Driven by supplier boundaries and compliance traceability.
+- **Enterprise multi-file bundle (SKILL.md Phase 2):** split by **size and consumption** — one design, multiple files behind an OKF `index.md`, so humans review per part and agents load only the relevant slice. Driven by the size budget.
+
+They combine freely: an enterprise design can be a split FSD+TSD where each document is itself a bundle.
+
 ## When to split into separate documents
 
 - Produce a separate **Functional Design Document (FSD)** and **Technical Specification Document (TSD)** when ANY of:

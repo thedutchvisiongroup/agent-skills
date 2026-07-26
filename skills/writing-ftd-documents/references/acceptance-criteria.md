@@ -12,6 +12,8 @@
 
 The format is chosen by the user in Phase 1 (mandatory output question 4). The agent MUST ask; never assume. Both formats produce testable, verifiable criteria — the difference is in precision and formality.
 
+**Marker:** the chosen format is recorded directly under the Acceptance criteria heading as an HTML comment — `<!-- ac-format: bullets -->` or `<!-- ac-format: ears -->`. This marker is mandatory: it lets the validator (and other agents) detect the format reliably.
+
 ## Format choice (bullets vs EARS)
 
 | Aspect | Bullets | EARS |
@@ -52,9 +54,9 @@ The <system> shall <response>.
 ```
 
 **EN example:** The system shall log every authentication attempt to the audit log.
-**NL example:** Het systeem shall elke authenticatiepoging vastleggen in de audit log.
+**NL example:** Het systeem zal elke authenticatiepoging vastleggen in de auditlog.
 
-> Dutch note: EARS uses English "shall" as the normative verb. In Dutch-language FTDs, you may use "zal" or keep "shall" (common in Dutch technical writing). Be consistent within the document.
+> **Dutch note:** in Dutch-language FTDs, use "zal" as the normative verb and translate the pattern keywords: *Terwijl* (While), *Wanneer* (When), *Waar* (Where), *Als … dan* (If … then). **Never mix English EARS keywords with Dutch sentences** ("While het systeem…, the system shall…") — such hybrids are unreadable for both audiences. Be consistent within the document.
 
 #### 2. State-driven
 
@@ -65,7 +67,7 @@ While <state>, the <system> shall <response>.
 ```
 
 **EN example:** While the system is in maintenance mode, the system shall return HTTP 503 with a Retry-After header of 300 seconds.
-**NL example:** While het systeem zich in onderhoudsmodus bevindt, the system shall HTTP 503 teruggeven met een Retry-After header van 300 seconden.
+**NL example:** Terwijl het systeem in onderhoudsmodus is, zal het systeem HTTP 503 teruggeven met een Retry-After-header van 300 seconden.
 
 #### 3. Event-driven
 
@@ -76,7 +78,7 @@ When <event>, the <system> shall <response>.
 ```
 
 **EN example:** When a CSV file larger than 10 MB is uploaded, the system shall reject it with HTTP 413 and a message stating the size limit.
-**NL example:** When een CSV-bestand groter dan 10 MB wordt geüpload, the system shall dit weigeren met HTTP 413 en een melding met de maximale bestandsgrootte.
+**NL example:** Wanneer een CSV-bestand groter dan 10 MB wordt geüpload, zal het systeem dit weigeren met HTTP 413 en een melding met de maximale bestandsgrootte.
 
 #### 4. Optional feature
 
@@ -87,7 +89,7 @@ Where <feature is included>, the <system> shall <response>.
 ```
 
 **EN example:** Where multi-factor authentication is enabled, the system shall require a one-time code on every admin login.
-**NL example:** Where multi-factor authenticatie is ingeschakeld, the system shall bij elke admin-login een eenmalige code vereisen.
+**NL example:** Waar multi-factor-authenticatie is ingeschakeld, zal het systeem bij elke admin-login een eenmalige code vereisen.
 
 #### 5. Unwanted behaviour
 
@@ -98,12 +100,12 @@ If <unwanted condition>, then the <system> shall <response>.
 ```
 
 **EN example:** If the database connection is lost, then the system shall return HTTP 503, log the incident, and queue pending writes for retry.
-**NL example:** If de databaseverbinding verloren gaat, then the system shall HTTP 503 teruggeven, het incident loggen, en openstaande schrijfacties in de wachtrij plaatsen voor retry.
+**NL example:** Als de databaseverbinding verloren gaat, dan zal het systeem HTTP 503 teruggeven, het incident loggen, en openstaande schrijfacties in de wachtrij plaatsen voor retry.
 
 ### EARS rules
 
 - **One pattern per criterion.** Do not combine patterns ("When X and while Y, the system shall Z" is not valid EARS).
-- **Always "shall".** Never "should", "must", "will", or "may" in EARS. "Shall" is the normative verb.
+- **Always "shall" (EN) or "zal" (NL).** Never "should", "must", "will", or "may" in EARS. The normative verb is what makes the sentence a requirement.
 - **Response must be observable and testable.** "Shall handle errors gracefully" is not EARS — specify the response.
 - **Include all relevant conditions.** If the behaviour depends on state AND event, use the event-driven pattern and include the state in the event description, or split into two criteria.
 
@@ -165,13 +167,13 @@ If a story fails INVEST, rewrite or split it before including in the FTD.
 
 ### Dutch
 
-**US-02: Factuurgoedkeuring door manager (EARS)**
-- The system shall alle facturen met status "Wacht op goedkeuring" tonen in een lijst, gesorteerd op vervaldatum oplopend.
-- The system shall per factuur tonen: leverancier, bedrag inclusief BTW, vervaldatum, en de scan van de originele factuur.
-- When een manager een factuur afwijst, the system shall een verplichte reden vereisen.
-- When een manager een factuur goedkeurt, the system shall de status wijzigen naar "Goedgekeurd" en de financiële afdeling binnen 1 minuut notificeren.
-- When een manager een factuur afwijst, the system shall de status wijzigen naar "Afgewezen" en de indiener notificeren met de opgegeven reden.
-- The system shall elke goedkeurings- of afwijzingsactie loggen met gebruiker, tijdstip, factuur-ID, en actie in de audit log.
+**US-02: Factuurgoedkeuring door manager (EARS, Nederlands)**
+- Het systeem zal alle facturen met status "Wacht op goedkeuring" tonen in een lijst, gesorteerd op vervaldatum oplopend.
+- Het systeem zal per factuur tonen: leverancier, bedrag inclusief BTW, vervaldatum, en de scan van de originele factuur.
+- Wanneer een manager een factuur afwijst, zal het systeem een verplichte reden vereisen.
+- Wanneer een manager een factuur goedkeurt, zal het systeem de status wijzigen naar "Goedgekeurd" en de financiële afdeling binnen 1 minuut notificeren.
+- Wanneer een manager een factuur afwijst, zal het systeem de status wijzigen naar "Afgewezen" en de indiener notificeren met de opgegeven reden.
+- Het systeem zal elke goedkeurings- of afwijzingsactie loggen met gebruiker, tijdstip, factuur-ID en actie in de auditlog.
 
 ## Edge case handling
 

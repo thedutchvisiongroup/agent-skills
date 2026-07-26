@@ -7,7 +7,7 @@
 - Mermaid embedding pattern (CDN + fallback)
 - CSS-box wireframe components
 - Light/dark mode (OS preference + toggle)
-- Notes on carrousel, tabs, collapsibles, sticky TOC, print
+- Notes on carousel, tabs, collapsibles, sticky TOC, print
 
 ## Purpose and constraints
 
@@ -185,15 +185,15 @@ Below is the scaffold. Replace `[CONTENT]` placeholders with the FTD content. Th
   .wf-col { flex: 1; }
 
   /* ---------- Carrousel ---------- */
-  .carrousel { position: relative; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin: 1rem 0; }
-  .carrousel-track { display: flex; transition: transform 0.3s; }
-  .carrousel-slide { min-width: 100%; padding: 1rem; }
-  .carrousel-buttons { display: flex; justify-content: space-between; padding: 0.5rem 1rem; background: var(--surface); }
-  .carrousel-buttons button { background: none; border: 1px solid var(--border); border-radius: 4px; padding: 0.25rem 0.75rem; cursor: pointer; color: var(--fg); }
+  .carousel { position: relative; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin: 1rem 0; }
+  .carousel-track { display: flex; transition: transform 0.3s; }
+  .carousel-slide { min-width: 100%; padding: 1rem; }
+  .carousel-buttons { display: flex; justify-content: space-between; padding: 0.5rem 1rem; background: var(--surface); }
+  .carousel-buttons button { background: none; border: 1px solid var(--border); border-radius: 4px; padding: 0.25rem 0.75rem; cursor: pointer; color: var(--fg); }
 
   /* ---------- Print ---------- */
   @media print {
-    .toc, .theme-toggle, .tabs, .carrousel-buttons { display: none !important; }
+    .toc, .theme-toggle, .tabs, .carousel-buttons { display: none !important; }
     .layout { display: block; }
     .tab-panel { display: block !important; }
     .collapsible-body { display: block !important; }
@@ -219,17 +219,17 @@ Below is the scaffold. Replace `[CONTENT]` placeholders with the FTD content. Th
       <h1>[FTD title]</h1>
       <div class="doc-meta">
         <span>v[X.Y]</span>
-        <span>[Datum]</span>
-        <span>[Auteur]</span>
+        <span>[Date]</span>
+        <span>[Author]</span>
         <span>[Status]</span>
       </div>
     </div>
 
     <div class="tabs" id="tabs">
-      <!-- Tab buttons: one per top-level section -->
-      <button class="tab-button active" onclick="showTab(0)">1. Documentbeheer</button>
-      <button class="tab-button" onclick="showTab(1)">2. Scope</button>
-      <button class="tab-button" onclick="showTab(2)">3. User stories</button>
+      <!-- Tab buttons: one per top-level section. Use the FTD's chosen output language. -->
+      <button class="tab-button active" onclick="showTab(0)">[1. Section title]</button>
+      <button class="tab-button" onclick="showTab(1)">[2. Section title]</button>
+      <button class="tab-button" onclick="showTab(2)">[3. Section title]</button>
       <!-- ... add one per section ... -->
     </div>
 
@@ -291,14 +291,14 @@ Below is the scaffold. Replace `[CONTENT]` placeholders with the FTD content. Th
   buildTOC(0);
 
   // ---------- Carrousel ----------
-  document.querySelectorAll('.carrousel').forEach(c => {
-    const track = c.querySelector('.carrousel-track');
-    const slides = c.querySelectorAll('.carrousel-slide');
+  document.querySelectorAll('.carousel').forEach(c => {
+    const track = c.querySelector('.carousel-track');
+    const slides = c.querySelectorAll('.carousel-slide');
     let idx = 0;
-    c.querySelector('.carrousel-next').addEventListener('click', () => {
+    c.querySelector('.carousel-next').addEventListener('click', () => {
       idx = (idx + 1) % slides.length; track.style.transform = `translateX(-${idx * 100}%)`;
     });
-    c.querySelector('.carrousel-prev').addEventListener('click', () => {
+    c.querySelector('.carousel-prev').addEventListener('click', () => {
       idx = (idx - 1 + slides.length) % slides.length; track.style.transform = `translateX(-${idx * 100}%)`;
     });
   });
@@ -363,23 +363,23 @@ Use the `.wireframe` container with `.wf-box`, `.wf-row`, and `.wf-col` to compo
 </div>
 ```
 
-For multi-step flows, use the carrousel:
+For multi-step flows, use the carousel:
 
 ```html
-<div class="carrousel">
-  <div class="carrousel-buttons">
-    <button class="carrousel-prev">◀ Prev</button>
+<div class="carousel">
+  <div class="carousel-buttons">
+    <button class="carousel-prev">◀ Prev</button>
     <span>Step 1 of 3</span>
-    <button class="carrousel-next">Next ▶</button>
+    <button class="carousel-next">Next ▶</button>
   </div>
-  <div class="carrousel-track">
-    <div class="carrousel-slide">
+  <div class="carousel-track">
+    <div class="carousel-slide">
       <div class="wireframe"><div class="wf-box">Step 1 — form</div></div>
     </div>
-    <div class="carrousel-slide">
+    <div class="carousel-slide">
       <div class="wireframe"><div class="wf-box">Step 2 — review</div></div>
     </div>
-    <div class="carrousel-slide">
+    <div class="carousel-slide">
       <div class="wireframe"><div class="wf-box">Step 3 — confirmation</div></div>
     </div>
   </div>
@@ -393,10 +393,10 @@ For multi-step flows, use the carrousel:
 - If a saved theme exists in `localStorage`, it overrides the OS preference on load.
 - Mermaid is initialised with the matching theme (`dark` or `default`).
 
-## Notes on carrousel, tabs, collapsibles, sticky TOC, print
+## Notes on carousel, tabs, collapsibles, sticky TOC, print
 
-- **Carrousel:** use for sequences of wireframes or multi-step flows. Each `.carrousel-slide` is a full-width panel; the track translates horizontally.
+- **Carrousel:** use for sequences of wireframes or multi-step flows. Each `.carousel-slide` is a full-width panel; the track translates horizontally.
 - **Tabs:** one per top-level section (`#` heading in Markdown). `showTab(index)` shows the matching panel and rebuilds the TOC for that section.
 - **Collapsibles:** use for second-level sections (`##` headings) that are long. The user can expand/collapse. All collapsibles expand automatically in print.
 - **Sticky TOC:** on desktop, the TOC stays visible on the left and shows the headings of the current tab. On mobile, it appears at the top.
-- **Print:** all chrome (TOC, tabs, theme toggle, carrousel buttons) is hidden; all tab panels and collapsibles are expanded; the document becomes a linear flow suitable for PDF export.
+- **Print:** all chrome (TOC, tabs, theme toggle, carousel buttons) is hidden; all tab panels and collapsibles are expanded; the document becomes a linear flow suitable for PDF export.

@@ -1,38 +1,26 @@
-# FTD Master Template (with scenario toggles)
+# FTD Master Template (ceiling model)
 
 ## Contents
 - How to use this template
 - Table of contents
-- Section 1: Document control
-- Section 2: Executive summary
-- Section 3: Scope & objectives
-- Section 4: Stakeholders & RACI
-- Section 5: Business context & goals (incl. benefit hypothesis)
-- Section 6: User stories
-- Section 7: Acceptance criteria
-- Section 8: Traceability matrix
-- Section 9: Definition of Ready / Definition of Done
-- Section 10: Architecture (C4 + arc42)
-- Section 11: Data model
-- Section 12: API & integration
-- Section 13: Non-functional requirements
-- Section 14: Privacy-by-design
-- Section 15: Security-by-design
-- Section 16: Risk register
-- Section 17: Deployment & rollback
-- Section 18: Observability & logging
-- Section 19: Compliance evidence (enterprise)
-- Section 20: Migration & runbook
-- Section 21: Glossary
-- Section 22: Crosscutting Concepts
-- Section 23: Approvals & sign-off
+- Core sections (always mandatory): 1, 3, 6, 7, 9 (DoD), 14, 15, 24
+- Recommended sections (include or justify omission): 2, 4, 5, 8, 9 (DoR), 10-13, 16-18, 20-23
+- Enterprise-required sections: 19 (+ DPIA, threat model, SBOM, NFRs)
 - Author checklist
 
 ## How to use this template
 
-Copy this template into the draft. Apply the toggle matrix from [scenario-identification.md](scenario-identification.md): keep mandatory (M) and enterprise-only (E) sections, drop or condense optional (O) sections as appropriate. Replace every `[PLACEHOLDER]` with concrete content. Numbered headings are mandatory (1, 1.1, 1.1.1). A table of contents at the top is mandatory.
+This template uses the **ceiling model**: start from the core, add only what earns its place.
 
-The template below uses English placeholders. If the user chose Dutch as the output language, translate the section titles and placeholder text to Dutch at draft time. Keep technical terms (API, NFR, RACI, DPIA, STRIDE, etc.) in English regardless of output language.
+1. **Always include the core** — sections marked **(C)**. They are mandatory in every scenario.
+2. **For each recommended section (R)**: include it when it earns its place for THIS design, or omit it and record a one-line justification in §24 "Omitted sections & open questions". If you cannot write that one sentence of why, the section does not belong in the document.
+3. **Enterprise-required sections (E)** are mandatory for the enterprise scenario only.
+4. Replace every `[placeholder]` with concrete content. Numbered headings are mandatory (1, 1.1, 1.1.1). A table of contents at the top is mandatory. Respect the scenario size budget (feature ≤ ~150 lines, project ≤ ~400 lines, enterprise = bundle ≤ ~800 lines per file) — see [scenario-identification.md](scenario-identification.md).
+5. Concise beats complete. A correct three-sentence privacy statement beats a padded page.
+
+The template below uses English placeholders. If the user chose Dutch as the output language, translate the section titles and placeholder text to Dutch at draft time. Keep technical terms (API, NFR, RACI, DPIA, STRIDE, DoR, DoD, etc.) in English regardless of output language (Dutch aliases are tolerated by the validator, but consistency aids grep-ability).
+
+**Enterprise bundle mapping:** for the enterprise scenario, split this template across files per the default mapping in SKILL.md Phase 2 (01-scope, 02-requirements, 03-architecture, 04-quality, 05-compliance, 06-delivery), each file with its own OKF frontmatter, plus an OKF `index.md`. Section numbering stays global across files.
 
 ---
 
@@ -64,15 +52,26 @@ The template below uses English placeholders. If the user chose Dutch as the out
 21. Glossary
 22. Crosscutting Concepts
 23. Approvals & sign-off
+24. Omitted sections & open questions
 ```
 
-(Adjust the list to the sections actually present per scenario.)
+(Adjust the list to the sections actually present — keep core sections, keep included recommended sections, drop omitted ones. §24 stays whenever anything is omitted or open.)
 
 ---
 
-## 1. Document control
+## 1. Document control **(C — core, all scenarios)**
+
+Every FTD artifact starts with an OKF frontmatter block (for agents) above the human-facing title and document control table (for humans). Invoke the `writing-okf` skill and follow its conventions for the `type` value and fields.
 
 ```markdown
+---
+type: FTD
+title: "[Project/Feature name] — Functional Technical Design"
+description: "[One-sentence summary of the design and its scope]"
+tags: [ftd, scenario-feature|project|enterprise, <domain>, <compliance-tags-if-any>]
+timestamp: [YYYY-MM-DDTHH:MM:SS]
+---
+
 # [Project/Feature name] — Functional Technical Design
 
 | Field | Value |
@@ -91,9 +90,7 @@ The template below uses English placeholders. If the user chose Dutch as the out
 | 0.1 | YYYY-MM-DD | [name] | Initial draft |
 ```
 
-## 2. Executive summary
-
-*(project, enterprise — mandatory; feature — drop)*
+## 2. Executive summary **(R — recommended for project/enterprise; omit with justification; not expected for feature)**
 
 ```markdown
 ## 2. Executive summary
@@ -103,7 +100,7 @@ key decisions and risks. Intended for decision-makers who will not read the
 full document.]
 ```
 
-## 3. Scope & objectives
+## 3. Scope & objectives **(C — core, all scenarios)**
 
 ```markdown
 ## 3. Scope & objectives
@@ -122,9 +119,7 @@ full document.]
 - [Measurable: "0 critical pentest findings before production"]
 ```
 
-## 4. Stakeholders & RACI
-
-*(project, enterprise — mandatory; feature — replace with "Impacted teams")*
+## 4. Stakeholders & RACI **(R — recommended for project/enterprise; for feature, fold impacted teams into §3 if worth noting)**
 
 ```markdown
 ## 4. Stakeholders & RACI
@@ -144,9 +139,7 @@ full document.]
 | Approval | [name] | [name] | [name] | [name] |
 ```
 
-## 5. Business context & goals
-
-*(project, enterprise — mandatory; feature — optional)*
+## 5. Business context & goals **(R — recommended for project/enterprise; optional for feature)**
 
 ```markdown
 ## 5. Business context & goals
@@ -159,7 +152,7 @@ full document.]
 - [Cost saving or risk reduction]
 
 ### 5.3 Benefit hypothesis
-*(project, enterprise — mandatory; feature — optional but recommended)*
+*(R — recommended for project/enterprise (strongly expected — omit only with good reason); optional for feature)*
 
 We believe [business outcome] will be achieved if [these users] successfully
 achieve [this user outcome] with [this feature/change].
@@ -174,7 +167,7 @@ achieve [this user outcome] with [this feature/change].
 - [Budget, time, tech stack, compliance, organisational]
 ```
 
-## 6. User stories
+## 6. User stories **(C — core, all scenarios)**
 
 ```markdown
 ## 6. User stories
@@ -202,14 +195,17 @@ Estimable, Small, Testable). Format: "As a [role], I want [action], so that
 **Story points:** [X]
 ```
 
-## 7. Acceptance criteria
+## 7. Acceptance criteria **(C — core, all scenarios)**
 
 ```markdown
 ## 7. Acceptance criteria
+<!-- ac-format: bullets|ears -->
 
 Acceptance criteria are written in the format chosen in Phase 1 (question 4):
 bullets (default) or EARS notation. Each criterion is a single, testable
-statement. No Gherkin. Do not mix formats within one document.
+statement. No Gherkin. Do not mix formats within one document. The
+`ac-format` marker comment above is mandatory — it lets tooling and agents
+detect the format; keep the chosen value.
 
 ### 7.1 US-01: [title]
 - [Testable statement, e.g. "The system rejects CSV files larger than 10 MB
@@ -224,7 +220,7 @@ statement. No Gherkin. Do not mix formats within one document.
 See [acceptance-criteria.md](acceptance-criteria.md) for both formats (bullets
 and EARS), INVEST, and examples.
 
-## 8. Traceability matrix
+## 8. Traceability matrix **(R — recommended for all scenarios; omit with justification for trivial features)**
 
 ```markdown
 ## 8. Traceability matrix
@@ -238,7 +234,7 @@ requirements without design, no design without a requirement.
 | US-02 | [title] | [component] | [endpoint/table] | TC-02 | Open |
 ```
 
-## 9. Definition of Ready / Definition of Done
+## 9. Definition of Ready / Definition of Done **(DoD: C — core, ALWAYS mandatory. DoR: R — recommended; optional for feature, where the intake gate largely covers it)**
 
 ```markdown
 ## 9. Definition of Ready / Definition of Done
@@ -265,7 +261,7 @@ A user story is done when:
 - [ ] Sign-off by Product Owner and Architect
 ```
 
-## 10. Architecture
+## 10. Architecture **(R — recommended for all scenarios; omit with justification for trivial features with no architecture impact)**
 
 ```markdown
 ## 10. Architecture
@@ -278,19 +274,19 @@ decisions (ADR-style) and quality scenarios. See [mermaid-snippets.md](mermaid-s
 [Mermaid C4 Context diagram — system in relation to users and external systems]
 
 ### 10.2 C4 Container (Level 2)
-*(project, enterprise — mandatory; feature — optional)*
+*(R — recommended for project/enterprise; optional for feature)*
 [Mermaid C4 Container diagram — containers (apps, services, datastores) and their relationships]
 
 ### 10.3 C4 Component (Level 3) — per container
-*(enterprise — mandatory; project — optional)*
+*(R — recommended for enterprise; optional for project)*
 [Mermaid C4 Component diagram per relevant container]
 
 ### 10.4 Sequence diagrams — key flows
-*(project, enterprise — mandatory; feature — optional)*
+*(R — recommended for project/enterprise; optional for feature)*
 [Mermaid sequence diagrams for the key use cases]
 
 ### 10.5 Design decisions (arc42)
-*(project, enterprise — mandatory)*
+*(R — recommended for project/enterprise)*
 Architecture decisions in ADR style (Architecture Decision Records):
 
 #### ADR-01: [Decision title]
@@ -301,19 +297,19 @@ Architecture decisions in ADR style (Architecture Decision Records):
 - **Alternatives considered:** [Which other options and why rejected]
 
 ### 10.6 Quality scenarios (arc42)
-*(project, enterprise — mandatory)*
+*(R — recommended for project/enterprise)*
 Concrete scenarios the design must be tested against:
 - **Performance scenario:** "100 concurrent users do X, p95 latency < Y ms"
 - **Availability scenario:** "On failure of component Z the system degrades to [behaviour]"
 - **Security scenario:** "An anonymous attacker attempts [attack]; expected behaviour [response]"
 ```
 
-## 11. Data model
+## 11. Data model **(R — recommended for project/enterprise; optional for feature)**
 
 ```markdown
 ## 11. Data model
 
-*(project, enterprise — mandatory; feature — optional)*
+*(R — recommended for project/enterprise; optional for feature)*
 
 ### 11.1 Conceptual model (ERD)
 [Mermaid ER diagram with entities, relationships, cardinality]
@@ -328,7 +324,7 @@ Concrete scenarios the design must be tested against:
 [What changes, how it is migrated, what is the cutover strategy]
 ```
 
-## 12. API & integration
+## 12. API & integration **(R — recommended for all scenarios with API surface; omit with justification)**
 
 ```markdown
 ## 12. API & integration
@@ -343,7 +339,7 @@ Endpoints summarised; full spec in external OpenAPI file (reference below).
 **OpenAPI specification:** [link to openapi.yaml or reference]
 
 ### 12.2 Integrations
-*(project, enterprise — mandatory; feature — if applicable)*
+*(R — recommended for project/enterprise; feature — if applicable)*
 | System | Protocol | Direction | Frequency | Error handling |
 |--------|----------|-----------|-----------|-----------------|
 | [name] | REST/Kafka/SFTP | in/out/bi | [realtime/batch] | [behaviour on error] |
@@ -352,7 +348,7 @@ Endpoints summarised; full spec in external OpenAPI file (reference below).
 [Mermaid data flow diagram or sequence diagram for critical integrations]
 ```
 
-## 13. Non-functional requirements
+## 13. Non-functional requirements **(R — recommended for all scenarios; E — enterprise-required. When present, always measurable; when omitted, record the justification — e.g. "inherits system-level NFRs")**
 
 ```markdown
 ## 13. Non-functional requirements
@@ -390,7 +386,7 @@ Subject / Attribute / Metric / Threshold / Verification. See [nfr-taxonomy.md](n
 Reliability, Security, Maintainability, Portability.)
 ```
 
-## 14. Privacy-by-design
+## 14. Privacy-by-design **(C — core, ALWAYS present — even if no personal data: then explicitly justify that position. Concise is fine; absent is not.)**
 
 ```markdown
 ## 14. Privacy-by-design
@@ -424,7 +420,7 @@ Are personal data processed? yes/no. If yes:
 - Deletion process: [automated job, periodicity, verification]
 ```
 
-## 15. Security-by-design
+## 15. Security-by-design **(C — core, ALWAYS present — even if minimal exposure: then explicitly justify. Concise is fine; absent is not.)**
 
 ```markdown
 ## 15. Security-by-design
@@ -467,7 +463,7 @@ ASVS, STRIDE+LINDDUN threat modeling.
 - SIEM integration: [yes/no + reference]
 
 ### 15.8 Threat model
-*(enterprise — mandatory; project — optional)*
+*(E — enterprise-required; R — recommended for project)*
 - Methods: STRIDE (security) + LINDDUN (privacy)
 - Asset -> Threat -> Existing controls -> Residual risk -> Mitigation owner
 [See security-by-design.md for template]
@@ -476,19 +472,19 @@ ASVS, STRIDE+LINDDUN threat modeling.
 Target ASVS level: [L1/L2/L3] — [reason]
 ```
 
-## 16. Risk register
+## 16. Risk register **(R — recommended for project/enterprise; not expected for feature)**
 
 ```markdown
 ## 16. Risk register
 
-*(project, enterprise — mandatory; feature — only "impacted teams")*
+*(R — recommended for project/enterprise)*
 
 | ID | Risk | Likelihood | Impact | Score | Mitigation | Owner | Status |
 |----|------|------------|--------|-------|------------|-------|--------|
 | R-01 | [risk description] | L/M/H | L/M/H | [score] | [measure] | [name] | Open/Closed |
 ```
 
-## 17. Deployment & rollback
+## 17. Deployment & rollback **(R — recommended for all scenarios with deployable artefacts)**
 
 ```markdown
 ## 17. Deployment & rollback
@@ -505,12 +501,12 @@ Target ASVS level: [L1/L2/L3] — [reason]
 - Data implication: [what happens to data on rollback]
 ```
 
-## 18. Observability & logging
+## 18. Observability & logging **(R — recommended for project/enterprise)**
 
 ```markdown
 ## 18. Observability & logging
 
-*(enterprise — mandatory; project — optional)*
+*(R — recommended for project/enterprise)*
 
 ### 18.1 Metrics
 | Metric | Threshold | Alert | Dashboard |
@@ -529,12 +525,12 @@ Target ASVS level: [L1/L2/L3] — [reason]
 [Links to runbooks for critical operations]
 ```
 
-## 19. Compliance evidence
+## 19. Compliance evidence **(E — enterprise-required)**
 
 ```markdown
 ## 19. Compliance evidence
 
-*(enterprise — mandatory)*
+*(E — enterprise-required. Document which frameworks apply — not every framework section is mandatory.)*
 
 ### 19.1 GDPR / AVG
 - DPIA: [reference or "not required — reason"]
@@ -558,12 +554,12 @@ Target ASVS level: [L1/L2/L3] — [reason]
 - For high-risk: technical documentation, risk management, human oversight, logging
 ```
 
-## 20. Migration & runbook
+## 20. Migration & runbook **(R — recommended for project/enterprise)**
 
 ```markdown
 ## 20. Migration & runbook
 
-*(enterprise — mandatory; project — optional)*
+*(R — recommended for project/enterprise)*
 
 ### 20.1 Migration plan
 - Data to migrate: [volume, source, target]
@@ -574,9 +570,9 @@ Target ASVS level: [L1/L2/L3] — [reason]
 [Links to or inline runbooks for: deployment, rollback, incident response, data restore]
 ```
 
-## 21. Glossary
+## 21. Glossary **(R — recommended for project/enterprise (strongly expected); optional for feature)**
 
-*(project, enterprise — mandatory; feature — optional)*
+*(R — recommended for project/enterprise)*
 
 ```markdown
 ## 21. Glossary
@@ -591,9 +587,9 @@ domain-specific terms, and any terms that could be ambiguous in this context.
 | [abbreviation] | [full form + definition] |
 ```
 
-## 22. Crosscutting Concepts
+## 22. Crosscutting Concepts **(R — recommended for enterprise; optional for project/feature)**
 
-*(enterprise — mandatory; project, feature — optional)*
+*(R — recommended for enterprise; optional for project/feature)*
 
 ```markdown
 ## 22. Crosscutting Concepts
@@ -624,7 +620,7 @@ not apply with a brief justification.
 [Patterns consistently applied across the system: e.g. CQRS, event sourcing, saga, hexagonal architecture]
 ```
 
-## 23. Approvals & sign-off
+## 23. Approvals & sign-off **(R — recommended for all scenarios; feature: one line, e.g. "Akkoord: [PO], [date]")**
 
 ```markdown
 ## 23. Approvals & sign-off
@@ -638,25 +634,38 @@ not apply with a brief justification.
 | Project sponsor | [name] | YYYY-MM-DD | |
 ```
 
+## 24. Omitted sections & open questions **(R — mandatory whenever any recommended section is omitted or any doubt is open; otherwise drop)**
+
+```markdown
+## 24. Omitted sections & open questions
+(NL: ## Weggelaten secties & open punten)
+
+Every recommended section that is not included in this FTD is listed here
+with a one-line justification. Open doubts are recorded here as well — never
+resolve doubt by padding a section.
+
+- [Section name] — omitted: [one-line justification]
+- NFRs — omitted: no performance/security impact; inherits system-level NFRs (see [ref]).
+- Open question: [what is unknown, who will answer it, by when]
+```
+
 ---
 
 ## Author checklist
 
-Before delivering, verify:
-- [ ] All M-sections for the scenario present
-- [ ] All E-sections present (enterprise)
-- [ ] No `[PLACEHOLDER]` left unfilled
+Before delivering, verify the CEILING MODEL — completeness of the core, justification of the rest:
+
+- [ ] All core (C) sections present: document control (incl. OKF frontmatter), TOC, scope & objectives, user stories, acceptance criteria (+ `ac-format` marker), DoD, privacy-by-design, security-by-design
+- [ ] Core sections are substantive but concise — no padding
+- [ ] Every recommended (R) section is either present (because it earns its place) or listed with a one-line justification in "Omitted sections & open questions"
+- [ ] All enterprise-required (E) sections present (enterprise scenario): DPIA decision, threat model, compliance evidence, SBOM, measurable NFRs
+- [ ] Enterprise output is a multi-file bundle with OKF `index.md` (or the deviation is consciously agreed with the user)
+- [ ] No `[placeholder]` left unfilled
 - [ ] User stories INVEST-checked
-- [ ] Acceptance criteria in chosen format (bullets or EARS), testable, consistent
-- [ ] Traceability matrix complete
-- [ ] NFRs measurable (Metric + Threshold + Verification)
-- [ ] Privacy-by-design populated (not boilerplate)
-- [ ] Security-by-design populated (not boilerplate)
+- [ ] Acceptance criteria in chosen format (bullets or EARS), testable, consistent, marked with `<!-- ac-format: ... -->`
+- [ ] Traceability matrix (if present) complete
+- [ ] NFR section (if present) fully measurable (Metric + Threshold + Verification)
 - [ ] Mermaid diagrams render
-- [ ] Table of contents present and accurate
-- [ ] Benefit hypothesis present and measurable (project/enterprise)
-- [ ] Glossary present (project/enterprise)
-- [ ] Crosscutting Concepts present (enterprise)
-- [ ] DoD explicit (always mandatory, regardless of scenario)
-- [ ] Approvals table filled
-- [ ] `python scripts/validate.py <file> --scenario <scenario>` passes
+- [ ] Size budget respected (feature ≤ ~150, project ≤ ~400, enterprise ≤ ~800 lines/file), or breach consciously justified to the user
+- [ ] `python scripts/validate.py <file> --scenario <scenario>` — errors fixed; warnings resolved (include or justify); suspected validator bugs reported to the user, never worked around by padding
+- [ ] OKF validator passed (per the writing-okf skill)

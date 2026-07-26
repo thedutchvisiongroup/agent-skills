@@ -44,23 +44,22 @@ Goal: assess an existing document against the FTD standard and produce a priorit
 ### Steps
 
 1. **Read the source document** in full.
-2. **Run `python scripts/validate.py <source> --scenario <feature|project|enterprise> --audit`** to get the automated gap report. If the scenario is unknown, run with `--scenario project` as default and note the assumption.
-3. **Manual review** against the toggle matrix in [scenario-identification.md](scenario-identification.md):
-   - For each mandatory (M) section: present / missing / incomplete / boilerplate.
-   - For each optional (O) section: present / missing (acceptable).
-   - For each enterprise-only (E) section (enterprise scenario): present / missing.
+2. **Run `python scripts/validate.py <source> --scenario <feature|project|enterprise> --audit`** to get the automated gap report. If the scenario is unknown, run with `--scenario project` as default and note the assumption. The report separates **errors** (core/enterprise-required missing, broken content), **warnings** (unjustified omissions, size budget), and **justified omissions** — the ceiling model applies to audits too: a missing recommended section is a finding, not automatically a defect.
+3. **Manual review** against the toggle table in [scenario-identification.md](scenario-identification.md):
+   - For each core (C) section: present / missing / thin.
+   - For each enterprise-required (E) section (enterprise scenario): present / missing.
+   - For each recommended (R) section: present / omitted-with-justification (acceptable) / omitted-silently (finding).
 4. **Quality checks**:
    - User stories: are they in "As a…/I want…/So that…" format? Do they pass INVEST?
-   - Acceptance criteria: single testable statements? Boundary values and error paths covered?
-   - NFRs: every NFR has Subject / Attribute / Metric / Threshold / Verification?
-   - Privacy-by-design: present and populated (not boilerplate)? Data inventory complete?
-   - Security-by-design: present and populated? ASVS level stated? Threat model where required?
-   - Traceability matrix: no orphan requirements, no orphan tests?
-   - DoR/DoD: explicit and complete?
+   - Acceptance criteria: single testable statements? Boundary values and error paths covered? `ac-format` marker present?
+   - NFRs (if present): every NFR has Subject / Attribute / Metric / Threshold / Verification?
+   - Privacy-by-design: present and substantive (not boilerplate, not padded)? Data inventory complete when personal data is processed?
+   - Security-by-design: present and substantive? ASVS level stated where relevant? Threat model where required?
+   - Traceability matrix (if present): no orphan requirements, no orphan tests?
+   - DoD: explicit (always mandatory)? DoR where expected?
    - Diagrams: Mermaid renders? C4 levels appropriate for scenario?
-   - Benefit hypothesis (project/enterprise): present and measurable?
-   - Glossary (project/enterprise): present?
-   - Crosscutting Concepts (enterprise): present?
+   - OKF frontmatter: present and valid? (For bundles: index.md present?)
+   - Size: within the scenario budget — or bloated with sections that do not earn their place?
 5. **Produce the gap report** in this format:
 
 ```markdown
@@ -75,10 +74,11 @@ Goal: assess an existing document against the FTD standard and produce a priorit
 
 ## Summary
 
-- Total sections expected: [N]
-- Present: [N]
-- Missing (mandatory): [N]
-- Incomplete / boilerplate: [N]
+- Core sections (C): [N present / N expected]
+- Enterprise-required (E, enterprise only): [N present / N expected]
+- Recommended (R): [N present / N justified omissions / N silently omitted]
+- Errors: [N] | Warnings: [N]
+- Size: [N lines vs budget]
 - Overall verdict: PASS / NEEDS IMPROVEMENT / FAIL
 
 ## Findings by priority
@@ -113,7 +113,9 @@ Goal: assess an existing document against the FTD standard and produce a priorit
 
 - Silently fixing issues — Audit is report-only. The user decides what to fix.
 - Running the validator and stopping — the manual quality checks (INVEST, boilerplate detection, diagram render) are non-automatable and mandatory.
-- Skipping the manual review because the validator passed — the validator checks presence, not quality.
+- Skipping the manual review because the validator passed — the validator checks presence and substance, not quality.
+- Reporting every missing recommended section as a defect — under the ceiling model, a justified omission is good practice, not a gap. Flag *silent* omissions and *bloated* sections alike: an over-complete FTD is also a finding.
+- Treating the validator as absolute — it is advisory. If a finding looks wrong for this document, say so explicitly in the report.
 
 ## Mode B: Restructure (legacy doc → FTD-conform document)
 
@@ -133,7 +135,7 @@ Goal: take an existing design document (legacy FTD, SDD, Word doc, Confluence pa
    - Incomplete sections (e.g. NFRs stated as "fast" without thresholds)
    - Implicit content (e.g. user stories embedded in prose that need to be extracted to INVEST format)
 5. **Run the Phase 1 intake** (from SKILL.md) **only for the gaps**. Do not re-ask what the source already answers clearly. Probe only what is missing or ambiguous.
-6. **Draft the new FTD** using [ftd-template.md](ftd-template.md) with toggles for the confirmed scenario. Map extracted content into the template. Fill gaps with answers from the intake.
+6. **Draft the new FTD** using [ftd-template.md](ftd-template.md) with the ceiling-model toggles for the confirmed scenario. Map extracted content into the template. Fill gaps with answers from the intake. Apply the OKF metadata layer (invoke the `writing-okf` skill): frontmatter on every artifact, and for enterprise a multi-file bundle with `index.md`.
 7. **Revision history**: add an entry "Restructured from [source document name/version] by [agent] on [date]" as the first revision. Preserve the original author and date where known.
 8. **Validate**: run `python scripts/validate.py <new-file> --scenario <scenario>` and fix every error.
 9. **Deliver**: save at the confirmed location and filename. Present to the user.
@@ -154,18 +156,15 @@ Goal: take a loose feature description (Jira ticket, Confluence page, OneNote, e
 1. **Read the source feature description** in full.
 2. **Run the clarification gate** (above) — confirm mode (feature-structuring), target scenario (almost always `feature`, but confirm — could be `project` if the "feature" turns out to be multi-team), output language, output mode, AC format, filename.
 3. **Identify the scenario** per [scenario-identification.md](scenario-identification.md). If the "feature" touches multiple teams, regulated data, or external suppliers, propose a higher tier — do not silently downscale.
-4. **Extract and structure** into the condensed FTD-feature template:
-   - **Document control** — derive a feature ID and title from the source.
+4. **Extract and structure** into the FTD-feature format from [ftd-template.md](ftd-template.md): the **core always**, recommended sections only when they earn their place, omissions recorded:
+   - **OKF frontmatter + Document control** — derive a feature ID and title from the source; invoke the `writing-okf` skill for the metadata.
    - **Scope & objectives** — extract or infer the problem statement, in/out scope, success criteria.
    - **User stories** — rewrite the source's feature description into "As a…/I want…/So that…" (or Dutch equivalent) and check against INVEST. Split if the source describes multiple stories.
-   - **Acceptance criteria** — in the format chosen in the gate (bullets or EARS). Convert vague statements ("it should work") into testable criteria. Include edge cases (empty, oversized, malformed, unauthorised, concurrent).
-   - **Benefit hypothesis** (project/enterprise: mandatory; feature: optional) — if the source contains an expected outcome, formalise it: "We believe [business outcome] will be achieved if [users] achieve [user outcome] with [feature]." Add a measurable target and validation method.
-   - **Traceability matrix** — map each user story to a design component and test case ID. If the design component is not yet known, mark as TBD.
-   - **DoR / DoD** — populate from the standard template in [ftd-template.md](ftd-template.md) §9. DoD is ALWAYS mandatory, even for a single feature.
-   - **NFRs** — if the feature has performance, security, or accessibility impact, extract NFRs in Subject/Attribute/Metric/Threshold/Verification format. If not, state "no feature-specific NFRs; inherits system-level NFRs" with a reference.
-   - **Privacy-by-design** — ALWAYS present. If the feature does not touch personal data, state that explicitly with justification. If it does, complete the data inventory.
-   - **Security-by-design** — ALWAYS present. Document authentication, authorisation, and any feature-specific security controls. If minimal, state that explicitly.
-   - **Approvals & sign-off** — populate with the feature owner and relevant approvers.
+   - **Acceptance criteria** — in the format chosen in the gate (bullets or EARS), with the `ac-format` marker. Convert vague statements ("it should work") into testable criteria. Include edge cases (empty, oversized, malformed, unauthorised, concurrent).
+   - **DoD** — ALWAYS mandatory, even for a single feature. DoR optional.
+   - **Privacy-by-design** — ALWAYS present. If the feature does not touch personal data, state that explicitly with justification (three sentences can be enough). If it does, complete the data inventory.
+   - **Security-by-design** — ALWAYS present. Document authentication/authorization and any feature-specific controls; if minimal, state that explicitly with justification.
+   - **Recommended sections, only if they earn their place** — traceability matrix, NFRs (measurable!), architecture, benefit hypothesis, approvals (one line). Record any omission in "Omitted sections & open questions".
 5. **Validate**: run `python scripts/validate.py <new-file> --scenario feature` and fix every error.
 6. **Deliver**: save at the confirmed location and filename. Present to the user. Offer to merge into a parent FTD if one exists.
 
@@ -174,11 +173,11 @@ Goal: take a loose feature description (Jira ticket, Confluence page, OneNote, e
 - Treating a Jira ticket as already complete — most tickets lack NFRs, PbD/SbD, and edge cases. The value of this mode is filling those gaps.
 - Skipping DoD because "it's just one feature" — DoD is always mandatory.
 - Inventing acceptance criteria not supported by the source — probe the user for missing criteria; do not fabricate.
-- Forcing the full project template on a genuine single-feature input — use the condensed feature template and let the agent drop optional sections per scenario-identification rules (DoD stays mandatory).
+- Forcing the full project template on a genuine single-feature input — core plus only what earns its place; record omissions.
 
 ## Cross-references
 
-- [scenario-identification.md](scenario-identification.md) — for toggle matrix and scenario conflict resolution
+- [scenario-identification.md](scenario-identification.md) — for the core/recommended/required toggle table and scenario conflict resolution
 - [ftd-template.md](ftd-template.md) — for the master template and section structure
 - [acceptance-criteria.md](acceptance-criteria.md) — for bullets vs EARS format
 - [intake-questions.md](intake-questions.md) — for probing during gap-filling in Restructure mode

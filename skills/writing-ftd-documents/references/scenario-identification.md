@@ -1,9 +1,11 @@
-# Scenario Identification & Toggle Matrix
+# Scenario Identification & Toggle Table
 
 ## Contents
 - Decision criteria
-- Toggle matrix (which sections are mandatory per scenario)
-- Feature flexibility († and ‡ rules)
+- The ceiling model: core / recommended / enterprise-required
+- Toggle table
+- Size budgets
+- The omissions convention
 - Conflict resolution
 - Scenario-conditional rules
 
@@ -32,49 +34,87 @@ Use when ANY of:
 - High cost (>€250k) or high reputational risk
 - AI component classified as high-risk under EU AI Act
 
-## Toggle matrix
+## The ceiling model: core / recommended / enterprise-required
 
-Legend: **M** = mandatory, **O** = optional (recommended), **—** = not required, **E** = enterprise-only mandatory.
+Every section falls in exactly one of three classes:
+
+| Class | Meaning | If missing |
+|-------|---------|------------|
+| **Core (C)** | Mandatory in every scenario. | ERROR — the FTD is incomplete. |
+| **Recommended (R)** | Default-included for the scenario. MAY be omitted when the omission is justified (one line) in "Omitted sections & open questions". | WARNING unless justified. |
+| **Enterprise-required (E)** | Mandatory for enterprise only — choosing enterprise means opting into compliance rigour. | ERROR for enterprise; n/a otherwise. |
+
+The ceiling model inverts the old floor model: you do not start from "everything is mandatory unless dropped" but from the core, and every additional section must earn its place. **If you cannot write one sentence on why a section is needed for THIS design, omit it and record the omission.**
+
+## Toggle table
 
 | Section | feature | project | enterprise |
 |---------|---------|---------|------------|
-| Title / version / revision history | M | M | M |
-| Executive summary | — | M | M |
-| Scope & objectives (in/out, success criteria) | M | M | M |
-| Stakeholders & RACI | — | M | M |
-| Business context & goals | O | M | M |
-| Benefit hypothesis | O | M | M |
-| User stories (INVEST-checked) | M | M | M |
-| Acceptance criteria (bullets or EARS) | M | M | M |
-| Traceability matrix | O† | M | M |
-| Definition of Ready / Definition of Done | M‡ | M | M |
-| Architecture — C4 Context (L1) | O† | M | M |
-| Architecture — C4 Container (L2) | O | M | M |
-| Architecture — C4 Component (L3) | — | O | M |
-| Sequence diagrams (key flows) | O | M | M |
-| Data model (ERD) | O | M | M |
-| API summary (inline + OpenAPI ref) | O | M | M |
-| Integration & data flows | — | O | M |
-| NFRs (ISO 25010, measurable) | O† | M | M |
-| Privacy-by-design section | M | M | M |
-| Security-by-design section | M | M | M |
-| Risk register | — | M | M |
-| Deployment & rollback plan | O | M | M |
-| Observability & logging plan | — | O | M |
-| DPIA decision (Y/N + reference) | O | O | E |
-| Threat model (STRIDE + LINDDUN) | — | O | E |
-| Compliance evidence (BIO/NEN 7510/ISO 27001) | — | — | E |
+| Document control (incl. OKF frontmatter) | C | C | C |
+| Table of contents | C | C | C (index.md) |
+| Scope & objectives (in/out, success criteria) | C | C | C |
+| User stories (INVEST-checked) | C | C | C |
+| Acceptance criteria (bullets or EARS + marker) | C | C | C |
+| Definition of Done | C | C | C |
+| Privacy-by-design statement | C | C | C |
+| Security-by-design statement | C | C | C |
+| Omitted sections & open questions | R | R | R |
+| Definition of Ready | R | R | R |
+| Approvals (feature: one-line "Akkoord") | R | R | R |
+| Executive summary | — | R | R |
+| Stakeholders & RACI | — | R | R |
+| Business context & goals | — | R | R |
+| Benefit hypothesis (measurable) | — | R | R |
+| Traceability matrix | R | R | R |
+| Architecture (C4 L1/L2, ADR-style decisions) | R | R | R |
+| Architecture (C4 L3 component) | — | R | R |
+| Sequence diagrams (key flows) | R | R | R |
+| Data model (ERD) | R | R | R |
+| API & integration | R | R | R |
+| Non-functional requirements (measurable) | R | R | E |
+| Risk register | — | R | R |
+| Deployment & rollback | R | R | R |
+| Observability & logging | — | R | R |
+| Migration & runbook | — | R | R |
+| Glossary | — | R | R |
+| Crosscutting Concepts | — | R | R |
+| DPIA decision + reference | — | R | E |
+| Threat model (STRIDE + LINDDUN) | — | R | E |
+| Compliance evidence (BIO/NEN 7510/ISO 27001/AI Act) | — | — | E |
 | SBOM reference | — | — | E |
-| Accessibility audit (WCAG 2.1 AA) | — | O | M |
-| Migration & runbook | — | O | M |
-| Backwards compatibility notes | O | M | M |
-| Glossary | O | M | M |
-| Crosscutting Concepts | O | O | M |
-| Approvals & sign-off | M | M | M |
+| Accessibility audit (WCAG 2.1 AA) | — | R | R |
 
-**† Feature flexibility:** in the `feature` scenario, the agent MAY drop or condense optional sections marked with † (traceability matrix, C4 Context, NFRs) for trivial single-story features with no performance, security, or data impact — based on the agent's judgement of the feature's complexity. When in doubt, keep the section.
+Legend: **C** = core (always mandatory), **R** = recommended (include or justify omission), **E** = enterprise-required, **—** = not expected (may still be included when it earns its place).
 
-**‡ DoD is ALWAYS mandatory,** regardless of feature size or complexity. DoR follows the same rule. PbD and SbD are also always mandatory and never optional.
+## Size budgets
+
+The budget is a WARNING threshold, not a failure — exceeding it triggers a conscious trim-or-split review with the user.
+
+| Scenario | Budget | Form | Rationale |
+|----------|--------|------|-----------|
+| feature | ≤ ~150 lines | single file | A feature doc that needs more is usually an under-scoped project |
+| project | ≤ ~400 lines | single file | Roughly the ~10-page ceiling practitioners recommend for complex designs |
+| enterprise | ≤ ~800 lines **per file** | multi-file bundle with OKF index | Humans review per part; agents load only the relevant slice |
+
+When a project document keeps growing past its budget, prefer **splitting by concern** over trimming substance: move e.g. the threat model or the migration runbook into a sibling file referenced from the main FTD. An FTD may always decompose into a bundle when size demands it — the bundle form is mandatory only for enterprise.
+
+## The omissions convention
+
+Every FTD contains (when anything is omitted or open) a section:
+
+```markdown
+## Omitted sections & open questions
+(NL: ## Weggelaten secties & open punten)
+
+- Architecture — omitted: no new components; change reuses the existing export service.
+- NFRs — omitted: no performance/security impact; inherits system-level NFRs (see [ref]).
+- Open question: max export size unknown — PO to confirm by [date].
+```
+
+Rules:
+- One line per omitted recommended section: **what + why**.
+- Open doubts go here too — never resolve doubt by padding a section.
+- The validator reads this section and treats justified omissions as satisfied.
 
 ## Conflict resolution
 
@@ -87,6 +127,6 @@ If the user's stated scenario conflicts with the criteria (e.g. they say "featur
 
 ## Scenario-conditional rules
 
-- **feature**: no sign-off gate in Phase 1. Condensed template. Risk register replaced with "impacted teams" note. The agent MAY drop optional sections († in toggle matrix) for trivial single-story features with no performance, security, or data impact. **DoD, DoR, PbD, SbD, scope, user stories, acceptance criteria, and approvals are always mandatory and never dropped.** Benefit hypothesis optional but recommended if the feature has a measurable outcome.
-- **project**: sign-off gate (Scope Summary) mandatory. Full template. arc42 design decisions section added. Glossary mandatory. Benefit hypothesis mandatory and measurable.
-- **enterprise**: sign-off gate mandatory. Full template + all enterprise-only (E) sections. DPIA, threat model, and compliance evidence are non-negotiable. Glossary and Crosscutting Concepts mandatory. Benefit hypothesis mandatory and measurable.
+- **feature**: no sign-off gate in Phase 1. Single file, ≤ ~150 lines. Core + only what earns its place. Approvals collapse to one line. DoR optional (the intake gate largely covers it). PbD/SbD always present, concise.
+- **project**: sign-off gate (Scope Summary) mandatory. Single file, ≤ ~400 lines. Recommended defaults included or justified-away. Benefit hypothesis and glossary strongly expected — omit only with a good reason.
+- **enterprise**: sign-off gate mandatory. **Multi-file bundle** with OKF `index.md` (+ `log.md`), ≤ ~800 lines per file. Enterprise-required sections are non-negotiable: DPIA decision, threat model, compliance evidence, SBOM, measurable NFRs. Which compliance frameworks apply (NEN 7510 / BIO / ISO 27001 / AI Act) is documented inside Compliance evidence — not every framework heading is mandatory.

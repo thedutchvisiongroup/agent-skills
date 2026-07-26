@@ -181,6 +181,6 @@ If no, justification: [why not]
 - Backup strategy: [how backups are included in retention]
 
 ### 14.6 Privacy threat model (LINDDUN)
-*(enterprise — mandatory)*
+*(E — enterprise-required; R — recommended for project)*
 [Asset → privacy threat (linkability, identifiability, ...) → existing controls → residual risk → mitigation owner]
 ```
