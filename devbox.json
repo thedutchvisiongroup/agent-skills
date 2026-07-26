@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/main/.schema/devbox.schema.json",
+  "packages": {
+    "python313": "latest",
+    "uv": "latest",
+    "jq": "latest",
+    "curl": "latest",
+    "ruff": "latest",
+    "djlint": "latest",
+    "git": "latest",
+    "docker": "latest",
+    "docker-compose": "latest"
+  },
+  "shell": {
+    "init_hook": [],
+    "scripts": {
+      "doctor": [
+        "echo '--- Tool Versions ---'",
+        "echo \"Python:         $(python --version 2>/dev/null)\"",
+        "echo \"uv:             $(uv --version 2>/dev/null)\"",
+        "echo \"jq:             $(jq --version 2>/dev/null)\"",
+        "echo \"curl:           $(curl --version 2>/dev/null | head -n 1)\"",
+        "echo \"ruff:           $(ruff --version 2>/dev/null)\"",
+        "echo \"djlint:         $(djlint --version 2>/dev/null)\"",
+        "echo \"git:            $(git --version 2>/dev/null)\"",
+        "echo \"docker:         $(docker --version 2>/dev/null)\"",
+        "echo \"docker-compose: $(docker-compose --version 2>/dev/null)\"",
+        "echo '---------------------'"
+      ]
+    }
+  }
+}

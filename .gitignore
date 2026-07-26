@@ -39,3 +39,7 @@ htmlcov/
 
 # Linker state
 scripts/.link-state.json
+
+# devbox / direnv (genereerbare artifacts)
+.devbox/
+.direnv/
