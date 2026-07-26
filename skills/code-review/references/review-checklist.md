@@ -2,14 +2,14 @@
 
 The complete checklist for a thorough review, mirroring the six phases of `SKILL.md`. Copy it, track it, and do not skip items — a checklist without tracking is decoration.
 
-**Reminder: you advise, you never edit. Security is out of scope — see the handoff items below.**
+**Reminder: you advise, you never edit. Security AND test-suite quality are out of scope — see the handoff items below.**
 
 ## Contents
 
 - Pre-Review Setup
 - Phase 1: Understand the Change
 - Phase 2: Automated Checks
-- Phase 3: Test Suite Review
+- Phase 3: Test Suite — Hand Off Quality
 - Phase 4: Logic and Correctness
 - Phase 5: Design and Maintainability
 - Phase 6: Report and Verdict
@@ -22,8 +22,8 @@ The complete checklist for a thorough review, mirroring the six phases of `SKILL
 - [ ] Identify change type: feature / fix / refactor / dependency / config
 - [ ] Count changed files; identify critical vs. supporting files
 - [ ] Confirm how to run lint, types, format check, and tests in this project
-- [ ] Confirm coverage expectations (threshold or config)
 - [ ] **Ask the security question:** "Security is out of scope for this review. Do you want me to start a separate security-review agent in parallel?"
+- [ ] **Ask the test-quality question:** "Test-suite quality (flakiness, smells, assertion strength, coverage gaps) is out of scope. Do you want me to start a separate `test-driven-development` agent to review the tests?"
 
 ## Phase 1: Understand the Change
 
@@ -49,22 +49,23 @@ Format:  [ ] PASS  [ ] FAIL (___ violations)            [ ] not available
 Tests:   [ ] PASS  [ ] FAIL (___ passed, ___ failed, ___ skipped)
 ```
 
-## Phase 3: Test Suite Review (ALWAYS when a suite exists)
+## Phase 3: Test Suite — Hand Off Quality
 
-See `test-quality.md` and `coverage-strategies.md`.
+Test-suite quality (flakiness, test smells, assertion strength, coverage gaps, mutation mindset) is OUT OF SCOPE — owned by the `test-driven-development` skill.
 
-- [ ] Flakiness signals checked (sleeps, wall-clock, randomness, order dependence, shared state)
-- [ ] Retry config isn't masking instability
-- [ ] Skipped tests have reasons and owners
-- [ ] Test smells checked (assertion roulette, mystery guest, eager test, over-mocking, implementation-detail testing)
-- [ ] Core question applied: would each test FAIL if the code were broken?
-- [ ] One behavior per test; assertions specific and on outcomes
-- [ ] Coverage run; gaps in changed files identified and prioritized
-- [ ] User asked about each significant coverage gap
+- [ ] Suite run (in Phase 2); pass/fail + skipped/ignored counts reported
+- [ ] Obvious signals flagged as ONE-LINE handoff triggers (no analysis):
+  - skipped/ignored tests without a visible reason
+  - sleeps / wall-clock / unseeded randomness in test files
+  - coverage number significantly below the project's configured threshold (if visible)
+  - large skipped count
+- [ ] `test-driven-development` agent invoked (via `task` / `tdd-expert`) if the user accepted it in Pre-Review, OR if obvious signals were flagged
+- [ ] If handoff not possible/requested: a "Test-quality handoff" section will be added in Phase 6
+- [ ] **No test-smell analysis, no coverage-gap questions, no assertion-quality checks performed by you**
 
 ```
-Tests quality: [ ] reviewed   Flakiness: [ ] none found / [ ] suspects reported
-Coverage:      ___% (___ gaps identified, ___ questions asked)
+Tests:           [ ] PASS  [ ] FAIL (___ passed, ___ failed, ___ skipped)
+Test-quality:    [ ] handed off to test-driven-development  [ ] signals flagged for handoff in Phase 6
 ```
 
 ## Phase 4: Logic and Correctness
@@ -100,7 +101,7 @@ See `feedback-format.md`.
 - [ ] Every finding labeled (issue/suggestion/nitpick/question/todo/praise/thought) + decoration (blocking/non-blocking)
 - [ ] Every finding has location, what, why (because…), and recommendation
 - [ ] Automated check results table complete (including "not available")
-- [ ] Coverage gaps include the user's answers
+- [ ] Test-quality handoff section present: user's answer + flagged signals + recommendation to start `test-driven-development` if triggered (or its outcome if invoked)
 - [ ] Security handoff section present: user's answer + sensitive-path recommendation if triggered
 - [ ] At least one sincere praise (never manufactured)
 - [ ] Verdict matches severity mapping: blocking → REQUEST CHANGES; questions → COMMENT; else APPROVE
@@ -109,7 +110,7 @@ See `feedback-format.md`.
 ## Post-Review
 
 - [ ] All user questions answered or recorded as open
-- [ ] Accepted coverage-gap recommendations recorded for follow-up
+- [ ] `test-driven-development` agent started if the user requested it (or recommended)
 - [ ] Security-review agent started if the user requested it
 - [ ] Any fix work confirmed as a SEPARATE task — never silently merged into the review
 
@@ -117,4 +118,4 @@ See `feedback-format.md`.
 
 **DO:** be specific · give rationale · acknowledge good work · ask questions instead of assuming · focus on code, never the author
 
-**DON'T:** nitpick formatting (the formatter owns it) · block on opinion without evidence · skip phases because "it looks fine" · assume tests pass without running · review security (out of scope) · edit the code under review
+**DON'T:** nitpick formatting (the formatter owns it) · block on opinion without evidence · skip phases because "it looks fine" · assume tests pass without running · review security (out of scope) · review test-suite quality (out of scope — hand off to `test-driven-development`) · edit the code under review

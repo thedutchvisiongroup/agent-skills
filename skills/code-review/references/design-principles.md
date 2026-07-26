@@ -24,7 +24,7 @@ DRY is about duplicating **knowledge**, not lines of code. Every business rule s
 **Acceptable look-alike code (do NOT flag it):**
 
 - Two pieces of code that look similar today but evolve for different reasons
-- Setup duplication in tests (clarity beats DRY — see `test-quality.md`)
+- Setup duplication in tests (clarity beats DRY — test quality is owned by the `test-driven-development` skill; hand off, do not review here)
 - Code you can't name well: if no abstraction name honestly covers both uses, they are probably two things
 
 **The counter-principle:** *duplication is far cheaper than the wrong abstraction* (Sandi Metz). The wrong abstraction calcifies: each new requirement adds a parameter and a conditional until the shared code serves nobody well.
@@ -98,7 +98,7 @@ Applies to OO-style code. For functional or procedural code, SRP and DIP-style t
 Bias resistance: do not flag these as principle violations.
 
 - **Spikes, prototypes, exploration code** — disposability is the point (but flag if it's being merged to main as-is)
-- **Tests** — clarity first (see `test-quality.md`)
+- **Tests** — clarity first (test quality is owned by the `test-driven-development` skill; hand off)
 - **Performance-critical paths** where an abstraction has a *measured* cost
 - **Small glue scripts, one-off migrations** — they run once and die
 - **Established codebase conventions** that deliberately deviate — consistency with the surrounding code beats abstract principle-purity. Note it as `thought` at most.
