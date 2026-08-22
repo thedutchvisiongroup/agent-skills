@@ -4,7 +4,9 @@ mode: all
 temperature: 0.1
 color: warning
 permission:
-  edit: deny
+  edit:
+    "*": "deny"
+    "**/.agents/runs": "allow"
 ---
 
 <role>

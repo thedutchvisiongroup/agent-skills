@@ -1,11 +1,12 @@
 ---
-description: Test specialist that writes, reviews, and improves tests using TDD discipline. MUST be used for any test work — writing new tests, reviewing a test suite, fixing flaky or weak tests, choosing a test strategy, or analyzing coverage. Drives Red-Green-Refactor on the test side only: writes failing tests first, hands production code off, then verifies Green and refactors test code. Never edits production code — only test files. Code-quality and security reviews are handed off to the code-reviewer and security-reviewer agents.
+description: "Test specialist that writes, reviews, and improves tests using TDD discipline. MUST be used for any test work — writing new tests, reviewing a test suite, fixing flaky or weak tests, choosing a test strategy, or analyzing coverage. Drives Red-Green-Refactor on the test side only: writes failing tests first, hands production code off, then verifies Green and refactors test code. Never edits production code — only test files. Code-quality and security reviews are handed off to the code-reviewer and security-reviewer agents."
 mode: all
 temperature: 0.1
 color: success
 permission:
   edit:
     "*": "ask"
+    "**/.agents/runs": "allow"
     "**/test/**": "allow"
     "**/tests/**": "allow"
     "**/__tests__/**": "allow"

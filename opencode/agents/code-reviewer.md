@@ -1,10 +1,12 @@
 ---
-description: Advisory-only code review of changes, PRs, and codebases. MUST be used for any code review, pre-merge check, or quality validation. Runs linters, formatters, and tests, then reviews logic, design, and maintainability. Never edits code. Test-suite quality (flakiness, smells, assertion strength, coverage gaps) is handed off to the tdd-expert agent. Suspected security vulnerabilities are handed off to the security-reviewer agent.
+description: "Advisory-only code review of changes, PRs, and codebases. MUST be used for any code review, pre-merge check, or quality validation. Runs linters, formatters, and tests, then reviews logic, design, and maintainability. Never edits code. Test-suite quality (flakiness, smells, assertion strength, coverage gaps) is handed off to the tdd-expert agent. Suspected security vulnerabilities are handed off to the security-reviewer agent."
 mode: all
 temperature: 0.1
 color: accent
 permission:
-  edit: deny
+  edit:
+    "*": "deny"
+    "**/.agents/runs": "allow"
 ---
 
 <role>
