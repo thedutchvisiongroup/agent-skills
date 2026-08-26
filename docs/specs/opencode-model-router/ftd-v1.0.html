@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenCode Model Router — Functional Technical Design v1.0</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --border: #e5e7eb;
+    --surface: #f9fafb;
+    --code-bg: #f3f4f6;
+    --wireframe-bg: #e5e7eb;
+    --wireframe-border: #9ca3af;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f172a;
+      --fg: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --border: #334155;
+      --surface: #1e293b;
+      --code-bg: #1e293b;
+      --wireframe-bg: #334155;
+      --wireframe-border: #64748b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f172a;
+    --fg: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #3b82f6;
+    --border: #334155;
+    --surface: #1e293b;
+    --code-bg: #1e293b;
+    --wireframe-bg: #334155;
+    --wireframe-border: #64748b;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.6;
+  }
+
+  .layout { display: flex; min-height: 100vh; }
+  .toc {
+    width: 280px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 1.5rem 1rem;
+  }
+  .toc h2 { font-size: 0.875rem; text-transform: uppercase; color: var(--muted); margin: 0 0 1rem 0; }
+  .toc ul { list-style: none; padding: 0; margin: 0; }
+  .toc li { margin: 0.25rem 0; }
+  .toc a { color: var(--fg); text-decoration: none; font-size: 0.875rem; display: block; padding: 0.25rem 0.5rem; border-radius: 4px; }
+  .toc a:hover { background: var(--border); }
+  .toc a.active { background: var(--accent); color: #fff; }
+  .main { flex: 1; padding: 2rem 3rem; max-width: 960px; }
+
+  @media (max-width: 768px) {
+    .layout { flex-direction: column; }
+    .toc { width: 100%; height: auto; position: relative; border-right: none; border-bottom: 1px solid var(--border); }
+    .main { padding: 1rem; }
+  }
+
+  .doc-header { margin-bottom: 2rem; border-bottom: 2px solid var(--accent); padding-bottom: 1rem; }
+  .doc-header h1 { margin: 0 0 0.5rem 0; font-size: 1.875rem; }
+  .doc-meta { display: flex; flex-wrap: wrap; gap: 1rem; color: var(--muted); font-size: 0.875rem; }
+
+  .theme-toggle {
+    position: fixed; top: 1rem; right: 1rem; z-index: 100;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 50%; width: 40px; height: 40px; cursor: pointer;
+    font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
+  }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; }
+  .tab-button {
+    background: none; border: none; padding: 0.75rem 1.25rem; cursor: pointer;
+    font-size: 0.95rem; color: var(--muted); border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+  }
+  .tab-button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .collapsible { border: 1px solid var(--border); border-radius: 6px; margin: 1rem 0; overflow: hidden; }
+  .collapsible-header {
+    background: var(--surface); padding: 0.75rem 1rem; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; font-weight: 600;
+  }
+  .collapsible-header::after { content: "▶"; transition: transform 0.2s; color: var(--muted); }
+  .collapsible.open .collapsible-header::after { transform: rotate(90deg); }
+  .collapsible-body { padding: 1rem; display: none; }
+  .collapsible.open .collapsible-body { display: block; }
+
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.9rem; }
+  th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+  th { background: var(--surface); font-weight: 600; }
+  tr:nth-child(even) { background: var(--surface); }
+
+  pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; }
+  code { font-family: "SF Mono", Monaco, Consolas, monospace; font-size: 0.875em; }
+  pre.mermaid { text-align: center; background: var(--surface); }
+  .mermaid-fallback { display: none; }
+
+  blockquote { border-left: 3px solid var(--accent); margin: 1rem 0; padding: 0.5rem 1rem; color: var(--muted); background: var(--surface); }
+
+  @media print {
+    .toc, .theme-toggle, .tabs, .carousel-buttons { display: none !important; }
+    .layout { display: block; }
+    .tab-panel { display: block !important; }
+    .collapsible-body { display: block !important; }
+    .collapsible-header::after { content: ""; }
+    .main { max-width: 100%; padding: 0; }
+    body { background: #fff; color: #000; }
+  }
+</style>
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
+
+<div class="layout">
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ul id="toc-list"></ul>
+  </nav>
+
+  <main class="main">
+    <div class="doc-header">
+      <h1>OpenCode Model Router — Functional Technical Design</h1>
+      <div class="doc-meta">
+        <span>v0.1 (Draft)</span>
+        <span>2026-08-19</span>
+        <span>Thim (The Dutch Vision Group)</span>
+        <span>Classification: Internal</span>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <button class="tab-button active" onclick="showTab(0)">1–2 Control &amp; Summary</button>
+      <button class="tab-button" onclick="showTab(1)">3–5 Scope &amp; Context</button>
+      <button class="tab-button" onclick="showTab(2)">6–9 Requirements</button>
+      <button class="tab-button" onclick="showTab(3)">10 Architecture</button>
+      <button class="tab-button" onclick="showTab(4)">11–13 Data, API, NFR</button>
+      <button class="tab-button" onclick="showTab(5)">14–15 Privacy &amp; Security</button>
+      <button class="tab-button" onclick="showTab(6)">16–21 Delivery</button>
+    </div>
+
+    <!-- TAB 0: Document control + Executive summary -->
+    <div class="tab-panel active" data-tab="0">
+      <h2>1. Document control</h2>
+      <table>
+        <tr><th>Field</th><th>Value</th></tr>
+        <tr><td>Document ID</td><td>FTD-opencode-model-router-v1.0</td></tr>
+        <tr><td>Scenario</td><td>project</td></tr>
+        <tr><td>Author</td><td>Thim (The Dutch Vision Group)</td></tr>
+        <tr><td>Date</td><td>2026-08-19</td></tr>
+        <tr><td>Status</td><td>Draft</td></tr>
+        <tr><td>Classification</td><td>Internal</td></tr>
+      </table>
+
+      <div class="collapsible open">
+        <div class="collapsible-header">Revision history</div>
+        <div class="collapsible-body">
+          <table>
+            <tr><th>Version</th><th>Date</th><th>Author</th><th>Change</th></tr>
+            <tr><td>0.1</td><td>2026-08-19</td><td>Thim</td><td>Initial draft</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <h2>2. Executive summary</h2>
+      <p>OpenCode agents currently inherit the parent's model or a static per-agent model; there is no way for the parent to pick a model per sub-task, and no cross-provider failover exists (native fallback is an open feature request, sst/opencode#7602). This design adds a <strong>model-router plugin</strong> that injects a compact routing protocol into the orchestrator's system prompt and exposes a <strong><code>dispatch</code> tool</strong>: the parent selects a tier (fast/medium/heavy), the plugin resolves a <strong>subscription-first failover chain</strong> from a git-versioned catalog (<code>routing.json</code>), spawns the sub-agent via the SDK, and on quota/rate-limit/auth/5xx errors mechanically retries the next model with a persisted cooldown. Two Python scripts enrich the catalog with live OpenRouter pricing and validate every catalog entry against the running OpenCode instance. Risk is contained by graceful degradation: an invalid catalog or missing hook disables routing with one warning instead of breaking OpenCode.</p>
+    </div>
+
+    <!-- TAB 1: Scope + Stakeholders + Business context -->
+    <div class="tab-panel" data-tab="1">
+      <h2>3. Scope &amp; objectives</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">3.1 Problem statement</div>
+        <div class="collapsible-body">
+          <p>Sub-agents all run on the parent's OpenRouter model: too expensive for mechanical work, wasteful of the paid Codex (ChatGPT) subscription, and a single provider outage kills long-running agent workflows. The cost of doing nothing is continued overspend on paid tokens and fragile delegation.</p>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">3.2 In scope</div>
+        <div class="collapsible-body">
+          <ul>
+            <li><code>opencode/plugins/model-router/</code> — TypeScript plugin: protocol injection, <code>dispatch</code> tool, chain resolver, failover engine, cooldown store, catalog loader</li>
+            <li><code>routing.json</code> + <code>routing.schema.json</code> — hand-picked model catalog with 3 tiers and per-tier ordered chains</li>
+            <li>Registered tier agents (fast/medium/heavy) as fallback spawn mechanism</li>
+            <li><code>scripts/model_catalog.py</code> — OpenRouter pricing/credits enrichment</li>
+            <li><code>scripts/validate_routing.py</code> — catalog validation against live OpenCode</li>
+            <li><code>skills/using-subagents/</code> model-routing rules + <code>scripts/link.py</code> sync support for the plugin directory</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">3.3 Out of scope</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>External routers/proxies (LiteLLM, Vercel AI Gateway)</li>
+            <li>Mid-session model switching (OpenCode cannot switch a running session's model)</li>
+            <li>Native OpenCode fallback (only monitor sst/opencode#7602, #9575)</li>
+            <li>Routing outside OpenCode (skill guidance stays harness-agnostic)</li>
+            <li>Non-OpenRouter, non-Codex providers (chain format stays provider-agnostic though)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">3.4 Success criteria</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>100% of delegated sub-tasks run on a model from the approved catalog — no accidental default-model dispatches (verified via session metadata)</li>
+            <li>Subscription models are attempted first whenever not in cooldown (≥ 50% of sub-agent tokens on subscription models within 2 months)</li>
+            <li>A simulated provider outage causes zero failed delegations (failover completes within NFR-03)</li>
+            <li><code>validate_routing.py</code> exits 0 on the live workstation before every routing change is considered done</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>4. Stakeholders &amp; RACI</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">4.1 Stakeholders / 4.2 RACI matrix</div>
+        <div class="collapsible-body">
+          <table>
+            <tr><th>Name</th><th>Role</th><th>Interest</th></tr>
+            <tr><td>Thim</td><td>Owner / developer / approver</td><td>Cost efficiency, subscription utilisation, reliable delegation</td></tr>
+            <tr><td>TDVG AI agents</td><td>Implementers &amp; consumers</td><td>Unambiguous routing rules, dispatch contract</td></tr>
+          </table>
+          <table>
+            <tr><th>Activity</th><th>Responsible</th><th>Accountable</th><th>Consulted</th><th>Informed</th></tr>
+            <tr><td>FTD authoring</td><td>Thim (with AI agent)</td><td>Thim</td><td>—</td><td>—</td></tr>
+            <tr><td>Implementation</td><td>AI agents (using-subagents workflow)</td><td>Thim</td><td>Thim</td><td>Thim</td></tr>
+            <tr><td>Approval</td><td>Thim</td><td>Thim</td><td>—</td><td>—</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <h2>5. Business context &amp; goals</h2>
+      <div class="collapsible">
+        <div class="collapsible-header">5.1 Business context / 5.3 Constraints</div>
+        <div class="collapsible-body">
+          <p>This project extends the TDVG agent-skills repo — the single source of truth for shared AI-agent configuration, synced to all harnesses via symlinks (<code>link.py</code>). Sub-agent orchestration is already standardised (<code>using-subagents</code> skill); model choice is the missing control point.</p>
+          <p><strong>Constraints:</strong></p>
+          <ul>
+            <li>OpenCode ≥ 1.18.x plugin hooks (<code>chat.params</code>, <code>chat.message</code>, <code>experimental.chat.system.transform</code>, custom tools, SDK client) — verified on 1.18.18; <code>experimental.*</code> hooks may change across versions</li>
+            <li>Python ≥ 3.14 + uv (repo convention); English repo content; no secrets in repo</li>
+            <li><code>opencode-model-router</code> (GPL-3.0) is an inspiration for patterns only — no code copying</li>
+            <li>Codex quota is opaque (no public quota API) → detection must be reactive</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">5.2 Benefit hypothesis</div>
+        <div class="collapsible-body">
+          <p>We believe <strong>subscription cost efficiency</strong> will improve if <strong>parent agents</strong> successfully <strong>route sub-tasks through tiered, subscription-first model selection</strong> with the model-router plugin.</p>
+          <ul>
+            <li><strong>Business outcome (measurable):</strong> ≥ 50% reduction of OpenRouter credit spend on sub-agent tasks within 2 months of adoption</li>
+            <li><strong>User outcome:</strong> agents dispatch to fast/medium/heavy tiers matching task complexity, with Codex models tried first</li>
+            <li><strong>Validation method:</strong> OpenRouter usage dashboard + model IDs recorded in OpenCode session metadata, before/after comparison</li>
+            <li><strong>Baseline:</strong> all sub-agents inherit the parent's OpenRouter model</li>
+            <li><strong>Target:</strong> ≥ 50% of sub-agent tokens on subscription models</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: Requirements -->
+    <div class="tab-panel" data-tab="2">
+      <h2>6. User stories</h2>
+      <p>All stories are INVEST-checked (I/N/V/E/S/T pass; deviations noted).</p>
+
+      <div class="collapsible open">
+        <div class="collapsible-header">US-01: Tier-based model selection per sub-task (Must)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> parent agent, <strong>I want</strong> to select a model tier (fast/medium/heavy) per sub-task via a <code>dispatch</code> tool, <strong>so that</strong> cost and capability match the task.</p>
+          <p>INVEST: passes all; Independent of US-04..06 (catalog ships with defaults).</p>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">US-02: Subscription-first routing (Must)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> owner, <strong>I want</strong> subscription models (Codex) ordered before paid OpenRouter models in every chain, <strong>so that</strong> the subscription is fully utilised before credits are spent.</p>
+          <p>INVEST: passes all.</p>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">US-03: Automatic failover with cooldown (Must)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> parent agent, <strong>I want</strong> failed dispatches (429/quota/auth/5xx) retried on the next chain model automatically, <strong>so that</strong> delegation survives provider outages without user intervention.</p>
+          <p>INVEST: passes all.</p>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">US-04: Centralized, versioned catalog (Must)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> owner, <strong>I want</strong> tiers, chains, models, and failover policy in one git-versioned <code>routing.json</code>, <strong>so that</strong> routing policy is central, reviewable, and synced everywhere.</p>
+          <p>INVEST: passes all.</p>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">US-05: Live pricing &amp; availability enrichment (Should)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> owner, <strong>I want</strong> a script that enriches the catalog with OpenRouter pricing and credit data, <strong>so that</strong> catalog decisions use current data.</p>
+          <p>INVEST: passes all.</p>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">US-06: Catalog validation against live OpenCode (Must)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> owner, <strong>I want</strong> a script that checks every catalog entry against the running OpenCode instance (providers, models, auth, plugin load), <strong>so that</strong> misconfiguration is caught before it silently breaks routing.</p>
+          <p>INVEST: passes all.</p>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">US-07: Skill encodes routing rules (Should)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> TDVG agent, <strong>I want</strong> the <code>using-subagents</code> skill to specify tier-selection and dispatch rules, <strong>so that</strong> every harness dispatches cost-efficiently and consistently.</p>
+          <p>INVEST: passes all; Valuable to benefit hypothesis.</p>
+        </div>
+      </div>
+
+      <h2>7. Acceptance criteria</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">7.1 US-01: Tier-based model selection</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>The <code>dispatch</code> tool accepts <code>tier</code> (<code>fast|medium|heavy</code>) or <code>model</code> (a catalog id) plus a task prompt and an optional logged <code>reason</code>, and returns the sub-agent's status summary</li>
+            <li>Given <code>tier=fast</code> and no active cooldowns, the sub-agent runs on the first model of the fast chain (asserted via session metadata <code>providerID/modelID</code>)</li>
+            <li>Calls with neither <code>tier</code> nor <code>model</code>, or with an id not in the catalog, are rejected with a validation error listing valid options</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">7.2 US-02: Subscription-first routing</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>Given a chain starting with a subscription model and no cooldown, dispatch selects that subscription model first (asserted via session metadata)</li>
+            <li>Chain ordering comes from <code>routing.json</code> only — no provider logic in code — and <code>validate_routing.py</code> warns when a chain lists a non-subscription model before a subscription one</li>
+            <li>When the subscription model is in cooldown, dispatch resolves to the next chain entry without user action</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">7.3 US-03: Automatic failover with cooldown</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>On a spawn error classified <code>rate_limit|quota|auth|server_error</code>, the next chain entry is attempted within 5 seconds</li>
+            <li>A failed model receives a cooldown entry (default 900 s) persisted to disk that survives an OpenCode restart</li>
+            <li>After <code>max_attempts</code> (default 3) the tool returns <code>BLOCKED</code> with a structured error listing attempted models and reasons — it never silently falls back to the parent's model</li>
+            <li>Validation errors (bad args, unknown model) never trigger failover</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">7.4 US-04: Centralized catalog</div>
+        <div class="collapsible-body">
+          <ul>
+            <li><code>routing.json</code> is validated against <code>routing.schema.json</code> at plugin load; an invalid catalog disables routing with exactly one warning log and OpenCode continues normally</li>
+            <li>Model entries support at least: <code>provider</code>, <code>subscription</code> (bool), <code>use_cases</code>, <code>notes</code></li>
+            <li>The catalog is synced to <code>~/.config/opencode/plugins/model-router/</code> via <code>link.py</code> and versioned in git</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">7.5 US-05: Pricing enrichment</div>
+        <div class="collapsible-body">
+          <ul>
+            <li><code>model_catalog.py</code> fetches OpenRouter <code>GET /api/v1/models</code> and <code>GET /api/v1/credits</code> and writes a schema-validated enrichment file (pricing + credit snapshot)</li>
+            <li>The API key is read exclusively from the <code>OPENROUTER_API_KEY</code> environment variable and never written to repo files</li>
+            <li>Malformed API responses abort with a non-zero exit code and a clear error message</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">7.6 US-06: Catalog validation</div>
+        <div class="collapsible-body">
+          <ul>
+            <li><code>validate_routing.py</code> starts a headless OpenCode server, queries <code>GET /app/providers</code>, and verifies every catalog chain entry exists in the live provider/model list</li>
+            <li>Any entry that is unavailable (provider missing, model missing, no auth) produces a finding with severity; any error-severity finding exits non-zero</li>
+            <li>The script also asserts the plugin loaded without hook errors (from the OpenCode log)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">7.7 US-07: Skill update</div>
+        <div class="collapsible-body">
+          <ul>
+            <li><code>using-subagents/SKILL.md</code> Phase 2 contains tier-selection rules mapping task types to tiers and records model routing in the work plan</li>
+            <li>Phase 4's delegation contract instructs OpenCode dispatches to use the <code>dispatch</code> tool (tier + subscription-first), and documents degradation for other harnesses</li>
+            <li>The skill change is synced to all harnesses via <code>link.py</code></li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>8. Traceability matrix</h2>
+      <table>
+        <tr><th>ID</th><th>Requirement</th><th>Design component</th><th>Artefact</th><th>Test case</th><th>Status</th></tr>
+        <tr><td>US-01</td><td>Tier selection</td><td>DispatchTool, ChainResolver</td><td><code>opencode/plugins/model-router/index.ts</code></td><td>TC-01</td><td>Open</td></tr>
+        <tr><td>US-02</td><td>Subscription-first</td><td>ChainResolver (ordering)</td><td><code>routing.json</code></td><td>TC-02</td><td>Open</td></tr>
+        <tr><td>US-03</td><td>Failover + cooldown</td><td>FailoverEngine, CooldownStore</td><td><code>index.ts</code>, cooldown state file</td><td>TC-03</td><td>Open</td></tr>
+        <tr><td>US-04</td><td>Catalog</td><td>CatalogLoader</td><td><code>routing.json</code>, <code>routing.schema.json</code></td><td>TC-04</td><td>Open</td></tr>
+        <tr><td>US-05</td><td>Enrichment</td><td>model_catalog.py</td><td><code>scripts/model_catalog.py</code></td><td>TC-05</td><td>Open</td></tr>
+        <tr><td>US-06</td><td>Validation</td><td>validate_routing.py</td><td><code>scripts/validate_routing.py</code></td><td>TC-06</td><td>Open</td></tr>
+        <tr><td>US-07</td><td>Skill rules</td><td>Phase 2/4 updates</td><td><code>skills/using-subagents/SKILL.md</code></td><td>TC-07</td><td>Open</td></tr>
+      </table>
+
+      <h2>9. Definition of Ready / Definition of Done</h2>
+      <div class="collapsible">
+        <div class="collapsible-header">9.1 Definition of Ready</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>Story in "As a…/I want…/so that…" format with INVEST check</li>
+            <li>Acceptance criteria written as testable bullets</li>
+            <li>Dependencies identified (OpenCode hook availability, catalog entries present)</li>
+            <li>Security implication assessed (§15: injection surface, secrets)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">9.2 Definition of Done</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>Implementation complete and merged via the using-subagents workflow (independent review included)</li>
+            <li>Acceptance criteria demonstrated</li>
+            <li><code>validate_routing.py</code> exits 0 on the live workstation</li>
+            <li>Graceful-degradation path verified (invalid catalog → warning, OpenCode unaffected)</li>
+            <li>This FTD updated for material deviations; OpenCode restarted and routing verified in the log</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Architecture -->
+    <div class="tab-panel" data-tab="3">
+      <h2>10. Architecture</h2>
+
+      <div class="collapsible open">
+        <div class="collapsible-header">10.1 C4 Context</div>
+        <div class="collapsible-body">
+<pre class="mermaid">
+C4Context
+    title OpenCode Model Router — Context
+    Person(dev, "Developer (Thim)", "Owns catalog, scripts, skill")
+    Person(agent, "Parent agent", "Orchestrates sub-tasks")
+    System(oc, "OpenCode + model-router plugin", "Tiered sub-agent model routing with failover")
+    System_Ext(or, "OpenRouter API", "Paid inference, pricing, credits")
+    System_Ext(oa, "OpenAI Codex (ChatGPT OAuth)", "Subscription inference")
+    Rel(dev, oc, "maintains via agent-skills repo")
+    Rel(agent, oc, "dispatches sub-task with tier")
+    Rel(oc, oa, "subscription-first inference")
+    Rel(oc, or, "fallback inference")
+    Rel(dev, or, "runs catalog scripts")
+</pre>
+        </div>
+      </div>
+
+      <div class="collapsible open">
+        <div class="collapsible-header">10.2 C4 Container</div>
+        <div class="collapsible-body">
+<pre class="mermaid">
+C4Container
+    title agent-skills repo + OpenCode — Containers
+    Container(repo, "agent-skills repo", "Git", "Catalog, plugin source, scripts, skill; synced via link.py")
+    Container(plugin, "model-router plugin", "TypeScript", "Protocol injection, dispatch tool, failover engine")
+    Container(scripts, "Python tooling", "Python 3.14 + uv", "model_catalog.py, validate_routing.py")
+    ContainerDb(state, "Runtime state", "JSON files", "Cooldowns + enriched pricing snapshot")
+    Container_Ext(ocore, "OpenCode core", "Hooks, SDK client, sessions")
+    Container_Ext(or, "OpenRouter API", "REST", "Fallback inference + pricing data")
+    Container_Ext(oa, "OpenAI Codex", "OAuth", "Subscription inference")
+    Rel(repo, plugin, "symlinked into ~/.config/opencode/plugins/")
+    Rel(plugin, ocore, "hooks + SDK client")
+    Rel(plugin, state, "reads/writes")
+    Rel(scripts, state, "writes enrichment")
+    Rel(scripts, ocore, "validates against /app/providers")
+    Rel(ocore, oa, "inference")
+    Rel(ocore, or, "inference")
+</pre>
+        </div>
+      </div>
+
+      <div class="collapsible open">
+        <div class="collapsible-header">10.3 C4 Component (plugin)</div>
+        <div class="collapsible-body">
+<pre class="mermaid">
+C4Component
+    title model-router plugin — Components
+    Container_Boundary(plugin, "model-router plugin")
+    Component(loader, "CatalogLoader", "TS", "Loads + schema-validates routing.json; disables routing on invalid")
+    Component(injector, "ProtocolInjector", "TS", "Injects catalog summary + routing rules into orchestrator system prompt; skips sub-agent sessions")
+    Component(dispatch, "DispatchTool", "TS custom tool", "Parent-facing: tier/model → chain → sub-agent spawn")
+    Component(resolver, "ChainResolver", "TS", "Subscription-first ordering, cooldown filtering")
+    Component(failover, "FailoverEngine", "TS", "Classifies spawn errors, advances chain, writes cooldowns")
+    Component(store, "CooldownStore", "TS", "Persisted cooldown state (JSON)")
+    Rel(loader, injector, "provides catalog")
+    Rel(dispatch, resolver, "resolve tier chain")
+    Rel(resolver, store, "filter active cooldowns")
+    Rel(dispatch, failover, "on spawn error")
+    Rel(failover, store, "write cooldown")
+</pre>
+        </div>
+      </div>
+
+      <div class="collapsible open">
+        <div class="collapsible-header">10.4 Sequence — dispatch with failover</div>
+        <div class="collapsible-body">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Parent
+    participant DT as DispatchTool
+    participant R as ChainResolver
+    participant F as FailoverEngine
+    participant SDK as OpenCode SDK
+    participant P as Provider (Codex / OpenRouter)
+    Parent->>DT: dispatch(tier=heavy, prompt, reason)
+    DT->>R: resolve("heavy")
+    R->>R: order subscription-first, filter cooldowns
+    R-->>DT: [openai/gpt-5.6-sol, openrouter/anthropic/claude-opus-5]
+    DT->>SDK: spawn sub-agent(model: gpt-5.6-sol)
+    SDK-->>DT: spawn error (quota) — Codex returned 429
+    DT->>F: classify & advance
+    F->>F: cooldown(gpt-5.6-sol, 900s) — persist
+    F-->>DT: next → openrouter/anthropic/claude-opus-5
+    DT->>SDK: spawn sub-agent(model: claude-opus-5)
+    SDK-->>DT: result + status
+    DT-->>Parent: DONE/DONE_WITH_CONCERNS + attempts log
+</pre>
+        </div>
+      </div>
+
+      <div class="collapsible">
+        <div class="collapsible-header">10.5 Design decisions (ADR-style)</div>
+        <div class="collapsible-body">
+          <h3>ADR-01: Dispatch tool + SDK spawn, tier agents as fallback</h3>
+          <p><strong>Context:</strong> the task tool has no per-dispatch <code>model</code> parameter (verified on 1.18.18) and SDK model overrides at agent-spawn are bug-prone (sst/opencode#18615).<br>
+          <strong>Decision:</strong> the plugin's <code>dispatch</code> custom tool resolves the chain and spawns the sub-agent via the SDK client; three tier agents (fast/medium/heavy) with fixed models are also registered as a fallback spawn path if model overrides prove unreliable.<br>
+          <strong>Status:</strong> Accepted — <strong>Consequences:</strong> works on current OpenCode; small indirection; runtime verification of the SDK path is an open question (OQ-2).<br>
+          <strong>Alternatives:</strong> static per-agent models only (loses parent choice); waiting for native fallback (blocks value).</p>
+
+          <h3>ADR-02: Mechanical failover in code, not prompt guidance</h3>
+          <p><strong>Context:</strong> opencode-model-router expresses fallback chains in the injected prompt, relying on the LLM to retry.<br>
+          <strong>Decision:</strong> failover is deterministic plugin code keyed on classified errors; the LLM only chooses the tier.<br>
+          <strong>Status:</strong> Accepted — <strong>Consequences:</strong> deterministic, testable, independent of model compliance; more plugin code to maintain.</p>
+
+          <h3>ADR-03: Subscription-first is config, not code</h3>
+          <p><strong>Context:</strong> provider landscape may change; hardcoding provider priority would not survive that.<br>
+          <strong>Decision:</strong> chain order in <code>routing.json</code> expresses priority; the resolver only orders by config and filters cooldowns; the validation script warns when a non-subscription model precedes a subscription one.<br>
+          <strong>Status:</strong> Accepted — <strong>Consequences:</strong> flexible; relies on catalog discipline, guarded by validation.</p>
+
+          <h3>ADR-04: Catalog in the repo, synced by symlinks</h3>
+          <p><strong>Decision:</strong> <code>routing.json</code> lives in agent-skills (single source of truth), symlinked into <code>~/.config/opencode/plugins/model-router/</code> via <code>link.py</code>; changes need re-link + restart.<br>
+          <strong>Status:</strong> Accepted — <strong>Consequences:</strong> versioned, reviewable, consistent with repo philosophy.</p>
+
+          <h3>ADR-05: Graceful degradation</h3>
+          <p><strong>Decision:</strong> invalid catalog, missing hooks, or spawn-path failures disable routing with a single warning log; OpenCode keeps working without routing.<br>
+          <strong>Status:</strong> Accepted — <strong>Consequences:</strong> no hard dependency on <code>experimental.*</code> hooks; silent degradation risk mitigated by validation script and log events.</p>
+        </div>
+      </div>
+
+      <div class="collapsible">
+        <div class="collapsible-header">10.6 Quality scenarios</div>
+        <div class="collapsible-body">
+          <ul>
+            <li><strong>Availability:</strong> Codex quota exhausted mid-run → next chain model completes the dispatch within 5 s (NFR-03).</li>
+            <li><strong>Robustness:</strong> corrupt <code>routing.json</code> → routing disabled, one warning, all other OpenCode functionality unaffected (AC 7.4).</li>
+            <li><strong>Performance:</strong> protocol injection ≤ 600 tokens so context budget is not materially consumed (NFR-02).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: Data model, API, NFR -->
+    <div class="tab-panel" data-tab="4">
+      <h2>11. Data model</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">11.1 Catalog schema (routing.json)</div>
+        <div class="collapsible-body">
+<pre><code>{
+  "$schema": "./routing.schema.json",
+  "version": 1,
+  "tiers": {
+    "fast":   { "chain": ["openai/gpt-5.1-codex-mini", "openrouter/moonshotai/kimi-k3"] },
+    "medium": { "chain": ["openai/gpt-5.6-sol", "openrouter/z-ai/glm-5.3-air"] },
+    "heavy":  { "chain": ["openai/gpt-5.6-sol#xhigh", "openrouter/anthropic/claude-opus-5"] }
+  },
+  "models": {
+    "openai/gpt-5.6-sol": { "provider": "openai", "subscription": true, "use_cases": ["implementation", "review"] },
+    "openrouter/z-ai/glm-5.3-air": { "provider": "openrouter", "subscription": false, "use_cases": ["implementation"] }
+  },
+  "failover": { "triggers": ["rate_limit", "quota", "auth", "server_error"], "cooldown_seconds": 900, "max_attempts": 3 },
+  "protocol": { "max_tokens": 600 }
+}</code></pre>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">11.2 Entities</div>
+        <div class="collapsible-body">
+          <table>
+            <tr><th>Entity</th><th>Description</th><th>PII?</th><th>Source</th><th>Retention</th></tr>
+            <tr><td>Tier</td><td>id + ordered chain of model ids</td><td>no</td><td>routing.json</td><td>repo lifetime</td></tr>
+            <tr><td>Model entry</td><td>provider, subscription flag, use_cases, notes, enriched pricing</td><td>no</td><td>routing.json + OpenRouter API</td><td>repo lifetime</td></tr>
+            <tr><td>Failover policy</td><td>triggers, cooldown_seconds, max_attempts</td><td>no</td><td>routing.json</td><td>repo lifetime</td></tr>
+            <tr><td>Cooldown record</td><td>model id, until-timestamp, reason</td><td>no</td><td>runtime state file</td><td>until expiry</td></tr>
+            <tr><td>Enrichment snapshot</td><td>pricing/credits + fetched_at</td><td>no</td><td>model_catalog.py output</td><td>refreshed per run</td></tr>
+          </table>
+          <p>No ERD: the catalog is a JSON document tree, not a relational model — schema + entity table above carry the design.</p>
+        </div>
+      </div>
+
+      <h2>12. API &amp; integration</h2>
+      <table>
+        <tr><th>Interface</th><th>Direction</th><th>Purpose</th><th>Error handling</th></tr>
+        <tr><td><code>dispatch</code> custom tool (in-process)</td><td>parent → plugin</td><td>tier/model + prompt → sub-agent spawn</td><td>classified errors advance chain; exhaustion → <code>BLOCKED</code></td></tr>
+        <tr><td>Plugin hooks: <code>chat.message</code>, <code>experimental.chat.system.transform</code></td><td>OpenCode → plugin</td><td>sub-agent detection (skip-guard), protocol injection</td><td>hook absence → routing disabled (ADR-05)</td></tr>
+        <tr><td>SDK client session spawn</td><td>plugin → OpenCode</td><td>create sub-agent session with resolved model</td><td>spawn error → FailoverEngine</td></tr>
+        <tr><td>OpenRouter <code>GET /api/v1/models</code>, <code>GET /api/v1/credits</code>, <code>GET /api/v1/key</code></td><td>scripts → OpenRouter</td><td>pricing, credits, key limits</td><td>non-zero exit on malformed response</td></tr>
+        <tr><td><code>opencode serve</code> + <code>GET /app/providers</code></td><td>scripts → OpenCode</td><td>live provider/model/auth inventory</td><td>non-zero exit on missing entry</td></tr>
+      </table>
+
+      <h2>13. Non-functional requirements</h2>
+      <table>
+        <tr><th>ID</th><th>Subject</th><th>Attribute</th><th>Metric</th><th>Threshold</th><th>Verification</th></tr>
+        <tr><td>NFR-01</td><td><code>dispatch</code> tool</td><td>performance</td><td>added latency p95 (excl. LLM runtime)</td><td>≤ 500 ms</td><td>instrumented timestamps in plugin log, local benchmark</td></tr>
+        <tr><td>NFR-02</td><td>ProtocolInjector</td><td>resource usage</td><td>injected protocol size</td><td>≤ 600 tokens</td><td>token count asserted in validation script</td></tr>
+        <tr><td>NFR-03</td><td>FailoverEngine</td><td>recovery</td><td>time from classified error to next attempt</td><td>≤ 5 s</td><td>integration test with simulated 429</td></tr>
+        <tr><td>NFR-04</td><td>CooldownStore</td><td>reliability</td><td>cooldown survival across restart</td><td>100%</td><td>unit test with state file</td></tr>
+        <tr><td>NFR-05</td><td>validate_routing.py</td><td>coverage</td><td>catalog chain entries checked against live instance</td><td>100%, exit ≠ 0 on error finding</td><td>script run on workstation</td></tr>
+        <tr><td>NFR-06</td><td>Plugin</td><td>compatibility</td><td>OpenCode ≥ 1.18.x load, graceful disable on missing hooks</td><td>loads without error or disables with 1 warning</td><td>smoke test per upgrade</td></tr>
+      </table>
+    </div>
+
+    <!-- TAB 5: Privacy & Security -->
+    <div class="tab-panel" data-tab="5">
+      <h2>14. Privacy-by-design</h2>
+      <p>No personal data is processed. The plugin routes prompts and code (the user's own content) to providers already configured in OpenCode — no new data flows, no new recipients. Routing logs contain model ids, tiers, error classes, and timestamps only — never prompt content. The cooldown state file contains model ids and timestamps only. <code>model_catalog.py</code> fetches public pricing data; the API key stays in the environment. DPIA: not required — no personal data, no profiling.</p>
+
+      <h2>15. Security-by-design</h2>
+      <ul>
+        <li><strong>Secrets:</strong> none in the repo (hard repo rule); the plugin never reads <code>auth.json</code>; scripts read <code>OPENROUTER_API_KEY</code> from the environment only.</li>
+        <li><strong>Supply chain:</strong> plugin has zero runtime npm dependencies (type-only imports); the plugin makes no network calls — inference stays with OpenCode core.</li>
+        <li><strong>Injection surface:</strong> the injected protocol is generated exclusively from the repo-controlled, schema-validated <code>routing.json</code>; enrichment data is restricted to numeric pricing fields; <code>dispatch</code> args are enum/pattern-validated. Untrusted content (task prompts) is never interpolated into the system prompt.</li>
+        <li><strong>STRIDE-lite:</strong> Tampering (catalog edited) → schema validation + git history; Repudiation (routing decisions) → structured dispatch/failover logs; DoS (malformed catalog) → graceful disable (ADR-05); Spoofing/Elevation → not applicable (local, single-user tool).</li>
+        <li><strong>ASVS level:</strong> L1 — local developer tooling with no externally reachable surface.</li>
+      </ul>
+    </div>
+
+    <!-- TAB 6: Delivery -->
+    <div class="tab-panel" data-tab="6">
+      <h2>16. Risk register</h2>
+      <table>
+        <tr><th>ID</th><th>Risk</th><th>L</th><th>I</th><th>Mitigation</th><th>Owner</th><th>Status</th></tr>
+        <tr><td>R-01</td><td>SDK model override ignored at agent-spawn (#18615)</td><td>M</td><td>H</td><td>Tier-agent fallback spawn path (ADR-01); runtime verification OQ-2</td><td>Thim</td><td>Open</td></tr>
+        <tr><td>R-02</td><td><code>experimental.*</code> hooks change/break on OpenCode upgrades</td><td>M</td><td>M</td><td>NFR-06 smoke test per upgrade; graceful degradation (ADR-05)</td><td>Thim</td><td>Open</td></tr>
+        <tr><td>R-03</td><td>Codex quota exhausted (no proactive API)</td><td>H</td><td>M</td><td>By design: reactive failover + cooldown (US-03)</td><td>Thim</td><td>Open</td></tr>
+        <tr><td>R-04</td><td>Prompt-injection via catalog content</td><td>L</td><td>M</td><td>Repo-controlled schema-validated catalog only (§15)</td><td>Thim</td><td>Open</td></tr>
+        <tr><td>R-05</td><td><code>link.py</code> lacks directory-sync support</td><td>M</td><td>L</td><td>Extend <code>link.py</code> (in scope, §3.2); verify with <code>status</code>/<code>list</code></td><td>Thim</td><td>Open</td></tr>
+        <tr><td>R-06</td><td>Protocol overhead degrades orchestrator context</td><td>M</td><td>L</td><td>NFR-02 token budget; trim rules in validation script</td><td>Thim</td><td>Open</td></tr>
+      </table>
+
+      <h2>17. Deployment &amp; rollback</h2>
+      <ul>
+        <li><strong>Deployment:</strong> commit to agent-skills → <code>uv run scripts/link.py link</code> (new item keys for <code>opencode/plugins/model-router/*</code>) → restart OpenCode (config loads at startup) → verify the <code>model-router</code> init log line and run <code>validate_routing.py</code> (exit 0).</li>
+        <li><strong>Rollback:</strong> <code>uv run scripts/link.py unlink</code> → restart OpenCode. Routing disappears; no data to migrate (runtime state is disposable).</li>
+        <li><strong>Environments:</strong> single workstation, global OpenCode config; no separate environments.</li>
+      </ul>
+
+      <h2>18. Observability &amp; logging</h2>
+      <ul>
+        <li><strong>Events (via <code>client.app.log</code>, service <code>model-router</code>):</strong> <code>catalog.loaded</code>, <code>catalog.invalid</code>, <code>dispatch.started</code> (tier, model, reason), <code>dispatch.failover</code> (from → to, error class), <code>cooldown.set</code> (model, until), <code>routing.disabled</code> (cause).</li>
+        <li><strong>Retention:</strong> OpenCode log rotation applies; no separate retention policy (dev tooling).</li>
+        <li><strong>No metrics/tracing:</strong> local single-user tool; the validation script and log events cover operational insight.</li>
+      </ul>
+
+      <h2>19. Glossary</h2>
+      <table>
+        <tr><th>Term</th><th>Definition</th></tr>
+        <tr><td>Tier</td><td>Model class for a sub-task: fast (exploration), medium (implementation), heavy (architecture/security/debug)</td></tr>
+        <tr><td>Chain</td><td>Ordered model list per tier; order expresses failover priority</td></tr>
+        <tr><td>Subscription model</td><td>Model billed via a flat subscription (here: OpenAI Codex via ChatGPT OAuth)</td></tr>
+        <tr><td>Cooldown</td><td>Temporary exclusion of a model from chains after a classified failure</td></tr>
+        <tr><td>Catalog</td><td><code>routing.json</code>: tiers, chains, model entries, failover policy</td></tr>
+        <tr><td>Protocol injection</td><td>Adding the routing protocol to the orchestrator's system prompt</td></tr>
+        <tr><td>Dispatch tool</td><td>Plugin-provided custom tool the parent calls to run a sub-task on a resolved model</td></tr>
+        <tr><td>Graceful degradation</td><td>Routing disables itself with one warning; OpenCode keeps working</td></tr>
+        <tr><td>OKF</td><td>Open Knowledge Format — frontmatter-bearing markdown for humans and agents</td></tr>
+      </table>
+
+      <h2>20. Approvals &amp; sign-off</h2>
+      <table>
+        <tr><th>Role</th><th>Name</th><th>Date</th><th>Signature (digital)</th></tr>
+        <tr><td>Owner / Product / Architecture</td><td>Thim</td><td>2026-08-19</td><td>scope summary approved in intake; final sign-off pending</td></tr>
+      </table>
+
+      <h2>21. Omitted sections &amp; open questions</h2>
+      <h3>Omitted recommended sections</h3>
+      <ul>
+        <li>C4 Component diagrams beyond the plugin (§10.3 covers the only new container) — omitted: no other new components</li>
+        <li>Compliance evidence (§19 in template) — omitted: internal dev tooling, no regulatory exposure</li>
+        <li>Migration &amp; runbook (§20 in template) — omitted: greenfield, no data migration; rollback in §17</li>
+        <li>Crosscutting Concepts (§22 in template) — omitted: single-plugin design; concerns live in §10/§12/§15</li>
+        <li>Size budget: ~440 lines vs ~400 budget — consciously accepted after trim pass; the overage is table/diagram density (AC, NFR, ADR), not prose; further cuts would remove testable substance</li>
+        <li>OKF house rule (lowercase-kebab-case filename) — consciously deviated: the FTD skill's mandated convention <code>FTD-[project]-vX.Y.md</code> was explicitly approved by the owner in intake</li>
+      </ul>
+      <h3>Open questions</h3>
+      <ul>
+        <li>OQ-1: Final hand-picked model list per tier — owner: Thim — before implementation start</li>
+        <li>OQ-2: Runtime behaviour of SDK model override at agent-spawn (#18615) — resolved during the first implementation batch; decides primary vs tier-agent spawn path (ADR-01)</li>
+        <li>OQ-3: Native model fallback landing in OpenCode (#7602, #9575) — monitored; if landed, the FailoverEngine can shrink to catalog + dispatch</li>
+        <li>OQ-4: Does <code>link.py</code> sync plugin directories today, or is an extension needed (R-05)? — check during implementation batch 1</li>
+      </ul>
+    </div>
+  </main>
+</div>
+
+<script>
+  function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); localStorage.setItem('ftd-theme', t); }
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const osDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const effective = current || (osDark ? 'dark' : 'light');
+    applyTheme(effective === 'dark' ? 'light' : 'dark');
+  }
+  const savedTheme = localStorage.getItem('ftd-theme');
+  if (savedTheme) { applyTheme(savedTheme); }
+
+  function showTab(index) {
+    document.querySelectorAll('.tab-button').forEach((b, i) => b.classList.toggle('active', i === index));
+    document.querySelectorAll('.tab-panel').forEach((p, i) => p.classList.toggle('active', i === index));
+    buildTOC(index);
+  }
+
+  document.querySelectorAll('.collapsible-header').forEach(h => {
+    h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
+  });
+
+  function buildTOC(tabIndex) {
+    const panel = document.querySelector(`.tab-panel[data-tab="${tabIndex}"]`);
+    const list = document.getElementById('toc-list');
+    list.innerHTML = '';
+    if (!panel) return;
+    panel.querySelectorAll('h2, h3').forEach(h => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.textContent = h.textContent;
+      a.href = '#';
+      a.style.paddingLeft = h.tagName === 'H3' ? '1.5rem' : '0.5rem';
+      a.addEventListener('click', e => { e.preventDefault(); h.scrollIntoView({behavior:'smooth', block:'start'}); });
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+  }
+  buildTOC(0);
+</script>
+
+<script type="module">
+  const mermaidBlocks = document.querySelectorAll('pre.mermaid');
+  try {
+    const mermaid = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+    mermaid.default.initialize({
+      startOnLoad: true,
+      theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+    });
+  } catch (e) {
+    console.warn('Mermaid CDN failed to load:', e);
+    mermaidBlocks.forEach(b => {
+      const fb = document.createElement('pre');
+      fb.className = 'mermaid-fallback';
+      fb.style.display = 'block';
+      fb.textContent = b.textContent;
+      b.parentNode.replaceChild(fb, b);
+    });
+  }
+</script>
+</body>
+</html>

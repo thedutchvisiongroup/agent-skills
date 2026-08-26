@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenCode Usage Tracking — Functional Technical Design v1.0</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --border: #e5e7eb;
+    --surface: #f9fafb;
+    --code-bg: #f3f4f6;
+    --wireframe-bg: #e5e7eb;
+    --wireframe-border: #9ca3af;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f172a;
+      --fg: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --border: #334155;
+      --surface: #1e293b;
+      --code-bg: #1e293b;
+      --wireframe-bg: #334155;
+      --wireframe-border: #64748b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f172a;
+    --fg: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #3b82f6;
+    --border: #334155;
+    --surface: #1e293b;
+    --code-bg: #1e293b;
+    --wireframe-bg: #334155;
+    --wireframe-border: #64748b;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.6;
+  }
+
+  .layout { display: flex; min-height: 100vh; }
+  .toc {
+    width: 280px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 1.5rem 1rem;
+  }
+  .toc h2 { font-size: 0.875rem; text-transform: uppercase; color: var(--muted); margin: 0 0 1rem 0; }
+  .toc ul { list-style: none; padding: 0; margin: 0; }
+  .toc li { margin: 0.25rem 0; }
+  .toc a { color: var(--fg); text-decoration: none; font-size: 0.875rem; display: block; padding: 0.25rem 0.5rem; border-radius: 4px; }
+  .toc a:hover { background: var(--border); }
+  .toc a.active { background: var(--accent); color: #fff; }
+  .main { flex: 1; padding: 2rem 3rem; max-width: 960px; }
+
+  @media (max-width: 768px) {
+    .layout { flex-direction: column; }
+    .toc { width: 100%; height: auto; position: relative; border-right: none; border-bottom: 1px solid var(--border); }
+    .main { padding: 1rem; }
+  }
+
+  .doc-header { margin-bottom: 2rem; border-bottom: 2px solid var(--accent); padding-bottom: 1rem; }
+  .doc-header h1 { margin: 0 0 0.5rem 0; font-size: 1.875rem; }
+  .doc-meta { display: flex; flex-wrap: wrap; gap: 1rem; color: var(--muted); font-size: 0.875rem; }
+
+  .theme-toggle {
+    position: fixed; top: 1rem; right: 1rem; z-index: 100;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 50%; width: 40px; height: 40px; cursor: pointer;
+    font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
+  }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; }
+  .tab-button {
+    background: none; border: none; padding: 0.75rem 1.25rem; cursor: pointer;
+    font-size: 0.95rem; color: var(--muted); border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+  }
+  .tab-button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .collapsible { border: 1px solid var(--border); border-radius: 6px; margin: 1rem 0; overflow: hidden; }
+  .collapsible-header {
+    background: var(--surface); padding: 0.75rem 1rem; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; font-weight: 600;
+  }
+  .collapsible-header::after { content: "▶"; transition: transform 0.2s; color: var(--muted); }
+  .collapsible.open .collapsible-header::after { transform: rotate(90deg); }
+  .collapsible-body { padding: 1rem; display: none; }
+  .collapsible.open .collapsible-body { display: block; }
+
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.9rem; }
+  th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+  th { background: var(--surface); font-weight: 600; }
+  tr:nth-child(even) { background: var(--surface); }
+
+  pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; }
+  code { font-family: "SF Mono", Monaco, Consolas, monospace; font-size: 0.875em; }
+  pre.mermaid { text-align: center; background: var(--surface); }
+  .mermaid-fallback { display: none; }
+
+  @media print {
+    .toc, .theme-toggle, .tabs { display: none !important; }
+    .layout { display: block; }
+    .tab-panel { display: block !important; }
+    .collapsible-body { display: block !important; }
+    .collapsible-header::after { content: ""; }
+    .main { max-width: 100%; padding: 0; }
+    body { background: #fff; color: #000; }
+  }
+</style>
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
+
+<div class="layout">
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ul id="toc-list"></ul>
+  </nav>
+
+  <main class="main">
+    <div class="doc-header">
+      <h1>OpenCode Usage Tracking — Functional Technical Design</h1>
+      <div class="doc-meta">
+        <span>v0.1 (FTD-opencode-usage-tracking-v1.0)</span>
+        <span>2026-08-20</span>
+        <span>Thim (The Dutch Vision Group)</span>
+        <span>Draft · Internal</span>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <button class="tab-button active" onclick="showTab(0)">1–2 Control &amp; Summary</button>
+      <button class="tab-button" onclick="showTab(1)">3–5 Scope &amp; Context</button>
+      <button class="tab-button" onclick="showTab(2)">6–9 Requirements</button>
+      <button class="tab-button" onclick="showTab(3)">10 Architecture</button>
+      <button class="tab-button" onclick="showTab(4)">11–13 Data, API, NFR</button>
+      <button class="tab-button" onclick="showTab(5)">14–15 Privacy &amp; Security</button>
+      <button class="tab-button" onclick="showTab(6)">16–21 Delivery</button>
+    </div>
+
+    <!-- TAB 0: Document control + Executive summary -->
+    <div class="tab-panel active" data-tab="0">
+      <h2>1. Document control</h2>
+      <table>
+        <tr><th>Field</th><th>Value</th></tr>
+        <tr><td>Document ID</td><td>FTD-opencode-usage-tracking-v1.0</td></tr>
+        <tr><td>Scenario</td><td>project</td></tr>
+        <tr><td>Author</td><td>Thim (The Dutch Vision Group)</td></tr>
+        <tr><td>Date</td><td>2026-08-20</td></tr>
+        <tr><td>Status</td><td>Draft</td></tr>
+        <tr><td>Classification</td><td>Internal</td></tr>
+      </table>
+
+      <div class="collapsible open">
+        <div class="collapsible-header">Revision history</div>
+        <div class="collapsible-body">
+          <table>
+            <tr><th>Version</th><th>Date</th><th>Author</th><th>Change</th></tr>
+            <tr><td>0.1</td><td>2026-08-20</td><td>Thim</td><td>Initial draft</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <h2>2. Executive summary</h2>
+      <p>OpenCode usage is currently only visible through aggregate totals (<code>opencode stats</code>); there is no per-session record of which models, agents, and subagents consumed which tokens at which cost. This design adds a <strong>usage-tracking plugin</strong> that subscribes to OpenCode's event bus and writes, in real time, an append-only <strong>JSONL event stream</strong> plus a continuously updated <strong>session aggregate record</strong> per session — covering project path, auto-generated session title, models with providers and reasoning variants, the token breakdown (input, output, reasoning, cache read/write), per-tool call counts, active agent time, and cost, recursively for all subagent child sessions. Output location and behavior are configurable via <code>opencode.json</code> tuple-options (project config overrides global; default is a central directory outside working repos to avoid dirty worktrees). V1 records OpenCode's own cost field; OpenRouter pricing enrichment is explicitly deferred to V2. Risk is contained by fail-open design: every plugin error is logged and swallowed — OpenCode itself is never affected.</p>
+    </div>
+
+    <!-- TAB 1: Scope + Stakeholders + Business context -->
+    <div class="tab-panel" data-tab="1">
+      <h2>3. Scope &amp; objectives</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">3.1 Problem statement</div>
+        <div class="collapsible-body">
+          <p>TDVG runs OpenCode across projects with multiple models, providers, agents, and subagents. Costs are only visible after the fact as monthly totals; there is no attributable record of what a session, agent, or delegation actually consumed. The cost of doing nothing is continued blind spending and no data to base model-routing or delegation decisions on (see also FTD-opencode-model-router-v1.0 §5.1).</p>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">3.2 In scope</div>
+        <div class="collapsible-body">
+          <ul>
+            <li><code>opencode/plugins/usage-tracking/</code> — TypeScript plugin: event capture, aggregation, JSONL event store, session aggregates, status tool</li>
+            <li><code>opencode/command/usage-status.md</code> — slash command invoking the status tool</li>
+            <li>Config surface via <code>opencode.json</code> plugin tuple-options (output root, toggles), with per-project override</li>
+            <li>Recursive subagent (child session) tracking at any depth via <code>parentID</code></li>
+            <li>Tool-call statistics (counts per tool name)</li>
+            <li>Verification tooling: Bun unit tests + smoke-test script</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">3.3 Out of scope</div>
+        <div class="collapsible-body">
+          <ul>
+            <li><strong>Analysis or visualisation of the collected data</strong> — collection only</li>
+            <li><strong>OpenRouter API integration (cost-per-token enrichment)</strong> — V2 (§10.4 ADR-04); V1 uses OpenCode's own <code>cost</code> field</li>
+            <li>Mid-session cost recalculation when provider pricing changes</li>
+            <li>Tracking of harnesses other than OpenCode</li>
+            <li>Retention limits / rotation — unlimited by explicit owner choice</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">3.4 Success criteria</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>100% of sessions — including subagent child sessions — produce an aggregate record whose fields cover the complete intake list (project path, title, models + providers + variants, token breakdown, tool counts, active agent time, agents, subagents, cost), verified by smoke test over a scripted run incl. a subagent dispatch</li>
+            <li>0 OpenCode failures attributable to the plugin (NFR-02)</li>
+            <li>Smoke script exits 0 on the live workstation</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>4. Stakeholders &amp; RACI</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">4.1 Stakeholders / 4.2 RACI matrix</div>
+        <div class="collapsible-body">
+          <table>
+            <tr><th>Name</th><th>Role</th><th>Interest</th></tr>
+            <tr><td>Thim</td><td>Owner / developer / approver</td><td>Cost transparency, attributable usage data</td></tr>
+            <tr><td>TDVG AI agents</td><td>Implementers &amp; consumers</td><td>Unambiguous event schemas and config contract</td></tr>
+          </table>
+          <table>
+            <tr><th>Activity</th><th>Responsible</th><th>Accountable</th><th>Consulted</th><th>Informed</th></tr>
+            <tr><td>FTD authoring</td><td>Thim (with AI agent)</td><td>Thim</td><td>—</td><td>—</td></tr>
+            <tr><td>Implementation</td><td>AI agents</td><td>Thim</td><td>Thim</td><td>Thim</td></tr>
+            <tr><td>Approval</td><td>Thim</td><td>Thim</td><td>—</td><td>—</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <h2>5. Business context &amp; goals</h2>
+      <div class="collapsible">
+        <div class="collapsible-header">5.1 Business context / 5.3 Constraints</div>
+        <div class="collapsible-body">
+          <p>This project extends the TDVG agent-skills repo — the single source of truth for shared AI-agent configuration, synced to all harnesses via symlinks (<code>link.py</code>). The model-router FTD adds cost-efficient routing; usage-tracking supplies the measurable evidence both to steer it and to audit it.</p>
+          <p><strong>Constraints:</strong></p>
+          <ul>
+            <li>OpenCode ≥ 1.18.x plugin hooks (<code>event</code>, custom tools, SDK client) — event schemas may evolve across versions</li>
+            <li>Plugin is TypeScript on the OpenCode plugin host (Bun); repo tooling is otherwise Python ≥ 3.14 + uv</li>
+            <li>English repo content; no secrets in the repo</li>
+            <li>opencode-tokenscope and opencode-token-monitor are inspiration for patterns only — no code copying</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">5.2 Benefit hypothesis</div>
+        <div class="collapsible-body">
+          <p>We believe <strong>cost visibility</strong> will improve if <strong>Thim</strong> successfully <strong>inspects complete, automatically produced per-session usage records</strong> with the usage-tracking plugin.</p>
+          <ul>
+            <li><strong>Business outcome (measurable):</strong> at least one concrete cost-optimisation decision (e.g. rerouting a recurring workload to a cheaper model/agent) taken within 1 month of adoption, evidenced by collected data</li>
+            <li><strong>User outcome:</strong> every session — including subagents — has a complete, inspectable usage record without manual action</li>
+            <li><strong>Validation method:</strong> field-completeness check on collected records + documented optimisation decision</li>
+            <li><strong>Baseline:</strong> only aggregate <code>opencode stats</code> totals; no per-session/per-agent/per-model breakdown</li>
+            <li><strong>Target:</strong> 100% of sessions with complete records; ≥ 1 evidenced optimisation decision in month 1</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: User stories + AC + Traceability + DoR/DoD -->
+    <div class="tab-panel" data-tab="2">
+      <h2>6. User stories</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">US-01: Real-time session usage capture (Must)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> owner, <strong>I want</strong> every OpenCode session logged automatically in real time (project path, auto-generated title, models + providers, token usage, cost, active agent, durations), <strong>so that</strong> complete usage records exist without manual action.</p>
+          <p>INVEST: passes all; Independent of US-05/06.</p>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">US-02: Per-step token breakdown &amp; tool statistics (Must)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> owner, <strong>I want</strong> the token breakdown per step (input, output, reasoning, cache read/write) plus per-tool call counts per session, <strong>so that</strong> I can see where tokens are actually spent.</p>
+          <p>INVEST: passes all.</p>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">US-03: Recursive subagent tracking (Must)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> owner, <strong>I want</strong> all subagent child sessions — at any nesting depth — tracked with the same fields as top-level sessions, <strong>so that</strong> delegation costs are attributable per subagent.</p>
+          <p>INVEST: passes all.</p>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">US-04: Configurable storage &amp; per-project scoping (Must)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> owner, <strong>I want</strong> output location and behavior configurable via <code>opencode.json</code> tuple-options, where project config overrides global and the default is a central directory outside working repos, <strong>so that</strong> data stays scoped per project without dirtying git worktrees.</p>
+          <p>INVEST: passes all.</p>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">US-05: Status command (Should)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> owner, <strong>I want</strong> a status command showing write health and current-session totals, <strong>so that</strong> I can verify logging works and see live usage.</p>
+          <p>INVEST: passes all.</p>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">US-06: Verification tooling (Must)</div>
+        <div class="collapsible-body">
+          <p><strong>As a</strong> owner, <strong>I want</strong> Bun unit tests and a smoke-test script against a live OpenCode instance, <strong>so that</strong> OpenCode upgrades don't silently break logging.</p>
+          <p>INVEST: passes all.</p>
+        </div>
+      </div>
+
+      <h2>7. Acceptance criteria</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">7.1 US-01: Real-time session usage capture</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>On <code>session.created</code>, the plugin writes a <code>session.started</code> event containing sessionID, parentID (if any), projectID, directory/worktree path, agent name, model <code>{id, providerID, variant}</code>, and timestamp</li>
+            <li>On every <code>message.part.updated</code> event whose part is of type <code>step-finish</code>, the plugin appends a <code>step.finished</code> event within 1 second containing sessionID, messageID, partID, modelID, providerID, agent, <code>tokens {input, output, reasoning, cache.read, cache.write}</code>, and cost</li>
+            <li>On <code>session.idle</code>, the plugin finalises the session aggregate with active agent time (sum of step durations) and final totals</li>
+            <li>The auto-generated session title is written to the aggregate as soon as it becomes available (session rename/update event)</li>
+            <li>A model switch within a session results in all used models being present in the aggregate's model list</li>
+            <li>No message text, prompt content, or tool output is ever written to storage</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">7.2 US-02: Per-step token breakdown &amp; tool statistics</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>Each <code>step.finished</code> event records the complete token breakdown including cache read, cache write, and reasoning tokens</li>
+            <li>Tool invocations are counted per tool name per session (captured from tool events/parts)</li>
+            <li>The aggregate contains per-tool call counts for the session</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">7.3 US-03: Recursive subagent tracking</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>Child sessions (those with a <code>parentID</code>) are tracked with the same event set as top-level sessions, at any nesting depth</li>
+            <li>The parent aggregate lists all child sessions with sessionID, agent name, nesting depth, and their usage totals</li>
+            <li>Subagent usage is included in the parent's totals (and also available separately per child record)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">7.4 US-04: Configurable storage &amp; per-project scoping</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>With no options configured, data is written under <code>~/.local/share/opencode-usage/</code> in a per-project directory (derived from projectID/path)</li>
+            <li>A project-level <code>opencode.json</code> plugin entry overrides the global entry's options (OpenCode config merge order)</li>
+            <li>No file is written inside any git worktree unless <code>output</code> is explicitly configured to a worktree path</li>
+            <li>Unknown options or invalid values are ignored with exactly one warning; OpenCode continues normally</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible">
+        <div class="collapsible-header">7.5 US-05: Status command</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>The <code>usage_status</code> tool returns: configured output path, counts of tracked sessions/events, last write timestamp, error count, and the current session's running totals (tokens + cost)</li>
+            <li>The <code>/usage-status</code> command file invokes the <code>usage_status</code> tool and returns its output verbatim</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">7.6 US-06: Verification tooling</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>Bun unit tests cover event mapping, aggregation logic, config parsing, and error isolation</li>
+            <li>The smoke script asserts: plugin loaded, a scripted session (including a subagent dispatch) produces an aggregate, and all written files are valid JSON/JSONL</li>
+            <li>The smoke script exits non-zero when any assertion fails</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>8. Traceability matrix</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">Requirement → component → artefact → test</div>
+        <div class="collapsible-body">
+          <table>
+            <tr><th>ID</th><th>Requirement</th><th>Design component</th><th>Artefact</th><th>Test case</th><th>Status</th></tr>
+            <tr><td>US-01</td><td>Real-time capture</td><td>EventRouter, SessionAggregator, EventStore</td><td><code>opencode/plugins/usage-tracking/index.ts</code></td><td>TC-01</td><td>Open</td></tr>
+            <tr><td>US-02</td><td>Token breakdown + tool stats</td><td>SessionAggregator</td><td>idem</td><td>TC-02</td><td>Open</td></tr>
+            <tr><td>US-03</td><td>Subagent tracking</td><td>EventRouter + MetadataResolver (parentID)</td><td>idem</td><td>TC-03</td><td>Open</td></tr>
+            <tr><td>US-04</td><td>Config + scoping</td><td>ConfigResolver</td><td>opencode.json plugin entry</td><td>TC-04</td><td>Open</td></tr>
+            <tr><td>US-05</td><td>Status command</td><td>StatusTool + command file</td><td><code>opencode/command/usage-status.md</code></td><td>TC-05</td><td>Open</td></tr>
+            <tr><td>US-06</td><td>Verification</td><td>Bun tests + smoke script</td><td><code>scripts/smoke_usage_tracking.sh</code></td><td>TC-06</td><td>Open</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <h2>9. Definition of Ready / Definition of Done</h2>
+      <div class="collapsible">
+        <div class="collapsible-header">9.1 Definition of Ready</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>Story in "As a…/I want…/so that…" format with INVEST check</li>
+            <li>Acceptance criteria written as testable bullets</li>
+            <li>Dependencies identified (event availability, plugin options support — OQ-1/2/3); security implication assessed (§15)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">9.2 Definition of Done</div>
+        <div class="collapsible-body">
+          <ul>
+            <li>Implementation complete and merged (independent review included)</li>
+            <li>Acceptance criteria demonstrated</li>
+            <li>Bun tests green; smoke script exits 0 on the live workstation</li>
+            <li>Fail-open path verified (induced write failure leaves OpenCode unaffected)</li>
+            <li>This FTD updated for material deviations; OpenCode restarted and logging verified via <code>/usage-status</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Architecture -->
+    <div class="tab-panel" data-tab="3">
+      <h2>10. Architecture</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">10.1 C4 Context (Level 1)</div>
+        <div class="collapsible-body">
+          <pre class="mermaid">
+C4Context
+    title OpenCode Usage Tracking — Context
+    Person(dev, "Developer (Thim)", "Owns plugin, config, analysis")
+    System(oc, "OpenCode + usage-tracking plugin", "Real-time session usage telemetry")
+    System_Ext(store, "Usage data store", "Local JSONL events + JSON session aggregates")
+    System_Ext(or, "OpenRouter API", "V2: cost-per-token enrichment")
+    Rel(oc, store, "writes events and aggregates", "filesystem")
+    Rel(oc, or, "V2: fetch model pricing", "HTTPS")
+    Rel(dev, oc, "configures via opencode.json, runs /usage-status")
+          </pre>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">10.2 C4 Container (Level 2)</div>
+        <div class="collapsible-body">
+          <pre class="mermaid">
+C4Container
+    title agent-skills repo &amp; OpenCode — Containers
+    Container(repo, "agent-skills repo", "Git", "Plugin source, command file, scripts; synced via link.py")
+    Container(plugin, "usage-tracking plugin", "TypeScript", "Event capture, aggregation, status tool")
+    ContainerDb(data, "Usage data", "JSONL + JSON files", "Append-only event stream + derived aggregates")
+    Container_Ext(ocore, "OpenCode core", "Event bus, SDK client, sessions")
+    Container_Ext(or, "OpenRouter API", "REST", "V2: public pricing endpoint")
+    Rel(repo, plugin, "symlinked into ~/.config/opencode/plugins/")
+    Rel(plugin, ocore, "event hook + SDK client")
+    Rel(plugin, data, "appends events, upserts aggregates")
+    Rel(plugin, or, "V2: GET /api/v1/models")
+          </pre>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">10.3 Sequence — session lifecycle capture</div>
+        <div class="collapsible-body">
+          <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant OC as OpenCode core
+    participant ER as EventRouter
+    participant AG as SessionAggregator
+    participant ES as EventStore
+    OC->>ER: session.created (info)
+    ER->>ES: append session.started event
+    OC->>ER: message.part.updated (step-finish)
+    ER->>AG: tokens, cost, modelID, agent
+    AG->>ES: append step.finished + upsert aggregate
+    OC->>ER: session.idle
+    ER->>AG: finalize (active time, last totals)
+    AG->>ES: upsert final aggregate
+          </pre>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">10.4 Design decisions (ADR-style)</div>
+        <div class="collapsible-body">
+          <p>Plugin components referenced below — EventRouter (event dispatch, fail-open wrapper), MetadataResolver (SDK lookups: title, model/variant, child sessions), SessionAggregator (totals, tool counts, active time — idempotent), EventStore (JSONL append + aggregate upsert), ConfigResolver (tuple-options), StatusTool — are enumerated in §8 and §12.</p>
+
+          <h4>ADR-01: Real-time event-hook capture</h4>
+          <ul>
+            <li><strong>Context:</strong> command-triggered export (TokenScope-style) loses crashed sessions; polling OpenCode's SQLite storage (Tokscale-style) couples to internal formats.</li>
+            <li><strong>Decision:</strong> subscribe to the event bus (<code>event</code> hook) and write immediately.</li>
+            <li><strong>Status:</strong> Accepted</li>
+            <li><strong>Consequences:</strong> data survives crashes; small per-event cost; dependent on event schema stability (R-01).</li>
+          </ul>
+
+          <h4>ADR-02: Two-layer output — append-only JSONL + derived aggregate</h4>
+          <ul>
+            <li><strong>Decision:</strong> raw events go to an append-only JSONL stream; the session aggregate is a derived, idempotent reduction, always rebuildable from the stream.</li>
+            <li><strong>Status:</strong> Accepted</li>
+            <li><strong>Consequences:</strong> corrupted aggregates recoverable by replay; slightly more write logic; maximal analysis freedom.</li>
+          </ul>
+
+          <h4>ADR-03: Central default storage, per-project override via tuple-options</h4>
+          <ul>
+            <li><strong>Context:</strong> in-repo storage dirties worktrees and risks cleanup loss.</li>
+            <li><strong>Decision:</strong> default output root <code>~/.local/share/opencode-usage/</code> with per-project subdirectories; <code>opencode.json</code> tuple-options override per project (native config merge).</li>
+            <li><strong>Status:</strong> Accepted</li>
+            <li><strong>Consequences:</strong> no git pollution by default; tuple-options support for local paths must be verified (OQ-1).</li>
+          </ul>
+
+          <h4>ADR-04: V1 uses OpenCode's cost field; OpenRouter enrichment is V2</h4>
+          <ul>
+            <li><strong>Context:</strong> OpenCode's <code>step-finish</code> cost is a models.dev-based calculation; OpenRouter's public pricing endpoint gives per-token prices for higher accuracy.</li>
+            <li><strong>Decision:</strong> V1 records OpenCode's cost field as-is; OpenRouter <code>GET /api/v1/models</code> enrichment (cached, with fallback) is deferred to V2.</li>
+            <li><strong>Status:</strong> Accepted</li>
+            <li><strong>Consequences:</strong> V1 works fully offline with zero network calls; recorded cost may deviate from actual OpenRouter billing until V2.</li>
+          </ul>
+
+          <h4>ADR-05: Fail-open graceful degradation</h4>
+          <ul>
+            <li><strong>Decision:</strong> every hook invocation is wrapped; any plugin error is logged once (via <code>client.app.log</code>) and swallowed; OpenCode is never affected.</li>
+            <li><strong>Status:</strong> Accepted</li>
+            <li><strong>Consequences:</strong> worst case is a data gap, never a broken agent session.</li>
+          </ul>
+
+          <h4>ADR-06: Metadata-only logging</h4>
+          <ul>
+            <li><strong>Decision:</strong> store ids, models, tokens, costs, timestamps, paths, agent names, and the LLM-generated session title; never message text, prompts, or tool outputs.</li>
+            <li><strong>Status:</strong> Accepted</li>
+            <li><strong>Consequences:</strong> analysis value retained (title gives human context) with minimal privacy exposure (§14).</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">10.5 Quality scenarios</div>
+        <div class="collapsible-body">
+          <ul>
+            <li><strong>Performance:</strong> step-finish events processed asynchronously; no measurable TUI/model latency impact (NFR-01).</li>
+            <li><strong>Robustness:</strong> read-only output path or disk full → events dropped with a single warning, OpenCode unaffected (ADR-05, R-05).</li>
+            <li><strong>Recovery:</strong> corrupted aggregate → deleted and rebuilt from the JSONL stream (ADR-02).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: Data model + API + NFR -->
+    <div class="tab-panel" data-tab="4">
+      <h2>11. Data model</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">11.1 Event stream (append-only JSONL)</div>
+        <div class="collapsible-body">
+          <p>Location: <code>&lt;outputRoot&gt;/&lt;project&gt;/events.jsonl</code></p>
+          <pre><code>{"ts": 1786329800123, "type": "session.started", "sessionID": "ses_…", "parentID": null,
+ "projectID": "prj_…", "directory": "/path", "agent": "build",
+ "model": {"id": "glm-5.3", "providerID": "openrouter", "variant": null}}
+{"ts": 1786329805456, "type": "step.finished", "sessionID": "ses_…", "messageID": "msg_…",
+ "partID": "prt_…", "agent": "build", "modelID": "glm-5.3", "providerID": "openrouter",
+ "tokens": {"input": 399574, "output": 170, "reasoning": 492, "cache": {"read": 3826, "write": 0}},
+ "cost": 0.24179232, "stepMs": 5312}
+{"ts": 1786329810000, "type": "tool.executed", "sessionID": "ses_…", "tool": "bash", "ok": true}
+{"ts": 1786329815000, "type": "session.idle", "sessionID": "ses_…", "activeMs": 412000}</code></pre>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">11.2 Session aggregate (derived JSON)</div>
+        <div class="collapsible-body">
+          <p>Location: <code>&lt;outputRoot&gt;/&lt;project&gt;/sessions/&lt;sessionID&gt;.json</code></p>
+          <pre><code>{"sessionID": "ses_…", "parentID": null, "depth": 0, "project": "prj_…", "directory": "/path",
+ "title": "Refactor link.py sync logic", "agents": ["build"],
+ "models": [{"id": "glm-5.3", "provider": "openrouter", "variant": null}],
+ "tokens": {"input": 0, "output": 0, "reasoning": 0, "cacheRead": 0, "cacheWrite": 0},
+ "cost": 0.0, "activeMs": 0, "toolCounts": {"bash": 14, "edit": 6, "task": 2},
+ "children": [{"sessionID": "ses_…", "agent": "explore", "depth": 1, "totals": "…same fields…"}],
+ "time": {"created": 0, "updated": 0, "idle": 0}}</code></pre>
+        </div>
+      </div>
+      <div class="collapsible open">
+        <div class="collapsible-header">11.3 Entities</div>
+        <div class="collapsible-body">
+          <table>
+            <tr><th>Entity</th><th>Description</th><th>PII?</th><th>Source</th><th>Retention</th></tr>
+            <tr><td>Event (JSONL line)</td><td>Immutable observed telemetry fact</td><td>no (title text is LLM-generated)</td><td>OpenCode event bus</td><td>unlimited (owner choice)</td></tr>
+            <tr><td>Session aggregate</td><td>Derived per-session reduction; rebuildable from events</td><td>no</td><td>plugin aggregation</td><td>unlimited (owner choice)</td></tr>
+            <tr><td>Plugin options</td><td>output root, toggles</td><td>no</td><td>opencode.json tuple-options</td><td>repo lifetime</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <h2>12. API &amp; integration</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">Interfaces and error handling</div>
+        <div class="collapsible-body">
+          <table>
+            <tr><th>Interface</th><th>Direction</th><th>Purpose</th><th>Error handling</th></tr>
+            <tr><td>OpenCode event bus (<code>event</code> hook)</td><td>OpenCode → plugin</td><td>session/message/tool events</td><td>try/catch per event; log once, never rethrow (ADR-05)</td></tr>
+            <tr><td>SDK client (<code>client.session</code>, messages, models)</td><td>plugin → OpenCode</td><td>metadata resolution: title, model/variant, child sessions</td><td>missing data → null field + warning</td></tr>
+            <tr><td>Local filesystem (Bun <code>fs</code>)</td><td>plugin → storage</td><td>JSONL append + aggregate upsert</td><td>write error → degrade (ADR-05, R-05)</td></tr>
+            <tr><td><code>usage_status</code> custom tool + <code>/usage-status</code> command</td><td>user → plugin</td><td>write health + current session totals</td><td>read-only; errors reported inline</td></tr>
+            <tr><td>OpenRouter <code>GET /api/v1/models</code></td><td><strong>V2:</strong> plugin → OpenRouter</td><td>per-token pricing enrichment</td><td>cached (~24 h TTL); fallback to OpenCode cost field (ADR-04)</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <h2>13. Non-functional requirements</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">Measurable NFRs (ISO/IEC 25010)</div>
+        <div class="collapsible-body">
+          <table>
+            <tr><th>ID</th><th>Subject</th><th>Attribute</th><th>Metric</th><th>Threshold</th><th>Verification</th></tr>
+            <tr><td>NFR-01</td><td>Event pipeline</td><td>Performance</td><td>synchronous processing time per event (excl. disk write)</td><td>≤ 5 ms p95</td><td>Bun unit benchmark</td></tr>
+            <tr><td>NFR-02</td><td>Plugin</td><td>Reliability</td><td>OpenCode failures caused by plugin errors</td><td>0</td><td>unit test injecting write failure; smoke test</td></tr>
+            <tr><td>NFR-03</td><td>Event pipeline</td><td>Durability</td><td>events persisted after emission</td><td>100% within 1 s</td><td>smoke test timestamps</td></tr>
+            <tr><td>NFR-04</td><td>Plugin</td><td>Compatibility</td><td>OpenCode ≥ 1.18.x loads plugin without hook errors; missing hooks disable with 1 warning</td><td>loads or disables gracefully</td><td>smoke test per upgrade</td></tr>
+            <tr><td>NFR-05</td><td>Core logic</td><td>Maintainability</td><td>Bun test line coverage (router, aggregator, config)</td><td>≥ 80%</td><td><code>bun test --coverage</code></td></tr>
+            <tr><td>NFR-06</td><td>Storage</td><td>Resource usage</td><td>disk footprint per average session (events + aggregate)</td><td>≤ 100 KB</td><td>smoke test sample session</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: Privacy & Security -->
+    <div class="tab-panel" data-tab="5">
+      <h2>14. Privacy-by-design</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">Statement</div>
+        <div class="collapsible-body">
+          <p>No personal data is processed: the plugin records ids, paths, model/provider names, token counts, costs, timestamps, agent names, and the LLM-generated session title — never message content, prompts, or tool outputs (ADR-06). The title can incidentally echo names a user typed; this is accepted as minimal, human-context metadata on a single-user workstation with local-only storage and no external data flows in V1. Data minimisation and purpose limitation are enforced by the event schema itself (§11). DPIA: not required — no personal-data processing, no profiling, no external recipients. Retention: unlimited by explicit owner decision (analysis is the purpose); deletion is a plain file removal. Privacy-friendly default: central local storage, no telemetry, no network calls.</p>
+        </div>
+      </div>
+
+      <h2>15. Security-by-design</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">Statement</div>
+        <div class="collapsible-body">
+          <p>No secrets are read or written: the plugin touches no API keys (V1 makes zero network calls; V2 will use <code>OPENROUTER_API_KEY</code> from the environment only). Zero runtime npm dependencies (type-only imports). Filesystem writes go exclusively to the owner-configured output root; the path comes from trusted local config, not from model-controlled input. STRIDE-lite: Tampering (data files edited) → out of scope (local single-user, disposable derived data); Repudiation → events carry timestamps and ids; DoS (write failures, runaway sessions) → fail-open (ADR-05) + storage budget (NFR-06); Spoofing/Elevation of privilege → not applicable (no auth surface, no privilege boundary). ASVS level: L1 — local developer tooling with no externally reachable surface.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: Delivery -->
+    <div class="tab-panel" data-tab="6">
+      <h2>16. Risk register</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">Risks and mitigations</div>
+        <div class="collapsible-body">
+          <table>
+            <tr><th>ID</th><th>Risk</th><th>L</th><th>I</th><th>Mitigation</th><th>Owner</th><th>Status</th></tr>
+            <tr><td>R-01</td><td>OpenCode event schema changes break mapping</td><td>M</td><td>M</td><td>NFR-04 smoke test per upgrade; tolerant parsing (unknown fields ignored)</td><td>Thim</td><td>Open</td></tr>
+            <tr><td>R-02</td><td>Tuple-options unsupported for local plugin paths</td><td>M</td><td>H</td><td>Verify in implementation batch 1 (OQ-1); fallback: defaults + explicit entry in global config</td><td>Thim</td><td>Open</td></tr>
+            <tr><td>R-03</td><td><code>session.idle</code> payload differs from expectation</td><td>M</td><td>L</td><td>Idle is best-effort; aggregate is finalised idempotently on every update (ADR-02)</td><td>Thim</td><td>Open</td></tr>
+            <tr><td>R-04</td><td>Internal agents (title/compaction) pollute subagent stats</td><td>M</td><td>L</td><td>Agent name recorded per session enables filtering in analysis; optional <code>excludeAgents</code> option</td><td>Thim</td><td>Open</td></tr>
+            <tr><td>R-05</td><td>Disk full / read-only output root → data gaps</td><td>L</td><td>M</td><td>Fail-open with single warning; gap accepted in V1 (ADR-05)</td><td>Thim</td><td>Open</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <h2>17. Deployment &amp; rollback</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">Procedure</div>
+        <div class="collapsible-body">
+          <ul>
+            <li><strong>Deployment:</strong> commit to agent-skills → <code>uv run scripts/link.py link</code> (new item keys: <code>opencode/plugins/usage-tracking/*</code>, <code>opencode/command/usage-status.md</code>) → restart OpenCode (plugins load at startup) → run the smoke script (exit 0) → verify via <code>/usage-status</code>.</li>
+            <li><strong>Rollback:</strong> <code>uv run scripts/link.py unlink</code> → restart OpenCode. Logging disappears; collected data is disposable and derived — no migration needed.</li>
+            <li><strong>Environments:</strong> single workstation; global default config plus optional per-project <code>opencode.json</code> overrides.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>18. Observability &amp; logging</h2>
+      <div class="collapsible">
+        <div class="collapsible-header">Plugin events and operational insight</div>
+        <div class="collapsible-body">
+          <ul>
+            <li><strong>Plugin events</strong> (via <code>client.app.log</code>, service <code>usage-tracking</code>): <code>plugin.initialized</code>, <code>plugin.degraded</code> (cause), <code>write.error</code> (path, error class), <code>session.finalized</code> (sessionID, totals).</li>
+            <li><strong>Operational insight:</strong> <code>/usage-status</code> (write health, counters, current session totals) and the smoke script; no metrics/tracing infrastructure (local single-user tool). Retention: OpenCode log rotation; usage data unlimited by owner choice (§14).</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>19. Glossary</h2>
+      <div class="collapsible">
+        <div class="collapsible-header">Terms</div>
+        <div class="collapsible-body">
+          <table>
+            <tr><th>Term</th><th>Definition</th></tr>
+            <tr><td>Session / child session</td><td>OpenCode conversation unit; child sessions are spawned by the task tool and carry a <code>parentID</code></td></tr>
+            <tr><td>step-finish part</td><td>Message part emitted at the end of each model step, carrying <code>tokens</code>, <code>cost</code>, and <code>reason</code></td></tr>
+            <tr><td>Event stream</td><td>Append-only JSONL file of observed plugin events (raw layer)</td></tr>
+            <tr><td>Aggregate record</td><td>Derived per-session JSON document; rebuildable from the event stream</td></tr>
+            <tr><td>Tuple options</td><td>Plugin configuration form in <code>opencode.json</code>: <code>["&lt;plugin&gt;", { …options }]</code></td></tr>
+            <tr><td>Variant</td><td>Model reasoning variant (e.g. <code>#xhigh</code> effort suffix)</td></tr>
+            <tr><td>Active agent time</td><td>Sum of step durations (step-start → step-finish), excluding user idle time</td></tr>
+            <tr><td>Fail-open</td><td>Plugin errors are logged and swallowed; the host keeps working</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <h2>20. Approvals &amp; sign-off</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">Sign-off</div>
+        <div class="collapsible-body">
+          <table>
+            <tr><th>Role</th><th>Name</th><th>Date</th><th>Signature (digital)</th></tr>
+            <tr><td>Owner / Product / Architecture</td><td>Thim</td><td>2026-08-20</td><td>scope summary approved in intake; final sign-off pending</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <h2>21. Omitted sections &amp; open questions</h2>
+      <div class="collapsible open">
+        <div class="collapsible-header">Omissions (justified) and open questions</div>
+        <div class="collapsible-body">
+          <p><strong>Omitted recommended sections:</strong></p>
+          <ul>
+            <li>C4 Component diagram (L3) — omitted: single container with five components already enumerated in §8 traceability, §10.4 and §12; the sequence diagram carries the design</li>
+            <li>Compliance evidence (§19 in template) — omitted: internal dev tooling, no regulatory exposure</li>
+            <li>Migration &amp; runbook (§20 in template) — omitted: greenfield, no data migration; rollback in §17</li>
+            <li>Crosscutting Concepts (§22 in template) — omitted: single-plugin design; concerns live in §10/§12/§15</li>
+            <li>ERD — omitted: document store (JSONL/JSON), not a relational model; schemas + entity table in §11</li>
+            <li>Accessibility audit — omitted: no user-facing UI; status output is plain terminal text</li>
+            <li>LINDDUN threat table — omitted: no personal data processed (§14); STRIDE-lite covered in §15 prose</li>
+            <li><strong>Size budget:</strong> ~430 lines vs ~400 budget — consciously accepted after trim pass (C4 L3 cut, ADRs and JSON contracts condensed); remaining overage is diagram/table/contract density, not prose</li>
+            <li><strong>OKF house rule</strong> (lowercase-kebab-case filename) — consciously deviated: the FTD skill's mandated convention <code>FTD-[project]-vX.Y.md</code> and consistency with the existing model-router FTD were explicitly approved by the owner in intake</li>
+          </ul>
+          <p><strong>Open questions:</strong></p>
+          <ul>
+            <li>OQ-1: Does the plugin tuple-options form work for local plugin paths? — verify on live OpenCode in implementation batch 1 (decides config contract, R-02)</li>
+            <li>OQ-2: Exact payloads of <code>session.idle</code> and session rename/update events — verify during implementation; determines finalisation and title triggers (R-03)</li>
+            <li>OQ-3: Availability of model variant/reasoning metadata in message events vs. SDK model lookup — verify during implementation batch 1</li>
+            <li>OQ-4: V2 OpenRouter enrichment scope (public pricing only vs. also authenticated credits/key endpoints) — owner decision before V2 start</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); localStorage.setItem('ftd-theme', t); }
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const osDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const effective = current || (osDark ? 'dark' : 'light');
+    applyTheme(effective === 'dark' ? 'light' : 'dark');
+  }
+  const savedTheme = localStorage.getItem('ftd-theme');
+  if (savedTheme) { applyTheme(savedTheme); }
+
+  function showTab(index) {
+    document.querySelectorAll('.tab-button').forEach((b, i) => b.classList.toggle('active', i === index));
+    document.querySelectorAll('.tab-panel').forEach((p, i) => p.classList.toggle('active', i === index));
+    buildTOC(index);
+  }
+
+  document.querySelectorAll('.collapsible-header').forEach(h => {
+    h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
+  });
+
+  function buildTOC(tabIndex) {
+    const panel = document.querySelector(`.tab-panel[data-tab="${tabIndex}"]`);
+    const list = document.getElementById('toc-list');
+    list.innerHTML = '';
+    if (!panel) return;
+    panel.querySelectorAll('h2, h3, h4').forEach(h => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.textContent = h.textContent;
+      a.href = '#';
+      a.style.paddingLeft = h.tagName === 'H2' ? '0.5rem' : '1.5rem';
+      a.addEventListener('click', e => { e.preventDefault(); h.scrollIntoView({behavior:'smooth', block:'start'}); });
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+  }
+  buildTOC(0);
+</script>
+
+<script type="module">
+  const mermaidBlocks = document.querySelectorAll('pre.mermaid');
+  try {
+    const mermaid = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+    mermaid.default.initialize({
+      startOnLoad: true,
+      theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+    });
+  } catch (e) {
+    console.warn('Mermaid CDN failed to load:', e);
+    mermaidBlocks.forEach(b => {
+      const fb = document.createElement('pre');
+      fb.className = 'mermaid-fallback';
+      fb.textContent = b.textContent;
+      b.parentNode.replaceChild(fb, b);
+    });
+  }
+</script>
+</body>
+</html>
