@@ -435,3 +435,110 @@ describe("SessionAggregator — review findings (task 6)", () => {
     expect(Object.getOwnPropertyDescriptor(aggregate.toolCounts, "__proto__")?.value).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// v11 additions — dispatch 2026-08-27 (three approved changes), RED tests:
+//
+// (1) activeMs pairing fix: step-start and step-finish are DIFFERENT parts
+//     (verified live: prt_03df0185… start vs prt_03df0221… finish, same
+//     session + messageID), so pairing by partID never matches live data.
+//     Pairing must key on (sessionID, messageID); multiple steps of one
+//     message pair FIFO. A finish without a start still contributes 0
+//     (already pinned by the task-6 suite above).
+//
+// (2) device block on serialized session aggregates: exactly
+//     {name, opencodeVersion} when device info is provided to the
+//     aggregator, null when absent (fail-open). Spec decision: device info
+//     is injected via the SessionAggregator constructor (single injection
+//     point, backward compatible); os/osVersion are overview-level only.
+//     See reports/v11-red-tests.md for all recorded spec decisions.
+// ---------------------------------------------------------------------------
+
+describe("SessionAggregator — activeMs pairing fix (v11)", () => {
+  it("pairs step.started → step.finished by messageID when the partIDs differ (live-data shape)", () => {
+    const aggregator = new SessionAggregator();
+    // The verified live shape: the step-start part and the step-finish part
+    // are different parts (different partIDs) of the SAME message.
+    aggregator.apply({
+      type: "step.started",
+      eventID: "evt-v11-ss-1",
+      sessionID: "sess_1",
+      messageID: "msg_1",
+      partID: "prt_start_03df0185",
+      ts: 1000,
+    });
+    aggregator.apply({
+      type: "step.finished",
+      eventID: "evt-v11-sf-1",
+      sessionID: "sess_1",
+      messageID: "msg_1",
+      partID: "prt_finish_03df0221",
+      agent: "build",
+      modelID: "model-a",
+      providerID: "anthropic",
+      tokens: TOKENS_A,
+      cost: 0.25,
+      ts: 3000,
+    });
+
+    // T2 − T1 = 3000 − 1000, despite the mismatched partIDs.
+    expect(aggregator.finalize()["sess_1"].activeMs).toBe(2000);
+  });
+
+  it("pairs multiple steps of one message FIFO: two starts, then two finishes, then an unpaired finish", () => {
+    const aggregator = new SessionAggregator();
+    const stepStarted = (partID: string, ts: number): any => ({
+      type: "step.started",
+      eventID: `evt-v11-ss-${partID}`,
+      sessionID: "sess_1",
+      messageID: "msg_1",
+      partID,
+      ts,
+    });
+    const stepFinished = (partID: string, ts: number): any => ({
+      type: "step.finished",
+      eventID: `evt-v11-sf-${partID}`,
+      sessionID: "sess_1",
+      messageID: "msg_1",
+      partID,
+      agent: "build",
+      modelID: "model-a",
+      providerID: "anthropic",
+      tokens: TOKENS_A,
+      cost: 0.25,
+      ts,
+    });
+
+    // One message running two sequential steps; both starts are observed
+    // before the finishes arrive (dispatch scenario).
+    aggregator.apply(stepStarted("prt_s1", 1000));
+    aggregator.apply(stepStarted("prt_s2", 2000));
+    aggregator.apply(stepFinished("prt_f1", 2500));
+    aggregator.apply(stepFinished("prt_f2", 4000));
+
+    // FIFO: the first finish closes the first start (2500−1000), the second
+    // closes the second (4000−2000).
+    expect(aggregator.finalize()["sess_1"].activeMs).toBe(1500 + 2000);
+
+    // A third finish finds no unconsumed start left: contributes 0.
+    aggregator.apply(stepFinished("prt_f3", 5000));
+    expect(aggregator.finalize()["sess_1"].activeMs).toBe(3500);
+  });
+});
+
+describe("SessionAggregator — device block (v11)", () => {
+  it("carries device {name, opencodeVersion} on serialized aggregates when device info is provided", () => {
+    const aggregator = new SessionAggregator({ name: "thim-desktop", opencodeVersion: "1.18.21" });
+    aggregator.apply(stepFinished("sess_1", "model-a", TOKENS_A, "p1"));
+
+    const aggregate = aggregator.finalize()["sess_1"];
+    expect(aggregate.device).toEqual({ name: "thim-desktop", opencodeVersion: "1.18.21" });
+  });
+
+  it("serializes device as null when no device info was provided (fail-open)", () => {
+    const aggregator = new SessionAggregator();
+    aggregator.apply(stepFinished("sess_1", "model-a", TOKENS_A, "p1"));
+
+    expect(aggregator.finalize()["sess_1"].device).toBe(null);
+  });
+});
