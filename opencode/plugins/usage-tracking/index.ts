@@ -1,14 +1,16 @@
 /**
  * Plugin wiring for usage-tracking (OpenCode plugin entry).
  *
- * Composes the pipeline stages: `config` (resolve options) → `mapping`
- * (normalize bus events) → `aggregate` (session state + AC 7.3 rollup) →
- * `store` (ADR-02 JSONL + aggregates), and exposes the `usage_status` tool
- * backed by `status`.
+ * Composes the pipeline stages: `config` (resolve options) → `ulid` (registry-
+ * backed per-project directory) → `mapping` (normalize bus events) →
+ * `aggregate` (session state + AC 7.3 rollup) → `store` (ADR-02 JSONL +
+ * aggregates) + `overview` (project-level snapshot), and exposes the
+ * `usage_status` tool backed by `status`.
  *
  * Core invariants:
  * - Fail-open (ADR-05): no error from any stage ever reaches the host — the
- *   event hook, write queue, and tool all swallow and log.
+ *   event hook, write queue, tool, and every init-time probe (device info,
+ *   git info, project registry) swallow and log.
  * - Metadata-only (ADR-06): only the normalized records from `mapEvent` are
  *   processed; no message content, prompts, or tool outputs.
  * - Event-ID dedup: the live envelope id (fallback: record `eventID`) keeps
@@ -18,11 +20,15 @@
  *   any live event.
  */
 
-import { basename, join } from "node:path";
-import type { Plugin, PluginOptions, tool } from "@opencode-ai/plugin";
-import { SessionAggregator } from "./aggregate";
+import { readFile } from "node:fs/promises";
+import { hostname, release } from "node:os";
+import { join } from "node:path";
+import type { Plugin, PluginInput, PluginOptions, tool } from "@opencode-ai/plugin";
+import { SessionAggregator, type DeviceInfo } from "./aggregate";
 import { resolveConfig } from "./config";
 import { mapEvent, isInternalRecord, type UsageEventEnvelope } from "./mapping";
+import { writeOverview, type OverviewDeviceInfo, type OverviewGitInfo } from "./overview";
+import { resolveProjectDirectory } from "./ulid";
 import { EventStore } from "./store";
 import { StatusTracker } from "./status";
 
@@ -32,9 +38,13 @@ import { StatusTracker } from "./status";
 type ToolDefinition = ReturnType<typeof tool>;
 
 const SERVICE = "usage-tracking";
-const DEFAULT_PROJECT_SEGMENT = "default";
+const OS_RELEASE_FILE = "/etc/os-release";
 
 type AppLogLevel = "debug" | "info" | "warn" | "error";
+
+// The host-provided Bun shell (PluginInput["$"]); absent in stripped-down
+// inputs (tests, offline harnesses), so every shell probe fails open to null.
+type PluginShell = PluginInput["$"];
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -57,51 +67,6 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function sanitizeSegment(value: string): string {
-  // Filesystem-safe project segment: collapse invalid chars to "-", strip
-  // runs and edges, cap at 64 chars, then re-strip (the cap can expose new
-  // edge dashes). "." and ".." are rejected outright.
-  const cleaned = value
-    .replace(/[^A-Za-z0-9._-]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 64)
-    .replace(/^-+|-+$/g, "");
-  if (cleaned === "" || cleaned === "." || cleaned === "..") return "";
-  return cleaned;
-}
-
-/**
- * Derives the per-project subdirectory under the configured output root.
- *
- * Preference order: project.id → worktree → directory → project.name; any
- * path-like candidate is reduced to its basename, then sanitized. Falls back
- * to "default" when nothing yields a safe segment.
- *
- * @param input - The plugin's init input (project/worktree/directory fields
- *   are unvalidated `unknown` from OpenCode).
- */
-function projectSubdirectory(input: {
-  project?: { id?: unknown; name?: unknown };
-  worktree?: unknown;
-  directory?: unknown;
-}): string {
-  const candidates: Array<string | null> = [
-    readNonEmptyString(input?.project?.id),
-    readNonEmptyString(input?.worktree),
-    readNonEmptyString(input?.directory),
-    readNonEmptyString(input?.project?.name),
-  ];
-  for (const candidate of candidates) {
-    if (candidate === null) continue;
-    const base =
-      candidate.includes("/") || candidate.includes("\\") ? basename(candidate) : candidate;
-    const segment = sanitizeSegment(base);
-    if (segment !== "") return segment;
-  }
-  return DEFAULT_PROJECT_SEGMENT;
-}
-
 // The SDK's static Event type has no `id`, but the live envelope carries one
 // (verified spike); read it defensively.
 function envelopeEventID(envelope: unknown): string | null {
@@ -109,17 +74,110 @@ function envelopeEventID(envelope: unknown): string | null {
   return readNonEmptyString(envelope.id);
 }
 
-  /**
-   * The plugin factory. Runs once per OpenCode initialization.
-   *
-   * @param input - Plugin init input from OpenCode: `client` (SDK app
-   *   client), `project`/`worktree`/`directory` (used for output scoping).
-   * @param options - User-supplied plugin options; resolved by `resolveConfig`.
-   * @returns Hooks: `event` (bus ingestion), `tool.usage_status`, and
-   *   `dispose` (drains the write queue).
-   */
-  const plugin: Plugin = async (input, options) => {
+/** Reads PRETTY_NAME from /etc/os-release; missing/unparsable → null (fail-open). */
+async function readOsPrettyName(): Promise<string | null> {
+  try {
+    const content = await readFile(OS_RELEASE_FILE, "utf8");
+    for (const line of content.split("\n")) {
+      const separator = line.indexOf("=");
+      if (separator === -1) continue;
+      if (line.slice(0, separator).trim() !== "PRETTY_NAME") continue;
+      let value = line.slice(separator + 1).trim();
+      if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+        value = value.slice(1, -1);
+      }
+      return value.length > 0 ? value : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One-time `opencode --version` probe through the host shell; absent shell,
+ * command failure, or empty output → null (fail-open).
+ */
+async function readOpencodeVersion(shell: PluginShell | null | undefined): Promise<string | null> {
+  if (typeof shell !== "function") return null;
+  try {
+    const output = await shell`opencode --version`.text();
+    const trimmed = typeof output === "string" ? output.trim() : "";
+    return trimmed.length > 0 ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Collects the git attribution of the project directory via the host shell:
+ * branch (`rev-parse --abbrev-ref HEAD`), latest tag (`describe --tags
+ * --abbrev=0`, null when untagged), and the head commit (`log -1` with a
+ * \x1f-separated format). Any failure degrades to null pieces or a null
+ * result — never a throw (fail-open, ADR-05).
+ *
+ * @param shell - Host Bun shell; absent → null.
+ * @param input - Plugin init input; the probed directory is the worktree,
+ *   falling back to the directory.
+ */
+async function collectGitInfo(
+  shell: PluginShell | null | undefined,
+  input: { worktree?: unknown; directory?: unknown } | null | undefined,
+): Promise<OverviewGitInfo | null> {
+  if (typeof shell !== "function") return null;
+  const fields = isPlainObject(input) ? input : {};
+  const dir = readNonEmptyString(fields.worktree) ?? readNonEmptyString(fields.directory);
+  if (dir === null) return null;
+  try {
+    const branchOutput = await shell`git -C ${dir} rev-parse --abbrev-ref HEAD`.text();
+    const branch = typeof branchOutput === "string" ? branchOutput.trim() : "";
+    if (branch.length === 0) return null;
+    let tag: string | null = null;
+    try {
+      const tagOutput = await shell`git -C ${dir} describe --tags --abbrev=0`.text();
+      const trimmed = typeof tagOutput === "string" ? tagOutput.trim() : "";
+      tag = trimmed.length > 0 ? trimmed : null;
+    } catch {
+      tag = null;
+    }
+    let lastCommit: OverviewGitInfo["lastCommit"] = null;
+    try {
+      const logOutput = await shell`git -C ${dir} log -1 --pretty=format:%H%x1f%s%x1f%an%x1f%aI`.text();
+      const parts = typeof logOutput === "string" ? logOutput.split("\x1f") : [];
+      if (parts.length === 4) {
+        const [hash, subject, author, date] = parts.map((part) => part.trim());
+        if (hash.length > 0 && date.length > 0) {
+          lastCommit = { hash, subject, author, date };
+        }
+      }
+    } catch {
+      lastCommit = null;
+    }
+    return { branch, tag, lastCommit };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The plugin factory. Runs once per OpenCode initialization.
+ *
+ * Init probes (all fail-open): device info (hostname, /etc/os-release
+ * PRETTY_NAME, kernel release, one-time `opencode --version` via the host
+ * shell), the registry-backed ULID project subdirectory, and the project's
+ * git attribution. The git info is refreshed on every `session.idle` so the
+ * overview tracks branch switches; the latest collected value is cached.
+ *
+ * @param input - Plugin init input from OpenCode: `client` (SDK app client),
+ *   `project`/`worktree`/`directory` (used for output scoping and git
+ *   probing), `$` (host Bun shell).
+ * @param options - User-supplied plugin options; resolved by `resolveConfig`.
+ * @returns Hooks: `event` (bus ingestion), `tool.usage_status`, and
+ *   `dispose` (drains the write queue).
+ */
+const plugin: Plugin = async (input, options) => {
   const client = input?.client;
+  const shell = input?.$;
 
   const appLog = async (level: AppLogLevel, message: string): Promise<void> => {
     try {
@@ -155,8 +213,39 @@ function envelopeEventID(envelope: unknown): string | null {
     void appLog("warn", message);
   });
 
-  const aggregator = new SessionAggregator();
-  const outputPath = join(config.output, projectSubdirectory(input));
+  // Device info, once at init (V11): every field fails open. The full block
+  // feeds overview.json; the aggregator's per-aggregate block is exactly
+  // {name, opencodeVersion} and only when the version probe succeeded.
+  const deviceName = hostname();
+  const deviceOS = await readOsPrettyName();
+  const deviceOSVersion = release();
+  const deviceOpencodeVersion = await readOpencodeVersion(shell);
+  const deviceInfo: OverviewDeviceInfo = {
+    name: deviceName.length > 0 ? deviceName : null,
+    os: deviceOS,
+    osVersion: deviceOSVersion.length > 0 ? deviceOSVersion : null,
+    opencodeVersion: deviceOpencodeVersion,
+  };
+  const aggregatorDevice: DeviceInfo | null =
+    deviceInfo.name !== null && deviceOpencodeVersion !== null
+      ? { name: deviceName, opencodeVersion: deviceOpencodeVersion }
+      : null;
+
+  const aggregator = new SessionAggregator(aggregatorDevice);
+
+  // Per-project output subdirectory (V11): a registry-backed ULID under the
+  // configured output root, keyed by the project identity (absolute worktree
+  // path, else absolute directory path). Registry failures fail open with one
+  // log per error class.
+  const projectSubdir = await resolveProjectDirectory(config, input, (message) => {
+    reportErrorClass(`registry:${message}`, message);
+  });
+  const outputPath = join(config.output, projectSubdir);
+
+  // Git attribution: probed at init and refreshed on every session.idle; the
+  // latest collected value is cached for the next overview write.
+  let gitInfo: OverviewGitInfo | null = await collectGitInfo(shell, input);
+
   const tracker = new StatusTracker(outputPath, aggregator);
   const store = new EventStore(outputPath, (message) => {
     tracker.recordError();
@@ -199,8 +288,10 @@ function envelopeEventID(envelope: unknown): string | null {
    *
    * Order matters: aggregate first (so the snapshot below includes this
    * event), then persist the event (unless internal), then upsert the
-   * session's finalized aggregate. `session.deleted` stops aggregate updates
-   * for that session; `session.idle` additionally logs the finalized totals.
+   * session's finalized aggregate, then regenerate the project overview from
+   * the in-memory aggregates. `session.deleted` stops aggregate updates for
+   * that session (append-only marker); `session.idle` additionally refreshes
+   * the cached git info and logs the finalized totals.
    *
    * @param record - Normalized record from `mapEvent`.
    * @param sourceEventID - Live envelope id (primary dedup key), or null.
@@ -220,7 +311,8 @@ function envelopeEventID(envelope: unknown): string | null {
     }
     const recordType = typeof record.type === "string" ? record.type : null;
     if (recordType === "session.deleted") return;
-    const aggregate = aggregator.finalize()[sessionID];
+    const aggregates = aggregator.finalize();
+    const aggregate = aggregates[sessionID];
     if (aggregate === undefined) return;
     await store.upsertAggregate(sessionID, aggregate);
     tracker.recordSessionWritten(sessionID);
@@ -235,7 +327,14 @@ function envelopeEventID(envelope: unknown): string | null {
       // make turn 2+ rebuild from zero and overwrite sessions/<id>.json with
       // partial totals, dropping child tokens from the parent rollup. V1
       // accepts unbounded in-memory retention per FTD (restart re-seeds).
+      // The idle boundary is also the git refresh point: the next overview
+      // below picks up the (fail-open) refreshed attribution.
+      gitInfo = await collectGitInfo(shell, input);
     }
+    await writeOverview(outputPath, aggregates, deviceInfo, gitInfo, (message) => {
+      tracker.recordError();
+      reportErrorClass(`overview:${message}`, message);
+    });
   };
 
   /**

@@ -33,6 +33,15 @@ export type SessionModel = {
 };
 
 /**
+ * Device attribution stamped on every serialized aggregate (V11): exactly
+ * `{name, opencodeVersion}` — os/osVersion are overview-level only.
+ */
+export type DeviceInfo = {
+  name: string;
+  opencodeVersion: string;
+};
+
+/**
  * Serializable per-session aggregate produced by `finalize` — the exact shape
  * persisted as `sessions/<id>.json` (ADR-02 layer 2). `tokens`/`cost` carry
  * the AC 7.3 rollup on roots (parent totals include the subtree); each
@@ -43,6 +52,7 @@ export type SessionAggregate = {
   parentID: string | null;
   project: string | null;
   directory: string | null;
+  device: DeviceInfo | null;
   depth: number;
   title: string | null;
   agents: string[];
@@ -116,12 +126,22 @@ function serializeToolCounts(counts: Map<string, number>): Record<string, number
   return result;
 }
 
+/** Accepts only a `{name, opencodeVersion}` with both fields non-empty; anything else → null. */
+function normalizeDeviceInfo(value: unknown): DeviceInfo | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const fields = value as Record<string, unknown>;
+  const name = readString(fields.name);
+  const opencodeVersion = readString(fields.opencodeVersion);
+  if (name === null || opencodeVersion === null) return null;
+  return { name, opencodeVersion };
+}
+
 /**
  * Folds usage records into per-session state and derives aggregates.
  *
  * State lives entirely in memory; persistence is the store's job. All
- * registries (`seenEventIDs`, `seenToolParts`, `stepStarts`) are grow-only
- * by design so a re-delivered event can never be double-counted.
+ * registries (`seenEventIDs`, `seenToolParts`, `stepStartQueues`) are
+ * grow-only by design so a re-delivered event can never be double-counted.
  */
 export class SessionAggregator {
   private sessions = new Map<string, SessionState>();
@@ -130,7 +150,22 @@ export class SessionAggregator {
   // no-op even if the owning session's state was evicted and re-created.
   private seenEventIDs = new Set<string>();
   private seenToolParts = new Set<string>();
-  private stepStarts = new Map<string, number>();
+  // FIFO queues of unconsumed step.started timestamps, keyed by
+  // (sessionID, messageID): a start pushes onto its message's queue; a
+  // finish consumes the OLDEST unconsumed start of the same message. Live
+  // step-start and step-finish are DIFFERENT parts (different partIDs), so
+  // partID-based pairing never matches — the message is the stable join key.
+  private stepStartQueues = new Map<string, number[]>();
+  private readonly device: DeviceInfo | null;
+
+  /**
+   * @param device - Optional device attribution (`{name, opencodeVersion}`)
+   *   stamped on every serialized aggregate; absent/invalid → `null`
+   *   (fail-open). Single injection point, backward compatible.
+   */
+  constructor(device?: DeviceInfo | null) {
+    this.device = normalizeDeviceInfo(device);
+  }
 
   /**
    * Applies one record to the session state.
@@ -189,8 +224,8 @@ export class SessionAggregator {
     if (typeof sessionID !== "string" || sessionID.length === 0) return;
     this.sessions.delete(sessionID);
     const stepPrefix = `${sessionID}\u0000`;
-    for (const key of this.stepStarts.keys()) {
-      if (key.startsWith(stepPrefix)) this.stepStarts.delete(key);
+    for (const key of this.stepStartQueues.keys()) {
+      if (key.startsWith(stepPrefix)) this.stepStartQueues.delete(key);
     }
   }
 
@@ -273,6 +308,7 @@ export class SessionAggregator {
         parentID: state.parentID,
         project: state.project,
         directory: state.directory,
+        device: this.device === null ? null : { name: this.device.name, opencodeVersion: this.device.opencodeVersion },
         depth: depthOf(state),
         title: state.title,
         agents: [...state.agents],
@@ -336,15 +372,11 @@ export class SessionAggregator {
     return state;
   }
 
-  // Steps pair by (sessionID, partID), falling back to (sessionID, messageID)
-  // when a record carries no partID. The \u0000 separator keeps ids from
-  // colliding across namespaces.
-  private stepStartKey(sessionID: string, fields: Record<string, unknown>): string | null {
-    const partID = readString(fields.partID);
-    if (partID !== null) return `${sessionID}\u0000p\u0000${partID}`;
-    const messageID = readString(fields.messageID);
-    if (messageID !== null) return `${sessionID}\u0000m\u0000${messageID}`;
-    return null;
+  // Steps pair by (sessionID, messageID): live start and finish parts carry
+  // different partIDs, so the message is the only stable join key. The \u0000
+  // separator keeps ids from colliding across namespaces.
+  private stepQueueKey(sessionID: string, messageID: string): string {
+    return `${sessionID}\u0000${messageID}`;
   }
 
   /** session.started: sets identity/parent/project/directory, first agent, model, title, and created ts. */
@@ -402,18 +434,24 @@ export class SessionAggregator {
     }
   }
 
-  /** step.started (internal): records the step's start ts for activeMs pairing. */
+  /** step.started (internal): pushes the step's start ts onto its message's FIFO queue for activeMs pairing. */
   private applyStepStarted(fields: Record<string, unknown>): void {
     const sessionID = readString(fields.sessionID);
     if (sessionID === null) return;
-    const key = this.stepStartKey(sessionID, fields);
-    if (key === null) return;
+    const messageID = readString(fields.messageID);
+    if (messageID === null) return;
     const ts = readTimestamp(fields.ts);
     if (ts === null) return;
-    this.stepStarts.set(key, ts);
+    const key = this.stepQueueKey(sessionID, messageID);
+    const queue = this.stepStartQueues.get(key);
+    if (queue === undefined) {
+      this.stepStartQueues.set(key, [ts]);
+    } else {
+      queue.push(ts);
+    }
   }
 
-  /** step.finished: adds tokens/cost, closes the step's activeMs window (consuming its start entry), and records agent/model. */
+  /** step.finished: adds tokens/cost, closes the OLDEST open step of its message (FIFO activeMs pairing), and records agent/model. */
   private applyStepFinished(fields: Record<string, unknown>): void {
     const sessionID = readString(fields.sessionID);
     if (sessionID === null) return;
@@ -427,15 +465,16 @@ export class SessionAggregator {
     state.tokens.cacheWrite += readCounter(cache?.write);
     state.cost += readCounter(fields.cost);
     const ts = readTimestamp(fields.ts);
-    const startKey = this.stepStartKey(sessionID, fields);
-    if (startKey !== null) {
-      const startTs = this.stepStarts.get(startKey);
-      if (startTs !== undefined) {
-        this.stepStarts.delete(startKey);
-        if (ts !== null) {
-          const stepMs = ts - startTs;
-          if (stepMs > 0) state.activeMs += stepMs;
-        }
+    const messageID = readString(fields.messageID);
+    if (messageID !== null) {
+      // A finish without an unconsumed start of its message contributes 0
+      // activeMs (tokens/cost above still count); an exhausted queue behaves
+      // the same as no queue at all.
+      const queue = this.stepStartQueues.get(this.stepQueueKey(sessionID, messageID));
+      const startTs = queue?.shift();
+      if (startTs !== undefined && ts !== null) {
+        const stepMs = ts - startTs;
+        if (stepMs > 0) state.activeMs += stepMs;
       }
     }
     const agent = readString(fields.agent);
