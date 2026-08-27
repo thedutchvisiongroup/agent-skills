@@ -43,3 +43,10 @@ scripts/.link-state.json
 # devbox / direnv (genereerbare artifacts)
 .devbox/
 .direnv/
+
+# Bun / TypeScript verification artifacts
+node_modules/
+coverage/
+
+# AI-related
+.agents

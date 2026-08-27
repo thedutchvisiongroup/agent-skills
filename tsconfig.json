@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "opencode/plugins/**/*.ts"
+  ],
+  "exclude": [
+    "coverage",
+    "node_modules",
+    "**/*.test.ts"
+  ]
+}
