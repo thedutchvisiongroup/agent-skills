@@ -213,3 +213,14 @@ Key fact: **every Part carries `messageID`** — step-finish correlates to its m
 5. No breaking plugin-loading changes between 1.18.21 and 1.18.23 (verified server-side with an isolated install).
 
 Post-closure note: the two throwaway diagnostic scripts (`scripts/usage_tracking_spike.sh` and `scripts/usage_tracking_loader_probe.sh`) were removed after closure (they were never merged); their findings live in the run reports under `.agents/runs/2026-08-26-opencode-usage-tracking/reports/`.
+
+---
+
+## Post-V1 improvements (v1.1)
+
+Delivered 2026-08-27 (v11 dispatches + final v1.1 polish). Verified by the 69-test Bun suite, `tsc -p tsconfig.json` clean, and the offline smoke check; spec additions in FTD §11.4(j)–(m); reports under `.agents/runs/2026-08-26-opencode-usage-tracking/reports/` (`v11-*.md`, `v11-polish.md`).
+
+- [x] ULID project directories + `projects.json` registry — time-sortable and merge-safe across devices; registry keys validated as ULIDs on read (security review F1, hardened in v1.1 polish)
+- [x] `overview.json` per project — exact 11-key shape, regenerated on every aggregate upsert (derived/disposable, last writer wins); smoke-script assertion H pins the shape
+- [x] activeMs pairing fix — steps pair on (sessionID, messageID) FIFO across distinct step-start/step-finish parts
+- [x] device/git info — device block on session aggregates and overview; git attribution refreshed at init and per `session.idle` (fail-open null)

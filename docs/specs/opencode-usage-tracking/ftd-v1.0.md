@@ -25,6 +25,7 @@ timestamp: 2026-08-20T13:03:20+00:00
 |---------|------|--------|--------|
 | 0.1 | 2026-08-20 | Thim | Initial draft |
 | 1.0 | 2026-08-27 | Thim + AI agents | V1 implemented: OQ-1..3 resolved; loading route and stream extensions documented |
+| 1.1 | 2026-08-27 | Thim + AI agents | ULID project directories + registry; overview.json; device/git info; activeMs pairing fix |
 
 ## Table of contents
 
@@ -343,9 +344,9 @@ Document store (JSONL + JSON), not relational — no ERD; schemas and entity tab
 | Session aggregate | Derived per-session reduction; rebuildable from events | no | plugin aggregation | unlimited (owner choice) |
 | Plugin options | output root, toggles | no | opencode.json tuple-options | repo lifetime |
 
-### 11.4 Implementation notes (v1.0)
+### 11.4 Implementation notes (v1.0; j–m added in v1.1)
 
-Extensions and deviations of the implemented V1 versus the schemas above (all verified by the 49-test Bun suite; see `.agents/runs/2026-08-26-opencode-usage-tracking/reports/`):
+Extensions and deviations of the implemented V1 versus the schemas above (a–i verified by the 49-test Bun suite; j–m are the v1.1 additions, verified by the 69-test suite — see `.agents/runs/2026-08-26-opencode-usage-tracking/reports/`):
 
 - **(a) `eventID` on every persisted record** — each `events.jsonl` line carries the source event envelope `id`, enabling multi-instance dedup and replay-safe rebuild (overlapping plugin instances and `rebuild()`/restart replay never double-count).
 - **(b) New persisted record type `session.title`** — `{type, eventID, sessionID, title, ts}` from `session.updated`; the aggregate title is set from it (later non-empty title wins).
@@ -356,6 +357,10 @@ Extensions and deviations of the implemented V1 versus the schemas above (all ve
 - **(g) Security residuals accepted** — project-level `output` redirect is project-scoped trust: a project `opencode.json` is comparable in trust to the project's own plugin code (§15). In-memory retention is unbounded per process by design: a restart re-seeds from `events.jsonl` (dedup registries must stay grow-only for correctness), and eviction-on-idle was consciously rejected because `session.idle` fires after every turn.
 - **(h) `stepMs` omitted from `step.finished` stream records** — step duration is folded into the aggregate's `activeMs`; the `step.started` pairing that measures it is in-memory only (note c), so replay derives no step durations from the persisted stream — replayed `step.finished` records contribute 0 `activeMs` (restart re-seeds all other totals; post-restart steps accumulate afresh).
 - **(i) Per-record finalize serializes all retained sessions** — every processed record runs `finalize()`, which serializes all retained sessions (O(S) per event); accepted workstation-scale cost — state is per-process and a restart re-seeds it from `events.jsonl`. The NFR-01 benchmark covers `mapEvent` + `apply` only (measured 2026-08-27: 2000 samples, p50 0.001 ms, p95 0.006 ms, max 0.701 ms — PASS).
+- **(j) ULID project directories + registry (v1.1)** — project storage layout is `<outputRoot>/<ULID>/` with `<outputRoot>/projects.json` mapping ULID → {identity (absolute worktree or directory), directory, createdAt}. ULIDs are time-sortable and unique per project per device, making multi-device merges collision-free. A concurrent first-init race may create two ULIDs for one identity (accepted, documented). Registry keys are validated as ULIDs on read — a non-ULID key is treated as absent and never used as a path segment (security review F1).
+- **(k) `overview.json` (v1.1)** — exact 11-key shape: `generatedAt`, `sessions`, `modelsUsed`, `tokens`, `cost`, `toolCounts`, `activeMs`, `directory`, `git` `{branch, tag, lastCommit{hash, subject, author, date} | null}`, `device` `{name, os, osVersion, opencodeVersion}`, `projectDirectory`. Regenerated on every aggregate upsert — derived/disposable, last writer wins across overlapping instances. Git info is refreshed at init and per `session.idle` via local git subprocess (fail-open null); device info is collected once at init (hostname, `/etc/os-release`, kernel, one-time `opencode --version`).
+- **(l) Device block on session aggregates (v1.1)** — session aggregates carry a device block `{name, opencodeVersion}`; replayed sessions are re-stamped with the current process's device (accepted limitation).
+- **(m) activeMs pairing (v1.1)** — pairing is (sessionID, messageID) FIFO: step-start and step-finish are distinct parts. Replayed sessions derive `activeMs` 0 unless steps pair live (`step.started` is not persisted).
 
 ## 12. API & integration
 
