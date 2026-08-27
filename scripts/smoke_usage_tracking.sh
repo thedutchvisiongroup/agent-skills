@@ -28,6 +28,8 @@
 #         E. the parent's children list contains that child
 #         F. toolCounts present with task >= 1
 #         G. the models list is non-empty
+#         H. overview.json exists, parses as JSON, and carries exactly the
+#            11 expected top-level keys
 #       Exits non-zero listing every failed assertion; exits 0 printing a
 #       summary of the found artifacts.
 #
@@ -83,9 +85,9 @@ ONE fixed parent->one-subagent no-file workload through `opencode run --model ..
 --format json` in a temporary workspace with OpenCode output suppressed, then
 asserts metadata-only against the plugin output root
 (~/.local/share/opencode-usage/): project subdir, events.jsonl JSON validity,
-session aggregate completeness, child/parent linkage, task tool counts, and
-model list. Exits non-zero listing every failed assertion. Only paths,
-counts, and booleans are ever printed.
+session aggregate completeness, child/parent linkage, task tool counts, model
+list, and overview.json's exact 11-key shape. Exits non-zero listing every
+failed assertion. Only paths, counts, and booleans are ever printed.
 EOF
 }
 
@@ -360,9 +362,12 @@ def read_records(events_file):
 # session.started record with directory == this run's workspace.
 # Layer 2 (fallback): subdirs new since the pre-run snapshot, plus pre-existing
 # subdirs whose events.jsonl was written during this run, disambiguated by the
-# workload signature (a session.started with parentID set). Needed because a
-# non-git workspace maps to the constant project id "global", whose directory
-# is shared and therefore not new on repeat runs.
+# workload signature (a session.started with parentID set). Still needed under
+# the v1.1 ULID layout: a repeat run of the same workspace reuses its
+# registry-mapped ULID directory (so it is not new), and concurrent OpenCode
+# sessions may write sibling ULID directories during the run. The layered
+# detection is name-agnostic — it never assumes anything about a directory's
+# name (ULID or otherwise).
 
 all_subdirs = []
 if output_root.is_dir():
@@ -577,6 +582,42 @@ if with_models:
 else:
     record_fail("no session aggregate with a non-empty models list")
 
+# --- Assertion H: overview.json with the exact 11-key shape -------------------
+
+overview_file = project_dir / "overview.json"
+try:
+    overview = json.loads(overview_file.read_text())
+except (OSError, json.JSONDecodeError):
+    overview = None
+    record_fail(f"overview.json missing, unreadable, or invalid JSON: {overview_file}")
+if isinstance(overview, dict):
+    expected_overview_keys = {
+        "generatedAt",
+        "sessions",
+        "modelsUsed",
+        "tokens",
+        "cost",
+        "toolCounts",
+        "activeMs",
+        "directory",
+        "git",
+        "device",
+        "projectDirectory",
+    }
+    actual_overview_keys = set(overview.keys())
+    if actual_overview_keys == expected_overview_keys:
+        record_pass("overview.json: exactly the 11 expected top-level keys")
+    else:
+        record_fail(
+            "overview.json top-level keys mismatch — missing: %s; unexpected: %s"
+            % (
+                ", ".join(sorted(expected_overview_keys - actual_overview_keys)) or "none",
+                ", ".join(sorted(actual_overview_keys - expected_overview_keys)) or "none",
+            )
+        )
+elif overview is not None:
+    record_fail("overview.json is valid JSON but not an object")
+
 # --- Summary (paths and counts only) ------------------------------------------
 
 print()
@@ -585,6 +626,7 @@ print(f"  output root:  {output_root}")
 print(f"  project dir:  {project_dir}")
 print(f"  events:       {events_file} ({len(event_records or [])} record(s))")
 print(f"  sessions dir: {sessions_dir} ({len(session_files)} file(s))")
+print(f"  overview:     {overview_file}")
 print(f"  assertions:   {passes} passed, {len(failures)} failed")
 
 if failures:
