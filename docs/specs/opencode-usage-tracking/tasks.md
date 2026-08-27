@@ -216,11 +216,12 @@ Post-closure note: the two throwaway diagnostic scripts (`scripts/usage_tracking
 
 ---
 
-## Post-V1 improvements (v1.1)
+## Post-V1 improvements (v1.1–v1.2)
 
-Delivered 2026-08-27 (v11 dispatches + final v1.1 polish). Verified by the 69-test Bun suite, `tsc -p tsconfig.json` clean, and the offline smoke check; spec additions in FTD §11.4(j)–(m); reports under `.agents/runs/2026-08-26-opencode-usage-tracking/reports/` (`v11-*.md`, `v11-polish.md`).
+Delivered 2026-08-27 (v11 dispatches + final v1.1 polish). Verified by the 69-test Bun suite, `tsc -p tsconfig.json` clean, and the offline smoke check; spec additions in FTD §11.4(j)–(m); reports under `.agents/runs/2026-08-26-opencode-usage-tracking/reports/` (`v11-*.md`, `v11-polish.md`). v1.2 delivered 2026-08-27 as well — verified by the 77-test Bun suite, tsc clean, and the offline smoke check; FTD §11.4(j) rewritten; reports `v12-red-tests.md`, `v12-green.md`, `v12-polish.md`.
 
-- [x] ULID project directories + `projects.json` registry — time-sortable and merge-safe across devices; registry keys validated as ULIDs on read (security review F1, hardened in v1.1 polish)
+- [x] ULID project directories + `projects.json` registry — time-sortable and merge-safe across devices; registry keys validated as ULIDs on read (security review F1, hardened in v1.1 polish) — **superseded in v1.2** by the deterministic hash scheme below
+- [x] Deterministic hash project directories (v1.2) — `<outputRoot>/<hash>/` with hash = first 24 lowercase hex chars of sha256(hostname + "\n" + remoteKey); pure function of (device, project), no registry or persisted state, stable across restarts, merge-safe across devices (FTD §11.4(j), rewritten in v1.2)
 - [x] `overview.json` per project — exact 11-key shape, regenerated on every aggregate upsert (derived/disposable, last writer wins); smoke-script assertion H pins the shape
 - [x] activeMs pairing fix — steps pair on (sessionID, messageID) FIFO across distinct step-start/step-finish parts
 - [x] device/git info — device block on session aggregates and overview; git attribution refreshed at init and per `session.idle` (fail-open null)

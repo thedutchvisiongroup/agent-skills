@@ -123,7 +123,7 @@ Na het linken van nieuwe/gewijzigde agent- of config-bestanden: **herstart OpenC
 
 ### Usage-tracking plugin
 
-De plugin `opencode/plugins/usage-tracking/` legt real-time gebruik en kosten van elke OpenCode-sessie vast (modellen, tokens, kosten, tools, active time, subagents — recursief), als append-only event stream plus afgeleide sessie-aggregaten. Data landt standaard in `~/.local/share/opencode-usage/<ULID>/` (per project een ULID-submap met `events.jsonl`, `sessions/` en `overview.json`, plus een `projects.json`-register aan de root, buiten de werkrepo's); ULID-submappen zijn tijd-sorteerbaar en merge-safe over devices. Er worden nooit berichtteksten, prompts of tool-output weggeschreven.
+De plugin `opencode/plugins/usage-tracking/` legt real-time gebruik en kosten van elke OpenCode-sessie vast (modellen, tokens, kosten, tools, active time, subagents — recursief), als append-only event stream plus afgeleide sessie-aggregaten. Data landt standaard in `~/.local/share/opencode-usage/<hash>/` (per project een deterministische hash-submap met `events.jsonl`, `sessions/` en `overview.json`, buiten de werkrepo's); de hash is deterministisch per device+project en merge-safe over devices — er is geen register nodig. Er worden nooit berichtteksten, prompts of tool-output weggeschreven.
 
 **Activeren** — de plugin laadt via auto-discovery met het platte entry-bestand `opencode/plugins/usage-tracking.ts` (OpenCode scant alleen bestanden direct in de plugins-map):
 
