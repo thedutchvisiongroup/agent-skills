@@ -120,3 +120,29 @@ De map `opencode/agents/` bevat custom agents (markdown met YAML-frontmatter; de
 Beide agents: `mode: all` (primary én subagent), `temperature: 0.1`, enige tool-restrictie is `edit: deny`. Hun system prompts zijn kort en delegeren alle methodiek aan de bijbehorende skill, die ze als eerste actie laden en stap voor stap volgen. Elke agent probeert de ander bij twijfel als subagent aan te roepen; lukt dat niet (bijv. `subagent_depth: 1` op OpenCode < 1.18.2), dan eindigt het rapport met een expliciete handoff-aanbeveling.
 
 Na het linken van nieuwe/gewijzigde agent- of config-bestanden: **herstart OpenCode** — config wordt alleen bij opstarten geladen.
+
+### Usage-tracking plugin
+
+De plugin `opencode/plugins/usage-tracking/` legt real-time gebruik en kosten van elke OpenCode-sessie vast (modellen, tokens, kosten, tools, active time, subagents — recursief), als append-only event stream plus afgeleide sessie-aggregaten. Data landt standaard in `~/.local/share/opencode-usage/` (per project een submap, buiten de werkrepo's); er worden nooit berichtteksten, prompts of tool-output weggeschreven.
+
+**Activeren** — de plugin laadt via auto-discovery met het platte entry-bestand `opencode/plugins/usage-tracking.ts` (OpenCode scant alleen bestanden direct in de plugins-map):
+
+```bash
+uv run scripts/link.py link --skip-skills --opencode=opencode/plugins/usage-tracking.ts,opencode/plugins/usage-tracking/aggregate.ts,opencode/plugins/usage-tracking/config.ts,opencode/plugins/usage-tracking/index.ts,opencode/plugins/usage-tracking/mapping.ts,opencode/plugins/usage-tracking/status.ts,opencode/plugins/usage-tracking/store.ts,opencode/command/usage-status.md
+```
+
+…gevolgd door een **herstart van OpenCode** (plugins laden bij opstarten). Schrijfgezondheid en actuele sessietotallen zijn daarna in elke sessie op te vragen met het commando `/usage-status`.
+
+**Verificatie** — statisch (offline):
+
+```bash
+devbox run -- scripts/smoke_usage_tracking.sh --check
+```
+
+Live smoke-test (provider-backed, draaien terwijl er geen andere OpenCode-sessies actief zijn):
+
+```bash
+devbox run -- scripts/smoke_usage_tracking.sh --run --model PROVIDER/MODEL
+```
+
+**Rollback** — `uv run scripts/link.py unlink` met dezelfde item-keys als hierboven, daarna OpenCode herstarten. Verzamelde data is afgeleid en disposabel; het event stream blijft bij als bron van herstel staan.

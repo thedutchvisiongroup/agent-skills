@@ -16,11 +16,13 @@ harnesses gesynchroniseerd, dus wijzigingen hier zijn direct overal actief.
 | `opencode/agents/*.md` | OpenCode custom agents (frontmatter + body = system prompt) | `~/.config/opencode/agents/` (per bestand) |
 | `opencode/configs/tdvg-standards.json` | Overschrijfbare TDVG-defaults | `~/.config/opencode/config.json` |
 | `opencode/configs/tdvg-required.json` | Afgedwongen managed settings | `/etc/opencode/opencode.jsonc` (root vereist) |
+| `opencode/plugins/usage-tracking.ts` + `opencode/plugins/usage-tracking/*` | Usage-tracking plugin (real-time gebruik/kosten-telemetrie; het platte entry-bestand is vereist voor auto-discovery) | `~/.config/opencode/plugins/` (per bestand) |
+| `opencode/command/usage-status.md` | `/usage-status` slash-commando (status van de usage-tracking plugin) | `~/.config/opencode/command/` (per bestand) |
 
 > Let op met versie-afhankelijke config-keys: OpenCode valideert streng en
 > weigert te starten bij onbekende keys. Voorbeeld: `subagent_depth` bestaat
 > pas sinds 1.18.2 — check `opencode debug config` na elke config-wijziging.
-| `opencode/<alles anders>` | Toekomstige OpenCode-content (commands, themes, ...) | `~/.config/opencode/` 1-op-1 per bestand |
+| `opencode/<alles anders>` | Toekomstige OpenCode-content (themes, ...) | `~/.config/opencode/` 1-op-1 per bestand |
 | `scripts/link.py` | Het sync-script | — |
 
 ## Conventies

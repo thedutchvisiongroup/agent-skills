@@ -16,7 +16,7 @@ timestamp: 2026-08-20T13:03:20+00:00
 | Scenario | project |
 | Author | Thim (The Dutch Vision Group) |
 | Date | 2026-08-20 |
-| Status | Draft |
+| Status | Implemented |
 | Classification | Internal |
 
 ### Revision history
@@ -24,6 +24,7 @@ timestamp: 2026-08-20T13:03:20+00:00
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1 | 2026-08-20 | Thim | Initial draft |
+| 1.0 | 2026-08-27 | Thim + AI agents | V1 implemented: OQ-1..3 resolved; loading route and stream extensions documented |
 
 ## Table of contents
 
@@ -190,12 +191,12 @@ INVEST: passes all. **Priority:** Must
 
 | ID | Requirement | Design component | Artefact | Test case | Status |
 |----|-------------|------------------|----------|-----------|--------|
-| US-01 | Real-time capture | EventRouter, SessionAggregator, EventStore | `opencode/plugins/usage-tracking/index.ts` | TC-01 | Open |
-| US-02 | Token breakdown + tool stats | SessionAggregator | idem | TC-02 | Open |
-| US-03 | Subagent tracking | EventRouter + MetadataResolver (parentID) | idem | TC-03 | Open |
-| US-04 | Config + scoping | ConfigResolver | opencode.json plugin entry | TC-04 | Open |
-| US-05 | Status command | StatusTool + command file | `opencode/command/usage-status.md` | TC-05 | Open |
-| US-06 | Verification | Bun tests + smoke script | `scripts/smoke_usage_tracking.sh` | TC-06 | Open |
+| US-01 | Real-time capture | EventRouter, SessionAggregator, EventStore | `opencode/plugins/usage-tracking/index.ts` | TC-01 | Implemented (bun suite 49 green) |
+| US-02 | Token breakdown + tool stats | SessionAggregator | idem | TC-02 | Implemented (bun suite 49 green) |
+| US-03 | Subagent tracking | EventRouter + SessionAggregator (parentID from events) | idem | TC-03 | Implemented (bun suite 49 green) |
+| US-04 | Config + scoping | ConfigResolver | opencode.json plugin entry | TC-04 | Implemented (bun suite 49 green) |
+| US-05 | Status command | StatusTool + command file | `opencode/command/usage-status.md` | TC-05 | Implemented (bun suite 49 green) |
+| US-06 | Verification | Bun tests + smoke script | `scripts/smoke_usage_tracking.sh` | TC-06 | Implemented — bun suite 49 green; live smoke pending owner |
 
 ## 9. Definition of Ready / Definition of Done
 
@@ -264,7 +265,7 @@ sequenceDiagram
 
 ### 10.4 Design decisions (ADR-style)
 
-Plugin components referenced below — EventRouter (event dispatch, fail-open wrapper), MetadataResolver (SDK lookups: title, model/variant, child sessions), SessionAggregator (totals, tool counts, active time — idempotent), EventStore (JSONL append + aggregate upsert), ConfigResolver (tuple-options), StatusTool — are enumerated in §8 and §12.
+Plugin components referenced below — EventRouter (event dispatch, fail-open wrapper), SessionAggregator (totals, tool counts, active time — idempotent), EventStore (JSONL append + aggregate upsert), ConfigResolver (tuple-options), StatusTool — are enumerated in §8 and §12. V1 takes the event-only route: the planned MetadataResolver/SDK lookups are not used — title, model/variant, and child-session metadata come from event fields, and the SDK client serves only `app.log` (§12).
 
 #### ADR-01: Real-time event-hook capture
 - **Context:** command-triggered export (TokenScope-style) loses crashed sessions; polling OpenCode's SQLite storage (Tokscale-style) couples to internal formats.
@@ -342,12 +343,26 @@ Document store (JSONL + JSON), not relational — no ERD; schemas and entity tab
 | Session aggregate | Derived per-session reduction; rebuildable from events | no | plugin aggregation | unlimited (owner choice) |
 | Plugin options | output root, toggles | no | opencode.json tuple-options | repo lifetime |
 
+### 11.4 Implementation notes (v1.0)
+
+Extensions and deviations of the implemented V1 versus the schemas above (all verified by the 49-test Bun suite; see `.agents/runs/2026-08-26-opencode-usage-tracking/reports/`):
+
+- **(a) `eventID` on every persisted record** — each `events.jsonl` line carries the source event envelope `id`, enabling multi-instance dedup and replay-safe rebuild (overlapping plugin instances and `rebuild()`/restart replay never double-count).
+- **(b) New persisted record type `session.title`** — `{type, eventID, sessionID, title, ts}` from `session.updated`; the aggregate title is set from it (later non-empty title wins).
+- **(c) Internal non-persisted records** — `message.info` and `step.started` are produced by the mapper for message/model correlation (model attribution via `messageID` join) and stepMs computation, but are filtered from `store.append`; they exist only in live memory.
+- **(d) `session.idle` stream record** — carries `type`/`sessionID`/`eventID` only; `activeMs` and `time` live in the aggregate (idle carries sessionID only in the source event — OQ-2).
+- **(e) Loading route** — default activation is auto-discovery via a flat entry file `opencode/plugins/usage-tracking.ts` re-exporting the module directory (verified: OpenCode scans only files directly in the plugins dir; the per-file subdirectory layout alone is not discoverable). Optional per-project tuple override (OQ-1: options delivered verbatim); event-ID dedup makes overlapping instances safe.
+- **(f) NFR-06 warning** — implemented in EventStore as one fail-open warning per output root when the measured on-disk footprint (events + aggregates) exceeds 102400 bytes; writes continue.
+- **(g) Security residuals accepted** — project-level `output` redirect is project-scoped trust: a project `opencode.json` is comparable in trust to the project's own plugin code (§15). In-memory retention is unbounded per process by design: a restart re-seeds from `events.jsonl` (dedup registries must stay grow-only for correctness), and eviction-on-idle was consciously rejected because `session.idle` fires after every turn.
+- **(h) `stepMs` omitted from `step.finished` stream records** — step duration is folded into the aggregate's `activeMs`; the `step.started` pairing that measures it is in-memory only (note c), so replay derives no step durations from the persisted stream — replayed `step.finished` records contribute 0 `activeMs` (restart re-seeds all other totals; post-restart steps accumulate afresh).
+- **(i) Per-record finalize serializes all retained sessions** — every processed record runs `finalize()`, which serializes all retained sessions (O(S) per event); accepted workstation-scale cost — state is per-process and a restart re-seeds it from `events.jsonl`. The NFR-01 benchmark covers `mapEvent` + `apply` only (measured 2026-08-27: 2000 samples, p50 0.001 ms, p95 0.006 ms, max 0.701 ms — PASS).
+
 ## 12. API & integration
 
 | Interface | Direction | Purpose | Error handling |
 |-----------|-----------|---------|----------------|
 | OpenCode event bus (`event` hook) | OpenCode → plugin | session/message/tool events | try/catch per event; log once, never rethrow (ADR-05) |
-| SDK client (`client.session`, messages, models) | plugin → OpenCode | metadata resolution: title, model/variant, child sessions | missing data → null field + warning |
+| SDK client (`client.app.log`) | plugin → OpenCode | plugin log messages (§18); V1 resolves metadata from events — no SDK lookups | log failures swallowed (fail-open, ADR-05) |
 | Local filesystem (Bun `fs`) | plugin → storage | JSONL append + aggregate upsert | write error → degrade (ADR-05, R-05) |
 | `usage_status` custom tool + `/usage-status` command | user → plugin | write health + current session totals | read-only; errors reported inline |
 | OpenRouter `GET /api/v1/models` | **V2:** plugin → OpenRouter | per-token pricing enrichment | cached (~24 h TTL); fallback to OpenCode cost field (ADR-04) |
@@ -362,6 +377,8 @@ Document store (JSONL + JSON), not relational — no ERD; schemas and entity tab
 | NFR-04 | Plugin | Compatibility | OpenCode ≥ 1.18.x loads plugin without hook errors; missing hooks disable with 1 warning | loads or disables gracefully | smoke test per upgrade |
 | NFR-05 | Core logic | Maintainability | Bun test line coverage (router, aggregator, config) | ≥ 80% | `bun test --coverage` |
 | NFR-06 | Storage | Resource usage | disk footprint per average session (events + aggregate) | ≤ 100 KB | smoke test sample session |
+
+NFR-05 measured (`bun test --coverage`, 49-test suite): config 100%, aggregate ~98% (branch; 91.67% line), mapping ~97% (branch; 100% line), store 100% — all above the 80% threshold. `index.ts`/`status.ts` are thin wiring/wrapper modules outside NFR-05's router/aggregator/config scope (exempt from the 80% rule).
 
 ## 14. Privacy-by-design
 
@@ -425,7 +442,7 @@ Omitted recommended sections:
 - OKF house rule (lowercase-kebab-case filename) — consciously deviated: the FTD skill's mandated convention `FTD-[project]-vX.Y.md` and consistency with the existing model-router FTD were explicitly approved by the owner in intake
 
 Open questions:
-- OQ-1: Does the plugin tuple-options form work for local plugin paths? — verify on live OpenCode in implementation batch 1 (decides config contract, R-02)
-- OQ-2: Exact payloads of `session.idle` and session rename/update events — verify during implementation; determines finalisation and title triggers (R-03)
-- OQ-3: Availability of model variant/reasoning metadata in message events vs. SDK model lookup — verify during implementation batch 1
-- OQ-4: V2 OpenRouter enrichment scope (public pricing only vs. also authenticated credits/key endpoints) — owner decision before V2 start
+- OQ-1: Does the plugin tuple-options form work for local plugin paths? — **Resolved YES** (2026-08-26 spike: `tupleOptionsReceived: true`, exact options delivered verbatim). Default activation is auto-discovery; tuple entry remains as the optional per-project override.
+- OQ-2: Exact payloads of `session.idle` and session rename/update events — **Resolved** (2026-08-26 spike): `session.idle` carries sessionID only (finalisation is idempotent on every update); the title arrives via `session.updated.properties.info.title`.
+- OQ-3: Availability of model variant/reasoning metadata in message events vs. SDK model lookup — **Resolved** (2026-08-26 spike): variant not observed live; recorded when present, `null` otherwise (tolerant parsing). Model attribution for steps comes from the `message.info` join on `messageID` — no SDK lookup needed.
+- OQ-4: V2 OpenRouter enrichment scope (public pricing only vs. also authenticated credits/key endpoints) — **Parked for V2** (owner decision before V2 start; ADR-04).
