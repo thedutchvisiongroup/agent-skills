@@ -363,11 +363,11 @@ def read_records(events_file):
 # Layer 2 (fallback): subdirs new since the pre-run snapshot, plus pre-existing
 # subdirs whose events.jsonl was written during this run, disambiguated by the
 # workload signature (a session.started with parentID set). Still needed under
-# the v1.1 ULID layout: a repeat run of the same workspace reuses its
-# registry-mapped ULID directory (so it is not new), and concurrent OpenCode
-# sessions may write sibling ULID directories during the run. The layered
+# the deterministic hash layout: a repeat run of the same workspace reuses its
+# deterministic hash directory (so it is not new), and concurrent OpenCode
+# sessions may write sibling hash directories during the run. The layered
 # detection is name-agnostic — it never assumes anything about a directory's
-# name (ULID or otherwise).
+# name (hash or otherwise).
 
 all_subdirs = []
 if output_root.is_dir():
