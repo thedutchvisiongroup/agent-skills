@@ -15,7 +15,7 @@
 // define their runtime contract.
 import { describe, it, expect } from "bun:test";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { hostname, tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import plugin from "./index";
 
@@ -158,49 +158,151 @@ describe("usage-tracking plugin — review findings (task 6)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// v11 addition — dispatch 2026-08-27: ULID project directories + registry.
-// The plugin's output root must carry <outputRoot>/projects.json (mapping
-// ULID → {identity, directory, createdAt}) and write events.jsonl inside the
-// ULID subdirectory registered for the init input's identity (absolute
-// worktree path if present, else absolute directory path). This pins the
-// wiring that replaces the old project.id-first projectSubdirectory
-// candidates — no pre-existing test pinned those candidates (verified by
-// grep: findEventsFile is recursion-agnostic), so this is the new guard.
+// v12 addition — dispatch 2026-08-27: deterministic-hash project directories
+// (replaces ULID + projects.json registry). The project subdirectory is
+// projectDirectoryName({worktree, directory, remote, hostname}): hostname from
+// os.hostname() (fail-open "unknown"), remote probed ONCE at init via
+// `git -C <worktree||directory> remote get-url origin` through input.$ (trimmed,
+// fail-open null). Wiring pins:
+//   - events land under the EXACT projectDirectoryName() value for the init
+//     inputs (remote probed through the fake $ shell below);
+//   - NO projects.json exists anywhere under the output root (registry gone);
+//   - two inits with SEPARATE output roots produce the SAME subdirectory —
+//     impossible with random ULIDs unless a registry bridges them, which is
+//     exactly what v12 removes.
+// "./projectdir" is imported DYNAMICALLY inside the wiring test so this file's
+// other (green) tests keep running while the module is missing: a static
+// import would fail the whole file at module resolution and mask the
+// old-behavior red reason the dispatch asks to verify. After Green, the
+// import may be hoisted to the top of the file (behavior-neutral).
 // ---------------------------------------------------------------------------
 
-const ULID_CHARS = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-const ULID_RE = new RegExp(`^[${ULID_CHARS}]{26}$`);
+const REMOTE_URL = "https://github.com/usage-tracking/wiring.git";
 
-describe("usage-tracking plugin — ULID project directories (v11)", () => {
-  it("registers the project in projects.json and writes events under its ULID subdirectory", async () => {
-    const out = mkdtempSync(join(tmpdir(), "usage-tracking-ulid-wiring-"));
+/**
+ * Fake host shell (input.$): answers any `git … remote get-url origin` probe
+ * with REMOTE_URL via .text() (the house convention for shell probes, cf.
+ * collectGitInfo); every other command fails so the remaining fail-open probes
+ * (opencode --version, git branch/tag/log) degrade to null.
+ */
+const fakeShell: any = (strings: TemplateStringsArray, ...values: unknown[]) => {
+  let command = "";
+  for (let i = 0; i < strings.length; i++) {
+    command += strings[i];
+    if (i < values.length) command += String(values[i]);
+  }
+  return {
+    text: async () => {
+      if (command.includes("remote get-url origin")) return REMOTE_URL;
+      throw new Error(`fake shell: unstubbed command: ${command}`);
+    },
+  };
+};
+
+const wiredInput: any = {
+  client: { app: { log: async () => {} } },
+  project: {},
+  directory: "/tmp",
+  worktree: "/tmp",
+  $: fakeShell,
+};
+
+/** Recursively locates any projects.json under the output root (must stay absent in v12). */
+function findProjectsJson(root: string): string | null {
+  for (const entry of readdirSync(root, { recursive: true })) {
+    const name = String(entry);
+    if (name.endsWith("projects.json")) {
+      const path = join(root, name);
+      if (existsSync(path)) return path;
+    }
+  }
+  return null;
+}
+
+describe("usage-tracking plugin — deterministic project directories (v12)", () => {
+  it("writes events under the exact projectDirectoryName() subdirectory for the init inputs", async () => {
+    const out = mkdtempSync(join(tmpdir(), "usage-tracking-hash-wiring-"));
     try {
-      const hooks = await plugin({ ...fakeInput }, { output: out });
+      const hooks = await plugin({ ...wiredInput }, { output: out });
       await hooks.event({
         event: {
-          id: "evt-ulid-wiring-1",
+          id: "evt-hash-wiring-1",
           type: "session.idle",
-          properties: { sessionID: "sess_ulid_1" },
+          properties: { sessionID: "sess_hash_1" },
         },
       });
       await hooks.dispose?.();
 
-      // The registry exists at the output root.
-      const registryPath = join(out, "projects.json");
-      expect(existsSync(registryPath)).toBe(true);
-      const registry = JSON.parse(readFileSync(registryPath, "utf8"));
-
-      // events.jsonl lives inside a ULID-named subdirectory…
       const eventsFile = findEventsFile(out);
       expect(eventsFile).not.toBeNull();
       const subdirectory = basename(dirname(eventsFile!));
-      expect(subdirectory).toMatch(ULID_RE);
-      // …that is a key of the registry, registered under the init input's
-      // worktree identity.
-      expect(Object.hasOwn(registry, subdirectory)).toBe(true);
-      expect(registry[subdirectory].identity).toBe("/tmp");
+      // Old behavior (random ULID subdirectory) fails HERE first — the
+      // old-behavior red the dispatch asks to verify — before the dynamic
+      // import below ever runs.
+      expect(subdirectory).toMatch(/^[0-9a-f]{24}$/);
+
+      const { projectDirectoryName } = await import("./projectdir");
+      const expected = projectDirectoryName({
+        worktree: "/tmp",
+        directory: "/tmp",
+        remote: REMOTE_URL,
+        hostname: hostname(),
+      });
+      expect(expected).not.toBeNull();
+      expect(subdirectory).toBe(expected);
     } finally {
       rmSync(out, { recursive: true, force: true });
+    }
+  });
+
+  it("creates no projects.json anywhere under the output root after init + events (registry removed)", async () => {
+    const out = mkdtempSync(join(tmpdir(), "usage-tracking-no-registry-"));
+    try {
+      const hooks = await plugin({ ...wiredInput }, { output: out });
+      await hooks.event({
+        event: {
+          id: "evt-no-registry-1",
+          type: "session.idle",
+          properties: { sessionID: "sess_noreg_1" },
+        },
+      });
+      await hooks.dispose?.();
+
+      // Sanity guard: the plugin actually initialized and wrote events, so the
+      // absent registry cannot pass vacuously.
+      expect(findEventsFile(out)).not.toBeNull();
+      expect(findProjectsJson(out)).toBeNull();
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+    }
+  });
+
+  it("is deterministic: two inits with separate output roots produce the same project subdirectory", async () => {
+    const outA = mkdtempSync(join(tmpdir(), "usage-tracking-det-a-"));
+    const outB = mkdtempSync(join(tmpdir(), "usage-tracking-det-b-"));
+    try {
+      const hooksA = await plugin({ ...wiredInput }, { output: outA });
+      await hooksA.event({
+        event: { id: "evt-det-a-1", type: "session.idle", properties: { sessionID: "sess_det_1" } },
+      });
+      await hooksA.dispose?.();
+
+      const hooksB = await plugin({ ...wiredInput }, { output: outB });
+      await hooksB.event({
+        event: { id: "evt-det-b-1", type: "session.idle", properties: { sessionID: "sess_det_1" } },
+      });
+      await hooksB.dispose?.();
+
+      const eventsA = findEventsFile(outA);
+      const eventsB = findEventsFile(outB);
+      expect(eventsA).not.toBeNull();
+      expect(eventsB).not.toBeNull();
+      // Separate output roots: no shared registry can bridge the two names —
+      // only a pure function of the inputs can make them equal.
+      expect(basename(dirname(eventsB!))).toBe(basename(dirname(eventsA!)));
+    } finally {
+      rmSync(outA, { recursive: true, force: true });
+      rmSync(outB, { recursive: true, force: true });
     }
   });
 });
@@ -223,8 +325,9 @@ describe("usage-tracking plugin — test hygiene (v11)", () => {
     // Assembled from parts so this guard's own source does not match itself.
     const callNeedle = "await plugin" + "(";
     const callLines = source.split("\n").filter((line) => line.includes(callNeedle));
-    // Four call sites today (two default-export tests, task 6, v11 wiring);
-    // the floor keeps the scan from rotting into a vacuous pass.
+    // Seven call sites today (two default-export tests, task 6, three v12
+    // wiring tests — the determinism test inits twice); the floor keeps the
+    // scan from rotting into a vacuous pass.
     expect(callLines.length).toBeGreaterThanOrEqual(4);
     for (const line of callLines) {
       expect(line).toContain("output:");
