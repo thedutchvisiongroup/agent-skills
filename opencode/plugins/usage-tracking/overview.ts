@@ -20,12 +20,12 @@
  *   reported once to the optional logger and swallowed — never thrown.
  *
  * Pure and testable — no OpenCode imports; the only I/O is `node:fs/promises`
- * plus `generateULID` for temp-file names.
+ * plus `node:crypto` random UUIDs for temp-file names.
  */
 
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { generateULID } from "./ulid";
 import type { SessionModel, SessionTokens } from "./aggregate";
 
 const OVERVIEW_FILENAME = "overview.json";
@@ -92,7 +92,7 @@ function errorMessage(error: unknown): string {
 
 // Null-prototype record: hostile keys like "__proto__" in aggregate
 // toolCounts land as own properties instead of hitting Object.prototype's
-// setter (prototype-pollution guard, cf. aggregate.ts / ulid.ts).
+// setter (prototype-pollution guard, cf. aggregate.ts).
 function safeRecord<T>(): Record<string, T> {
   return Object.create(null);
 }
@@ -149,8 +149,8 @@ function normalizeGitInfo(value: unknown): OverviewGitInfo | null {
  * Fail-open (ADR-05): any error is reported once to the optional logger and
  * swallowed — this function never throws.
  *
- * @param projectDirPath - Project-scoped output directory (the ULID
- *   subdirectory resolved by `resolveProjectDirectory`).
+ * @param projectDirPath - Project-scoped output directory (the deterministic
+ *   hash subdirectory resolved by `projectDirectoryName`).
  * @param aggregates - Finalize()-shaped map of sessionID → session aggregate
  *   (in-memory or replayed); non-object entries are skipped.
  * @param deviceInfo - Overview-level device block, or null.
@@ -250,7 +250,7 @@ export async function writeOverview(
 
     await mkdir(projectDirPath, { recursive: true });
     const target = join(projectDirPath, OVERVIEW_FILENAME);
-    const temp = join(projectDirPath, `.${OVERVIEW_FILENAME}.${generateULID()}.tmp`);
+    const temp = join(projectDirPath, `.${OVERVIEW_FILENAME}.${randomUUID()}.tmp`);
     try {
       await writeFile(temp, `${JSON.stringify(overview, null, 2)}\n`, "utf8");
       await rename(temp, target);

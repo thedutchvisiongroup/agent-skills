@@ -1,8 +1,8 @@
 /**
  * Plugin wiring for usage-tracking (OpenCode plugin entry).
  *
- * Composes the pipeline stages: `config` (resolve options) → `ulid` (registry-
- * backed per-project directory) → `mapping` (normalize bus events) →
+ * Composes the pipeline stages: `config` (resolve options) → `projectdir`
+ * (deterministic per-project directory) → `mapping` (normalize bus events) →
  * `aggregate` (session state + AC 7.3 rollup) → `store` (ADR-02 JSONL +
  * aggregates) + `overview` (project-level snapshot), and exposes the
  * `usage_status` tool backed by `status`.
@@ -10,7 +10,7 @@
  * Core invariants:
  * - Fail-open (ADR-05): no error from any stage ever reaches the host — the
  *   event hook, write queue, tool, and every init-time probe (device info,
- *   git info, project registry) swallow and log.
+ *   git info, origin remote) swallow and log.
  * - Metadata-only (ADR-06): only the normalized records from `mapEvent` are
  *   processed; no message content, prompts, or tool outputs.
  * - Event-ID dedup: the live envelope id (fallback: record `eventID`) keeps
@@ -28,7 +28,7 @@ import { SessionAggregator, type DeviceInfo } from "./aggregate";
 import { resolveConfig } from "./config";
 import { mapEvent, isInternalRecord, type UsageEventEnvelope } from "./mapping";
 import { writeOverview, type OverviewDeviceInfo, type OverviewGitInfo } from "./overview";
-import { resolveProjectDirectory } from "./ulid";
+import { projectDirectoryName } from "./projectdir";
 import { EventStore } from "./store";
 import { StatusTracker } from "./status";
 
@@ -160,13 +160,41 @@ async function collectGitInfo(
 }
 
 /**
+ * One-time `git remote get-url origin` probe through the host shell, feeding
+ * the project-directory hash: the trimmed URL on success; absent shell,
+ * command failure, or empty output → null (fail-open), which makes the hash
+ * fall back to the path identity inside `projectDirectoryName`.
+ *
+ * @param shell - Host Bun shell; absent → null.
+ * @param input - Plugin init input; the probed directory is the worktree,
+ *   falling back to the directory.
+ */
+async function readGitRemote(
+  shell: PluginShell | null | undefined,
+  input: { worktree?: unknown; directory?: unknown } | null | undefined,
+): Promise<string | null> {
+  if (typeof shell !== "function") return null;
+  const fields = isPlainObject(input) ? input : {};
+  const dir = readNonEmptyString(fields.worktree) ?? readNonEmptyString(fields.directory);
+  if (dir === null) return null;
+  try {
+    const output = await shell`git -C ${dir} remote get-url origin`.text();
+    const trimmed = typeof output === "string" ? output.trim() : "";
+    return trimmed.length > 0 ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The plugin factory. Runs once per OpenCode initialization.
  *
  * Init probes (all fail-open): device info (hostname, /etc/os-release
  * PRETTY_NAME, kernel release, one-time `opencode --version` via the host
- * shell), the registry-backed ULID project subdirectory, and the project's
- * git attribution. The git info is refreshed on every `session.idle` so the
- * overview tracks branch switches; the latest collected value is cached.
+ * shell), the origin remote (one-time, for the deterministic project
+ * subdirectory), and the project's git attribution. The git info is
+ * refreshed on every `session.idle` so the overview tracks branch switches;
+ * the latest collected value is cached.
  *
  * @param input - Plugin init input from OpenCode: `client` (SDK app client),
  *   `project`/`worktree`/`directory` (used for output scoping and git
@@ -233,13 +261,20 @@ const plugin: Plugin = async (input, options) => {
 
   const aggregator = new SessionAggregator(aggregatorDevice);
 
-  // Per-project output subdirectory (V11): a registry-backed ULID under the
-  // configured output root, keyed by the project identity (absolute worktree
-  // path, else absolute directory path). Registry failures fail open with one
-  // log per error class.
-  const projectSubdir = await resolveProjectDirectory(config, input, (message) => {
-    reportErrorClass(`registry:${message}`, message);
-  });
+  // Per-project output subdirectory (V12): a deterministic hash — hostname
+  // (os.hostname(); empty maps to "unknown" inside projectDirectoryName,
+  // fail-open) salted with the origin remote (probed once at init; falls
+  // back to the resolved path identity inside the hash). No registry: the
+  // same project lands in the same subdirectory under any output root. A
+  // null result (no usable path identity at all) fails open to "default".
+  const originRemote = await readGitRemote(shell, input);
+  const projectSubdir =
+    projectDirectoryName({
+      worktree: input?.worktree,
+      directory: input?.directory,
+      remote: originRemote,
+      hostname: deviceName,
+    }) ?? "default";
   const outputPath = join(config.output, projectSubdir);
 
   // Git attribution: probed at init and refreshed on every session.idle; the
