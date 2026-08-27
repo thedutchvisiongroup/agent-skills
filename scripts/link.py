@@ -15,7 +15,12 @@ Two kinds of things are synced:
    into `~/.config/opencode/` (e.g. `agents/code-reviewer.md`). The reserved
    subfolder `<repo>/opencode/configs/` is NOT copied 1:1; each file in it has
    a fixed target mapping (see CONFIG_FILE_MAP), including the managed layer
-   in `/etc/opencode/` (requires root).
+   in `/etc/opencode/` (requires root). Repo-only test files (`*.test.ts`)
+   are never deployed. The files inside a plugin directory
+   (`opencode/plugins/<name>/`) are treated as one group: the interactive
+   prompt shows a single checkbox for the directory, `--opencode=` accepts
+   the directory key `opencode/plugins/<name>/`, and status/list render one
+   aggregated row per directory (state stays per file).
 
 The script is idempotent: existing correct symlinks are kept, broken symlinks
 are repaired, and real files/dirs trigger an interactive prompt before being
@@ -26,6 +31,7 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -183,7 +189,8 @@ def discover_opencode_items() -> list[SyncItem]:
     Every file under opencode/ maps 1:1 (per file) into ~/.config/opencode/,
     EXCEPT the reserved configs/ subfolder, whose files map via CONFIG_FILE_MAP
     (tdvg-standards.json → ~/.config/opencode/config.json, tdvg-required.json →
-    /etc/opencode/opencode.jsonc).
+    /etc/opencode/opencode.jsonc). Repo-only test files (*.test.ts) are never
+    deployed and are skipped.
     """
     items: list[SyncItem] = []
     if not OPENCODE_SOURCE_DIR.is_dir():
@@ -193,6 +200,8 @@ def discover_opencode_items() -> list[SyncItem]:
     for path in sorted(OPENCODE_SOURCE_DIR.rglob("*")):
         if not path.is_file():
             continue
+        if path.name.endswith(".test.ts"):
+            continue  # repo-only test file, never deployed
         rel = path.relative_to(OPENCODE_SOURCE_DIR)
         if rel.parts[0] == OPENCODE_RESERVED_DIR:
             continue
@@ -217,11 +226,92 @@ def discover_opencode_items() -> list[SyncItem]:
                     key=src.relative_to(REPO_ROOT).as_posix(),
                     label=f"opencode/{OPENCODE_RESERVED_DIR}/{name}",
                     source=src.resolve(),
-                    target=target,
-                    managed=target.is_relative_to(MANAGED_TARGET_DIR),
-                )
+                target=target,
+                managed=target.is_relative_to(MANAGED_TARGET_DIR),
             )
+        )
     return items
+
+
+# --------------------------------------------------------------------------- #
+# Plugin-directory grouping
+# --------------------------------------------------------------------------- #
+
+
+def _plugin_group_key(key: str) -> Optional[str]:
+    """Return the plugin-directory group key for an item key, if any.
+
+    Files directly inside <repo>/opencode/plugins/<name>/ are grouped under
+    the directory key "opencode/plugins/<name>/" (the trailing slash keeps it
+    distinct from any file key).
+    """
+    parts = key.split("/")
+    if len(parts) == 4 and parts[0] == "opencode" and parts[1] == "plugins":
+        return f"opencode/plugins/{parts[2]}/"
+    return None
+
+
+def _plugin_group_members(items: list[SyncItem]) -> dict[str, list[SyncItem]]:
+    """Map each plugin-directory group key to its discovered member items."""
+    groups: dict[str, list[SyncItem]] = {}
+    for item in items:
+        gkey = _plugin_group_key(item.key)
+        if gkey:
+            groups.setdefault(gkey, []).append(item)
+    return groups
+
+
+def _plugin_group_target(gkey: str) -> Path:
+    """The directory a plugin-group row points at (display only; members are
+    still linked per file)."""
+    name = gkey.split("/")[-2]
+    return OPENCODE_TARGET_DIR / "plugins" / name
+
+
+def _iter_display_entries(
+    items: list[SyncItem],
+) -> Iterator[tuple[Optional[str], list[SyncItem]]]:
+    """Iterate items for display, collapsing plugin directories into groups.
+
+    Yields (group_key, members): group_key is None for a single non-grouped
+    item (members holds exactly that item), or the directory key for a plugin
+    group (members holds its files, in discovery order). The sorted discovery
+    order is kept; a group takes the position of its first file.
+    """
+    groups = _plugin_group_members(items)
+    seen: set[str] = set()
+    for item in items:
+        gkey = _plugin_group_key(item.key)
+        if gkey is None:
+            yield None, [item]
+        elif gkey not in seen:
+            seen.add(gkey)
+            yield gkey, groups[gkey]
+
+
+def _expand_opencode_args(
+    args: list[str], items: list[SyncItem]
+) -> tuple[set[str], set[str]]:
+    """Expand an --opencode= selection to per-file item keys.
+
+    A plugin-directory key (e.g. "opencode/plugins/usage-tracking/") expands
+    to all discovered files in that directory; plain file keys pass through
+    unchanged.
+
+    Returns (expanded_keys, unknown_keys).
+    """
+    groups = _plugin_group_members(items)
+    file_keys = {item.key for item in items}
+    expanded: set[str] = set()
+    unknown: set[str] = set()
+    for arg in args:
+        if arg in file_keys:
+            expanded.add(arg)
+        elif arg in groups:
+            expanded.update(item.key for item in groups[arg])
+        else:
+            unknown.add(arg)
+    return expanded, unknown
 
 
 # --------------------------------------------------------------------------- #
@@ -429,6 +519,34 @@ STATUS_LEGEND = (
     "[red]D[/red]=real dir  [red]F[/red]=real file  [blue]*[/blue]=tracked"
 )
 
+# Severity used to aggregate a plugin group's status (worst case wins);
+# mirrors the left-to-right ordering of STATUS_LEGEND.
+STATUS_SEVERITY: dict[str, int] = {
+    "symlink_ok": 0,
+    "missing": 1,
+    "symlink_other": 2,
+    "symlink_broken": 3,
+    "real_dir": 4,
+    "real_file": 5,
+}
+
+
+def _group_status_mark(members: list[SyncItem]) -> str:
+    """Aggregate status mark for a plugin-directory group row.
+
+    All members symlink_ok → "✓"; a mix of symlink_ok and missing →
+    "<linked>/<total> ✓" (partially linked); otherwise the worst-case mark
+    of the members (severity per STATUS_SEVERITY).
+    """
+    classes = [classify_target(m.target, m.source) for m in members]
+    linked = sum(1 for c in classes if c == "symlink_ok")
+    if linked == len(classes):
+        return STATUS_MARKS["symlink_ok"]
+    if linked and all(c in ("symlink_ok", "missing") for c in classes):
+        return f"{linked}/{len(classes)} {STATUS_MARKS['symlink_ok']}"
+    worst = max(classes, key=lambda c: STATUS_SEVERITY[c])
+    return STATUS_MARKS[worst]
+
 
 def _shorten_home(path: Path) -> str:
     try:
@@ -462,7 +580,11 @@ def render_status(skills: list[str], harnesses: dict[str, Harness]) -> None:
 
 
 def render_items_status(items: list[SyncItem]) -> None:
-    """Print a table of every OpenCode sync item and its current state."""
+    """Print a table of every OpenCode sync item and its current state.
+
+    Plugin directories (opencode/plugins/<name>/) are rendered as ONE row
+    with an aggregate status over their member files.
+    """
     table = Table(title="OpenCode sync status", show_lines=False)
     table.add_column("Item", style="bold")
     table.add_column("Target")
@@ -472,12 +594,25 @@ def render_items_status(items: list[SyncItem]) -> None:
     state = load_state()
     tracked_keys = set(state["linked_items"])
 
-    for item in items:
-        cls = classify_target(item.target, item.source)
-        mark = STATUS_MARKS[cls]
-        tag = "[blue]*[/blue]" if item.key in tracked_keys else " "
-        managed = "[magenta]root[/magenta]" if item.managed else "[dim]·[/dim]"
-        table.add_row(item.label, _shorten_home(item.target), managed, f"{mark} {tag}")
+    for gkey, members in _iter_display_entries(items):
+        if gkey is None:
+            item = members[0]
+            cls = classify_target(item.target, item.source)
+            mark = STATUS_MARKS[cls]
+            tag = "[blue]*[/blue]" if item.key in tracked_keys else " "
+            managed = "[magenta]root[/magenta]" if item.managed else "[dim]·[/dim]"
+            table.add_row(item.label, _shorten_home(item.target), managed, f"{mark} {tag}")
+            continue
+        target = f"{_shorten_home(_plugin_group_target(gkey))}/"
+        mark = _group_status_mark(members)
+        tracked = any(m.key in tracked_keys for m in members)
+        tag = "[blue]*[/blue]" if tracked else " "
+        managed = (
+            "[magenta]root[/magenta]"
+            if any(m.managed for m in members)
+            else "[dim]·[/dim]"
+        )
+        table.add_row(gkey, target, managed, f"{mark} {tag}")
     console.print(table)
     console.print(STATUS_LEGEND)
 
@@ -502,14 +637,25 @@ def prompt_skills(skills: list[str]) -> list[str]:
 
 
 def prompt_items(items: list[SyncItem]) -> list[SyncItem]:
-    """Step: choose which OpenCode items to link."""
+    """Step: choose which OpenCode items to link.
+
+    Files inside the same plugin directory (opencode/plugins/<name>/) are
+    collapsed into one checkbox; selecting it selects the whole group.
+    """
     choices = []
-    for item in items:
-        suffix = "  [managed → /etc, needs root]" if item.managed else ""
-        choices.append(
-            Choice(title=f"{item.label} → {_shorten_home(item.target)}{suffix}",
-                   value=item.key, checked=True)
-        )
+    for gkey, members in _iter_display_entries(items):
+        if gkey is None:
+            item = members[0]
+            suffix = "  [managed → /etc, needs root]" if item.managed else ""
+            choices.append(
+                Choice(title=f"{item.label} → {_shorten_home(item.target)}{suffix}",
+                       value=item.key, checked=True)
+            )
+        else:
+            choices.append(
+                Choice(title=f"{gkey} ({len(members)} files)",
+                       value=gkey, checked=True)
+            )
     selected = questionary.checkbox(
         "Select OpenCode items to link:",
         choices=choices,
@@ -517,7 +663,12 @@ def prompt_items(items: list[SyncItem]) -> list[SyncItem]:
     if selected is None:
         return []
     chosen = set(selected)
-    return [item for item in items if item.key in chosen]
+    selected_items: list[SyncItem] = []
+    for item in items:
+        gkey = _plugin_group_key(item.key)
+        if item.key in chosen or (gkey is not None and gkey in chosen):
+            selected_items.append(item)
+    return selected_items
 
 
 def prompt_harnesses(
@@ -605,14 +756,13 @@ def cmd_link(
     if skip_opencode:
         console.print("[dim]↷ skipping OpenCode items (--skip-opencode)[/dim]")
     elif opencode_arg:
-        known = {item.key for item in items}
-        unknown = set(opencode_arg) - known
+        expanded, unknown = _expand_opencode_args(opencode_arg, items)
         if unknown:
             console.print(
                 f"[red]Unknown OpenCode items:[/red] {', '.join(sorted(unknown))}"
             )
             return 1
-        chosen_items = [item for item in items if item.key in set(opencode_arg)]
+        chosen_items = [item for item in items if item.key in expanded]
     elif items:
         chosen_items = prompt_items(items)
 
@@ -750,7 +900,20 @@ def cmd_unlink(
             filtered.append((skill, key))
         linked = filtered
     if opencode_arg:
-        linked_items = [k for k in linked_items if k in set(opencode_arg)]
+        # Expand plugin-directory keys to their discovered files. Per-file
+        # keys keep working unchanged, including keys that are tracked but no
+        # longer discovered (stale state); anything else is unknown → error.
+        items = discover_opencode_items()
+        expanded, unknown = _expand_opencode_args(opencode_arg, items)
+        stale_known = {k for k in linked_items if k in set(opencode_arg)}
+        unknown -= stale_known
+        expanded |= stale_known
+        if unknown:
+            console.print(
+                f"[red]Unknown OpenCode items:[/red] {', '.join(sorted(unknown))}"
+            )
+            return 1
+        linked_items = [k for k in linked_items if k in expanded]
 
     if not linked and not linked_items:
         console.print("[yellow]No matching tracked links to unlink.[/yellow]")
@@ -817,9 +980,14 @@ def cmd_list() -> int:
 
     items = discover_opencode_items()
     console.print(f"\n[bold]OpenCode items in repo ({len(items)}):[/bold]")
-    for item in items:
-        managed = "  [magenta]managed → /etc, needs root[/magenta]" if item.managed else ""
-        console.print(f"  - {item.label} → {_shorten_home(item.target)}{managed}")
+    for gkey, members in _iter_display_entries(items):
+        if gkey is None:
+            item = members[0]
+            managed = "  [magenta]managed → /etc, needs root[/magenta]" if item.managed else ""
+            console.print(f"  - {item.label} → {_shorten_home(item.target)}{managed}")
+        else:
+            target = f"{_shorten_home(_plugin_group_target(gkey))}/"
+            console.print(f"  - {gkey} → {target} ({len(members)} files)")
     return 0
 
 

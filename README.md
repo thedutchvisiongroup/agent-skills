@@ -128,7 +128,7 @@ De plugin `opencode/plugins/usage-tracking/` legt real-time gebruik en kosten va
 **Activeren** — de plugin laadt via auto-discovery met het platte entry-bestand `opencode/plugins/usage-tracking.ts` (OpenCode scant alleen bestanden direct in de plugins-map):
 
 ```bash
-uv run scripts/link.py link --skip-skills --opencode=opencode/plugins/usage-tracking.ts,opencode/plugins/usage-tracking/aggregate.ts,opencode/plugins/usage-tracking/config.ts,opencode/plugins/usage-tracking/index.ts,opencode/plugins/usage-tracking/mapping.ts,opencode/plugins/usage-tracking/status.ts,opencode/plugins/usage-tracking/store.ts,opencode/command/usage-status.md
+uv run scripts/link.py link --skip-skills --opencode=opencode/plugins/usage-tracking.ts,opencode/plugins/usage-tracking/,opencode/command/usage-status.md
 ```
 
 …gevolgd door een **herstart van OpenCode** (plugins laden bij opstarten). Schrijfgezondheid en actuele sessietotallen zijn daarna in elke sessie op te vragen met het commando `/usage-status`.

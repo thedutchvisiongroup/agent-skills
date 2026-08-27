@@ -51,8 +51,10 @@ readonly USAGE_OUTPUT_ROOT="${HOME}/.local/share/opencode-usage"
 # link.py item keys for this feature's deploy surface (FTD §17). The flat
 # entry opencode/plugins/usage-tracking.ts comes first: it is the piece
 # OpenCode auto-discovery actually loads (glob "{plugin,plugins}/*.{ts,js}"
-# does not descend into subdirectories).
-readonly PLUGIN_ITEM_KEYS="opencode/plugins/usage-tracking.ts,opencode/plugins/usage-tracking/aggregate.ts,opencode/plugins/usage-tracking/config.ts,opencode/plugins/usage-tracking/index.ts,opencode/plugins/usage-tracking/mapping.ts,opencode/plugins/usage-tracking/status.ts,opencode/plugins/usage-tracking/store.ts,opencode/command/usage-status.md"
+# does not descend into subdirectories). The directory key
+# opencode/plugins/usage-tracking/ expands to the plugin's discovered
+# production files (repo-only *.test.ts files are never linked).
+readonly PLUGIN_ITEM_KEYS="opencode/plugins/usage-tracking.ts,opencode/plugins/usage-tracking/,opencode/command/usage-status.md"
 
 # Fixed workload: one parent session, exactly one subagent dispatch, no
 # file access.
