@@ -21,6 +21,8 @@ permission:
     "**/.agents/runs/**": allow
   bash:
     "*": deny
+    "ls": allow
+    "cat*": allow
     "git status*": allow
     "git diff*": allow
     "git log*": allow
