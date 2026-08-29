@@ -225,3 +225,14 @@ Delivered 2026-08-27 (v11 dispatches + final v1.1 polish). Verified by the 69-te
 - [x] `overview.json` per project — exact 11-key shape, regenerated on every aggregate upsert (derived/disposable, last writer wins); smoke-script assertion H pins the shape
 - [x] activeMs pairing fix — steps pair on (sessionID, messageID) FIFO across distinct step-start/step-finish parts
 - [x] device/git info — device block on session aggregates and overview; git attribution refreshed at init and per `session.idle` (fail-open null)
+
+---
+
+## Bug fix: non-git projects shared one output directory (v1.3)
+
+Delivered 2026-08-29. OpenCode passes `worktree = "/"` when started outside a git repository; the v1.2 formula took that placeholder as the project identity, so every non-git project on a machine hashed to ONE shared output directory (live evidence: `23be191393b51993adc296ed` held 13 sessions from 3 project directories; root cause triple-verified — hash reverse-engineering, sst/opencode source, spike finding 4 above). Fix (owner-approved option B): a worktree resolving to the filesystem root counts as ABSENT in the identity preference, so the identity falls back to the directory; the remoteKey override, hostname salt, and hash truncation are unchanged, and a genuine directory of `/` stays a valid identity. Verified by the 85-test Bun suite (new vectors pin the root-worktree rule; the existing frozen vectors are untouched and passing), `tsc -p tsconfig.json` clean; FTD §11.4(j) amended and the revision history bumped to v1.3. Reports under `.agents/runs/2026-08-29-usage-tracking-projectdir-fix/reports/`.
+
+- [x] Red tests first (TDD): worktree `/` + directory → hash over the directory; worktree `/` + no directory → null (fail-open); normal worktrees unchanged; remote override and hostname salt unchanged — 3 tests failing before the fix
+- [x] Minimal fix in `projectdir.ts` — pure function preserved: no fs, no OpenCode imports, never throws, fail-open null
+- [x] FTD §11.4(j) amended + revision history v1.3; `docs/specs/log.md` entry added
+- [ ] Data migration: split the mixed `23be191393b51993adc296ed` directory per project and archive it — separate approved task (T4), not part of this fix

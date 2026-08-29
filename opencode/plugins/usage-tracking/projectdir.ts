@@ -6,8 +6,11 @@
  * `projects.json` registry (state that could not bridge separate output
  * roots). Formula (FTD §11.4 formula note, v12 dispatch — pinned exactly):
  *
- *   identity  = resolve(worktree) for a non-empty-string worktree,
- *               else resolve(directory) for a non-empty-string directory,
+ *   identity  = resolve(worktree) for a non-empty-string worktree whose
+ *               resolution is not the filesystem root ("/" — OpenCode's
+ *               placeholder for non-git projects; treated as absent, v1.3),
+ *               else resolve(directory) for a non-empty-string directory
+ *               (a genuine "/" included),
  *               else null → the result is null (regardless of remote).
  *   remoteKey = remote trimmed with ONE trailing ".git" removed, when that
  *               leaves a non-empty string; else identity.
@@ -39,6 +42,9 @@ export type ProjectDirectoryNameInput = {
 const UNKNOWN_HOSTNAME = "unknown";
 const REMOTE_SUFFIX = ".git";
 const NAME_LENGTH = 24;
+// The filesystem root as a worktree is OpenCode's "not in a git repository"
+// placeholder, not a project path (resolved once for platform correctness).
+const FILESYSTEM_ROOT = resolve("/");
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -53,6 +59,17 @@ function readNonEmptyString(value: unknown): string | null {
 function absoluteIdentity(value: unknown): string | null {
   const raw = readNonEmptyString(value);
   return raw === null ? null : resolve(raw);
+}
+
+/**
+ * Worktree path identity; a filesystem-root resolution ("/") counts as
+ * ABSENT. OpenCode passes worktree = "/" for non-git projects (v1.3 bug
+ * fix): without this rule every non-git project on a machine shared one
+ * output directory. A genuine directory of "/" remains a valid identity.
+ */
+function worktreeIdentity(value: unknown): string | null {
+  const identity = absoluteIdentity(value);
+  return identity === FILESYSTEM_ROOT ? null : identity;
 }
 
 /**
@@ -72,13 +89,14 @@ function remoteKey(value: unknown): string | null {
 /**
  * Computes the deterministic per-project subdirectory name (V12).
  *
- * Identity prefers the worktree over the directory (both `resolve()`d; empty
- * strings count as absent); a null identity yields null — even with a remote
- * and hostname present. The remote key (trimmed, ONE trailing ".git" off)
- * overrides the identity in the hash input, so the same clone keeps its name
- * across checkouts and machines-with-different-paths; the hostname (used
- * VERBATIM when a non-empty string, else the literal "unknown") salts the
- * hash so concurrent devices never collide.
+ * Identity prefers the worktree over the directory (both `resolve()`d;
+ * empty strings and a filesystem-root worktree count as absent — the latter
+ * is OpenCode's non-git placeholder, v1.3); a null identity yields null —
+ * even with a remote and hostname present. The remote key (trimmed, ONE
+ * trailing ".git" off) overrides the identity in the hash input, so the same
+ * clone keeps its name across checkouts and machines-with-different-paths;
+ * the hostname (used VERBATIM when a non-empty string, else the literal
+ * "unknown") salts the hash so concurrent devices never collide.
  *
  * Pure: same input values → same name, independent of call order or caches;
  * never throws (unexpected failures yield null, fail-open ADR-05).
@@ -91,7 +109,7 @@ function remoteKey(value: unknown): string | null {
 export function projectDirectoryName(input: ProjectDirectoryNameInput): string | null {
   try {
     const fields = isPlainObject(input) ? input : {};
-    const identity = absoluteIdentity(fields.worktree) ?? absoluteIdentity(fields.directory);
+    const identity = worktreeIdentity(fields.worktree) ?? absoluteIdentity(fields.directory);
     if (identity === null) return null;
     const key = remoteKey(fields.remote) ?? identity;
     const hostname = readNonEmptyString(fields.hostname) ?? UNKNOWN_HOSTNAME;

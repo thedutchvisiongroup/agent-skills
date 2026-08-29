@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-08-29
+* **v1.3 bug fix**: [OpenCode Usage Tracking FTD](opencode-usage-tracking/ftd-v1.0.md) revision 1.3 — non-git projects no longer share one output directory (filesystem-root worktree treated as absent; project identity falls back to the directory). Bun suite 85/85 green with the frozen formula vectors untouched; data migration of the old shared directory is a separate pending task.
+
 ## 2026-08-27
 * **Implementation milestone**: [OpenCode Usage Tracking FTD](opencode-usage-tracking/ftd-v1.0.md) v1.0 implemented (status → Implemented; revision 1.0). Code and security reviews approved; Bun suite 49/49 green; tasks.md checked off with spike findings recorded. Live smoke run, deploy verification and owner sign-off pending (FTD §17, §20).
 * **v1.1 improvements**: [OpenCode Usage Tracking FTD](opencode-usage-tracking/ftd-v1.0.md) revision 1.1 — ULID project dirs, overview.json, activeMs fix, device/git info. Bun suite 69/69 green; registry reads hardened (ULID key validation); smoke script asserts the overview shape (H).

@@ -6,14 +6,17 @@
 // imports, no randomness):
 //   projectDirectoryName(input: {
 //     worktree?: unknown;   // non-empty string → resolved absolute path
-//     directory?: unknown;  // fallback when worktree is absent/non-string
+//     directory?: unknown;  // fallback when worktree is absent, non-string, or the filesystem root
 //     remote?: unknown;     // git remote URL (see remoteKey below)
 //     hostname?: unknown;   // non-empty string → used verbatim, else "unknown"
 //   }): string | null
 //
-// Formula (pinned exactly by the dispatch):
-//   identity  = resolve(worktree) when worktree is a non-empty string,
-//               else resolve(directory) when directory is a non-empty string,
+// Formula (pinned exactly by the dispatch; root-worktree rule added v1.3):
+//   identity  = resolve(worktree) when worktree is a non-empty string whose
+//               resolution is not the filesystem root "/" (OpenCode's
+//               placeholder for non-git projects — counts as absent),
+//               else resolve(directory) when directory is a non-empty string
+//               (a genuine "/" included),
 //               else null → the function returns null (regardless of remote).
 //   remoteKey = remote trimmed with ONE trailing ".git" removed, when that
 //               leaves a non-empty string; else identity.
@@ -165,6 +168,67 @@ describe("projectDirectoryName() — null result", () => {
 
   it("returns null even with a remote and hostname when no path identity exists (identity null → null result)", () => {
     expect(projectDirectoryName({ remote: "https://github.com/a/b.git", hostname: "dev1" })).toBeNull();
+  });
+});
+
+describe("projectDirectoryName() — filesystem-root worktree (non-git projects, v1.3)", () => {
+  // OpenCode passes worktree = "/" when started outside a git repository.
+  // Taking that placeholder as the project identity made every non-git
+  // project on a machine share ONE output directory (the live bug:
+  // sha256("<hostname>\n/") held 13 sessions from 3 project directories).
+  // A filesystem-root worktree therefore counts as ABSENT — identity falls
+  // back to the directory — while a genuine directory of "/" stays valid.
+
+  it("treats a \"/\" worktree as absent: the directory becomes the identity", () => {
+    const viaRootWorktree = projectDirectoryName({ worktree: "/", directory: "/home/x/proj", hostname: "dev1" });
+    expect(viaRootWorktree).not.toBeNull();
+    // Hashes over the directory path, not the placeholder "/".
+    expect(viaRootWorktree).toBe(projectDirectoryName({ directory: "/home/x/proj", hostname: "dev1" }));
+    // And it does not collapse into the genuine-root identity.
+    expect(viaRootWorktree).not.toBe(projectDirectoryName({ directory: "/", hostname: "dev1" }));
+  });
+
+  it("returns null for a \"/\" worktree without a directory (fail-open upstream), even with remote and hostname", () => {
+    expect(projectDirectoryName({ worktree: "/" })).toBeNull();
+    expect(projectDirectoryName({ worktree: "/", remote: "https://github.com/a/b.git", hostname: "dev1" })).toBeNull();
+  });
+
+  it("keeps a \"/\" directory as a valid identity (OpenCode genuinely started in /)", () => {
+    const rootDirectory = projectDirectoryName({ worktree: "/", directory: "/", hostname: "dev1" });
+    expect(rootDirectory).not.toBeNull();
+    expect(rootDirectory).toBe(projectDirectoryName({ directory: "/", hostname: "dev1" }));
+  });
+
+  it("leaves normal worktrees in place: only \"/\" counts as absent", () => {
+    const a = projectDirectoryName({ worktree: "/wt/x", directory: "/dir/x", hostname: "dev1" });
+    expect(a).not.toBeNull();
+    // A non-root worktree still wins over the directory (unchanged rule).
+    expect(a).toBe(projectDirectoryName({ worktree: "/wt/x", directory: "/other", hostname: "dev1" }));
+    expect(a).not.toBe(projectDirectoryName({ directory: "/dir/x", hostname: "dev1" }));
+  });
+
+  it("keeps the remote override and hostname salt unchanged for a \"/\" worktree", () => {
+    // Same remote key as the frozen known vector below: the override must
+    // still win, unaffected by the root-worktree rule.
+    expect(
+      projectDirectoryName({ worktree: "/", directory: "/home/x/proj", remote: "https://github.com/a/b.git", hostname: "dev1" }),
+    ).toBe("9d899ec6af2600a07a69a4eb");
+  });
+
+  // Digests computed OUTSIDE this suite (printf | sha256sum; the third vector
+  // reproduces the live bug evidence — the old shared non-git directory
+  // 23be191393b51993adc296ed = sha256("remote-dev-server\n/")[:24] — which is
+  // reachable now only via a genuine root directory).
+  it("known vector: hostname 'dev1' + \"/\" worktree + directory '/home/x/proj' → sha256('dev1\\n/home/x/proj') first 24 hex chars", () => {
+    expect(projectDirectoryName({ worktree: "/", directory: "/home/x/proj", hostname: "dev1" })).toBe("ddbf0aa94c437a3fc5e768d0");
+  });
+
+  it("known vector: hostname 'dev1' + \"/\" worktree + directory '/' → sha256('dev1\\n/') first 24 hex chars (genuine root stays valid)", () => {
+    expect(projectDirectoryName({ worktree: "/", directory: "/", hostname: "dev1" })).toBe("f88226973f1cbf53eaf2c720");
+  });
+
+  it("known vector: the historical non-git collision hash is now reachable only via a genuine root directory", () => {
+    expect(projectDirectoryName({ directory: "/", hostname: "remote-dev-server" })).toBe("23be191393b51993adc296ed");
   });
 });
 
