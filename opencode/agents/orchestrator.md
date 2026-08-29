@@ -20,7 +20,7 @@ permission:
     "**/.agents/runs": allow
     "**/.agents/runs/**": allow
   bash:
-    "*": deny
+    "*": ask
     "ls": allow
     "cat*": allow
     "git status*": allow
