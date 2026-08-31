@@ -108,6 +108,15 @@ OpenCode laadt en merget meerdere config-bestanden (later wint bij conflicten; n
 
 > ⚠️ **Nooit secrets committen** — API-keys, tokens en MCP-credentials horen uitsluitend thuis in je persoonlijke `~/.config/opencode/opencode.jsonc`, nooit in `opencode/configs/` of ergens anders in deze repo.
 
+### Afgedwongen agent-beleid
+
+Naast `share: disabled` en de bash-permissions dwingt `tdvg-required.json` ook agent-beleid af (niet te overriden):
+
+- De ingebouwde `plan` agent is volledig uitgeschakeld (`agent.plan.disable: true`) — Tab-cyclen tussen Build en Plan bevat Plan niet meer.
+- De verborgen systeem-agents `compaction`, `summary` en `title` draaien op `openrouter/z-ai/glm-5.3-flash` i.p.v. de provider-default (`anthropic/claude-haiku-4.5`); ook `small_model` is op dit model gepind als vangnet voor overige lichte taken.
+
+Verifieer na elke wijziging aan deze laag de merge met `opencode debug config`.
+
 ### Agents
 
 De map `opencode/agents/` bevat custom agents (markdown met YAML-frontmatter; de body is de system prompt):

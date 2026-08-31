@@ -15,7 +15,7 @@ harnesses gesynchroniseerd, dus wijzigingen hier zijn direct overal actief.
 | `skills/<name>/SKILL.md` | Universele agent skills | `~/.agents/skills/`, `~/.claude/skills/`, `~/.codeium/windsurf/skills/`, `~/.gemini/config/skills/` |
 | `opencode/agents/*.md` | OpenCode custom agents (frontmatter + body = system prompt) | `~/.config/opencode/agents/` (per bestand) |
 | `opencode/configs/tdvg-standards.json` | Overschrijfbare TDVG-defaults | `~/.config/opencode/config.json` |
-| `opencode/configs/tdvg-required.json` | Afgedwongen managed settings | `/etc/opencode/opencode.jsonc` (root vereist) |
+| `opencode/configs/tdvg-required.json` | Afgedwongen managed settings (agent-beleid: `plan` uitgeschakeld; `compaction`/`summary`/`title` + `small_model` op `openrouter/z-ai/glm-5.3-flash`) | `/etc/opencode/opencode.jsonc` (root vereist) |
 | `opencode/plugins/usage-tracking.ts` + `opencode/plugins/usage-tracking/*` | Usage-tracking plugin (real-time gebruik/kosten-telemetrie; het platte entry-bestand is vereist voor auto-discovery) | `~/.config/opencode/plugins/` (per bestand) |
 | `opencode/command/usage-status.md` | `/usage-status` slash-commando (status van de usage-tracking plugin) | `~/.config/opencode/command/` (per bestand) |
 
