@@ -1,6 +1,17 @@
 #!/usr/bin/env python3
 """Validate ADR files against OKF frontmatter + MADR 4.0 body structure.
 
+OKF v0.2 provenance: the frontmatter requires a `generated` block ({by, at}).
+`by` must follow the actor convention (opencode/<model-id> | human:<id> |
+process:<id>); `at` must be an ISO 8601 datetime with explicit UTC offset.
+A legacy `timestamp` field triggers a WARN migration nudge only, never an error.
+
+Deliberate divergence vs validate_okf.py (ADR layer is intentionally stricter):
+this validator rejects quoted ISO 8601 `at` shapes that the generic OKF
+validator accepts (space-separated datetimes, lowercase 't'/'z', no-seconds,
+hour-only offsets) and only inspects list-form `verified` entries (bare-mapping
+`verified` is skipped). ADRs should use the full YYYY-MM-DDTHH:MM:SS±HH:MM form.
+
 Usage:
     python3 validate_adr.py <path-to-adr-file>
     python3 validate_adr.py <directory>  # validates all ADR .md files in directory
@@ -28,7 +39,7 @@ VALID_STATUSES = {"proposed", "rejected", "accepted", "deprecated", "superseded"
 
 RESERVED_FILENAMES = {"index.md", "log.md"}
 
-REQUIRED_FRONTMATTER_FIELDS = ["title", "description", "tags", "deciders", "status", "timestamp"]
+REQUIRED_FRONTMATTER_FIELDS = ["title", "description", "tags", "deciders", "status", "generated"]
 
 REQUIRED_SECTIONS = [
     "Context and Problem Statement",
@@ -38,8 +49,16 @@ REQUIRED_SECTIONS = [
 
 FILENAME_PATTERN = re.compile(r"^\d{4}-[a-z0-9]+(-[a-z0-9]+)*\.md$")
 
-# ISO 8601 datetime with time, e.g. 2026-07-21T10:00:00Z or 2026-07-21T10:00:00+02:00
-ISO8601_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:?\d{2})?$")
+# Actor convention (house): opencode/<model-id> | human:<id> | process:<id>
+ACTOR_PATTERN = re.compile(r"^(opencode/[A-Za-z0-9._-]+|human:[A-Za-z0-9@._-]+|process:[A-Za-z0-9._-]+)$")
+
+# ISO 8601 datetime with explicit UTC offset, e.g. 2026-07-21T10:00:00Z or 2026-07-21T10:00:00+02:00
+GENERATED_AT_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})$")
+
+LEGACY_TIMESTAMP_WARN = (
+    "Frontmatter has legacy 'timestamp' field (retired in OKF v0.2); "
+    "migrate to 'generated: {by, at}'."
+)
 
 # Legacy MADR 2.x metadata lines that must NOT appear in the body
 LEGACY_METADATA_PATTERNS = [
@@ -100,27 +119,63 @@ def check_status_and_supersede(status_value, superseded_by, filepath, result):
                 result.warn(f"superseded_by target not found on disk: {superseded_by}")
 
 
-def check_timestamp_format(ts_value, result):
-    """Validate the timestamp is an ISO 8601 datetime.
+def check_actor_format(by_value, field_label, result):
+    """Warn when an actor value does not follow the house actor convention."""
+    if not ACTOR_PATTERN.match(str(by_value).strip()):
+        result.warn(
+            f"Frontmatter '{field_label}' does not follow the actor convention "
+            f"opencode/<model-id> | human:<id> | process:<id>, got '{by_value}'."
+        )
+
+
+def check_generated_at(at_value, result):
+    """Validate generated.at is an ISO 8601 datetime with explicit UTC offset.
 
     PyYAML parses ISO 8601 timestamps into datetime objects; such values are
-    valid by construction. A date-only value (no time) or a non-ISO string is
-    rejected.
+    valid by construction, but an offset-less (naive) datetime is rejected.
+    A date-only value (no time) or a non-ISO string is rejected as well.
     """
-    if isinstance(ts_value, datetime.datetime):
-        return  # YAML timestamp with time — inherently ISO 8601
-    if isinstance(ts_value, datetime.date):
+    if isinstance(at_value, datetime.datetime):
+        if at_value.tzinfo is None:
+            result.error(
+                f"Frontmatter 'generated.at' must include an explicit UTC offset "
+                f"(e.g., 2026-07-21T10:00:00+02:00), got offset-less '{at_value}'."
+            )
+        return
+    if isinstance(at_value, datetime.date):
         result.error(
-            f"Frontmatter 'timestamp' must include a time component "
-            f"(e.g., 2026-07-21T10:00:00Z), got date-only '{ts_value}'."
+            f"Frontmatter 'generated.at' must include a time component with "
+            f"explicit UTC offset (e.g., 2026-07-21T10:00:00+02:00), got date-only '{at_value}'."
         )
         return
-    ts_raw = str(ts_value)
-    if not ISO8601_PATTERN.match(ts_raw):
+    at_raw = str(at_value).strip()
+    if not GENERATED_AT_PATTERN.match(at_raw):
         result.error(
-            f"Frontmatter 'timestamp' must be ISO 8601 datetime "
-            f"(e.g., 2026-07-21T10:00:00Z), got '{ts_raw}'."
+            f"Frontmatter 'generated.at' must be an ISO 8601 datetime with "
+            f"explicit UTC offset (e.g., 2026-07-21T10:00:00+02:00), got '{at_raw}'."
         )
+
+
+def check_generated(generated_value, result):
+    """Validate the OKF v0.2 provenance block 'generated' (required: by + at)."""
+    if not isinstance(generated_value, dict):
+        result.error(
+            "Frontmatter 'generated' must be a mapping with 'by' and 'at' "
+            f"(OKF v0.2 provenance), got {type(generated_value).__name__} '{generated_value}'."
+        )
+        return
+
+    by_value = generated_value.get("by")
+    if by_value is None or str(by_value).strip() == "":
+        result.error("Frontmatter 'generated' must include a non-empty 'by' actor.")
+    else:
+        check_actor_format(by_value, "generated.by", result)
+
+    at_value = generated_value.get("at")
+    if at_value is None or (isinstance(at_value, str) and at_value.strip() == ""):
+        result.error("Frontmatter 'generated' must include an 'at' ISO 8601 datetime.")
+    else:
+        check_generated_at(at_value, result)
 
 
 def validate_frontmatter(yaml_str, filepath, result):
@@ -136,12 +191,28 @@ def validate_frontmatter(yaml_str, filepath, result):
                 result.error("Frontmatter 'type' must be 'ADR'.")
             else:
                 result.error("Frontmatter missing required 'type' field.")
-        for field in ["title", "description", "tags", "deciders", "timestamp"]:
+        for field in ["title", "description", "tags", "deciders", "generated"]:
             if not re.search(rf"^{field}:", yaml_str, re.MULTILINE):
                 result.error(f"Frontmatter missing required '{field}' field.")
-        ts_match = re.search(r"^timestamp:\s*(\S+)", yaml_str, re.MULTILINE)
-        if ts_match:
-            check_timestamp_format(ts_match.group(1).strip('"\''), result)
+        if re.search(r"^timestamp:", yaml_str, re.MULTILINE):
+            result.warn(LEGACY_TIMESTAMP_WARN)
+        gen_match = re.search(r"^generated:\s*(\S.*)?$", yaml_str, re.MULTILINE)
+        if gen_match:
+            gen_inline = gen_match.group(1) or ""
+            by_match = re.search(r"\bby:\s*[\"']?([^\s\",}{]+)", gen_inline) or re.search(
+                r"^\s+by:\s*(\S+)", yaml_str, re.MULTILINE
+            )
+            at_match = re.search(r"\bat:\s*[\"']?([^\s\",}{]+)", gen_inline) or re.search(
+                r"^\s+at:\s*(\S+)", yaml_str, re.MULTILINE
+            )
+            if not by_match:
+                result.error("Frontmatter 'generated' must include a non-empty 'by' actor.")
+            else:
+                check_actor_format(by_match.group(1).strip('"\''), "generated.by", result)
+            if not at_match:
+                result.error("Frontmatter 'generated' must include an 'at' ISO 8601 datetime.")
+            else:
+                check_generated_at(at_match.group(1).strip('"\''), result)
         status_match = re.search(r"^status:\s*(\S+)", yaml_str, re.MULTILINE)
         supersede_match = re.search(r"^superseded_by:\s*(\S+)", yaml_str, re.MULTILINE)
         check_status_and_supersede(
@@ -179,9 +250,20 @@ def validate_frontmatter(yaml_str, filepath, result):
         if field in fm and not (isinstance(fm[field], list) and len(fm[field]) > 0):
             result.error(f"Frontmatter '{field}' must be a non-empty YAML list.")
 
-    # Timestamp format
+    # OKF v0.2 provenance block (replaces the legacy timestamp field)
+    if "generated" in fm:
+        check_generated(fm["generated"], result)
+
+    # Legacy timestamp: retired in OKF v0.2 → migration nudge only
     if "timestamp" in fm:
-        check_timestamp_format(fm["timestamp"], result)
+        result.warn(LEGACY_TIMESTAMP_WARN)
+
+    # Optional OKF v0.2 trust layer: warn on bad actor format in verified entries
+    verified = fm.get("verified")
+    if isinstance(verified, list):
+        for entry in verified:
+            if isinstance(entry, dict) and entry.get("by"):
+                check_actor_format(entry["by"], "verified[].by", result)
 
     # Status + superseded_by
     status_value = str(fm["status"]).strip().lower() if "status" in fm else None
