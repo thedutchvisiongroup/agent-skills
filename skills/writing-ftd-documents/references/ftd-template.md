@@ -61,7 +61,7 @@ The template below uses English placeholders. If the user chose Dutch as the out
 
 ## 1. Document control **(C — core, all scenarios)**
 
-Every FTD artifact starts with an OKF frontmatter block (for agents) above the human-facing title and document control table (for humans). Invoke the `writing-okf` skill and follow its conventions for the `type` value and fields.
+Every FTD artifact starts with an OKF frontmatter block (for agents) above the human-facing title and document control table (for humans). Invoke the `writing-okf` skill and follow its conventions for the `type` value, the house-REQUIRED `status` (`draft | stable | deprecated`; absent means `stable`), and the provenance block `generated {by, at}`.
 
 ```markdown
 ---
@@ -69,7 +69,8 @@ type: FTD
 title: "[Project/Feature name] — Functional Technical Design"
 description: "[One-sentence summary of the design and its scope]"
 tags: [ftd, scenario-feature|project|enterprise, <domain>, <compliance-tags-if-any>]
-timestamp: [YYYY-MM-DDTHH:MM:SS]
+status: <draft | stable | deprecated>
+generated: { by: <actor>, at: <ISO 8601> }
 ---
 
 # [Project/Feature name] — Functional Technical Design
