@@ -19,9 +19,15 @@ description: "<one-line summary of the decision>"
 tags: [<domain>, <technology>, <component>]
 deciders: [<person>, <person>]
 status: proposed | rejected | accepted | deprecated | superseded
-timestamp: <YYYY-MM-DDTHH:MM:SSZ>   # last meaningful change
+generated:                           # OKF v0.2 provenance — replaces legacy `timestamp`
+  by: <actor>                        # opencode/<model-id> | human:<id> | process:<id>
+  at: <YYYY-MM-DDTHH:MM:SS+02:00>    # last meaningful change — bump on every meaningful edit
 # Required when status is superseded:
 # superseded_by: <relative path to the superseding ADR>
+# Optional provenance (only when truthfully known — NEVER fabricated):
+# verified:
+#   - by: human:thim
+#     at: <ISO 8601>
 # Optional MADR fields:
 # consulted: [<subject-matter experts, two-way communication>]
 # informed: [<people kept up-to-date, one-way communication>]
@@ -106,7 +112,9 @@ description: "Select Redis as the session cache for the web application."
 tags: [cache, redis, infrastructure]
 deciders: [Alice (Tech Lead), Bob (Backend)]
 status: accepted
-timestamp: 2026-07-20T10:00:00Z
+generated:
+  by: opencode/glm-5.3-flash
+  at: 2026-07-20T10:00:00+02:00
 ---
 
 # Use Redis for session cache
@@ -142,7 +150,9 @@ description: "Proposal to use SQLite as the primary application database."
 tags: [database, sqlite, infrastructure]
 deciders: [Alice (Tech Lead), Carol (Architect)]
 status: rejected
-timestamp: 2026-07-19T14:30:00Z
+generated:
+  by: human:thim
+  at: 2026-07-19T14:30:00+02:00
 ---
 
 # Use SQLite for primary storage
@@ -190,7 +200,9 @@ tags: [database, mysql, infrastructure]
 deciders: [Alice (Tech Lead)]
 status: superseded
 superseded_by: ./0004-use-postgresql-for-primary-database.md
-timestamp: 2026-07-21T09:00:00Z
+generated:
+  by: opencode/glm-5.3-flash
+  at: 2026-07-21T09:00:00+02:00
 ---
 
 # Use MySQL for primary database
@@ -221,7 +233,9 @@ description: "Replace MySQL with PostgreSQL as the primary relational database."
 tags: [database, postgresql, infrastructure]
 deciders: [Alice (Tech Lead), Bob (DBA)]
 status: accepted
-timestamp: 2026-07-21T09:00:00Z
+generated:
+  by: opencode/glm-5.3-flash
+  at: 2026-07-21T09:00:00+02:00
 ---
 
 # Use PostgreSQL for primary database

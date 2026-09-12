@@ -59,7 +59,7 @@ Gather context from available sources BEFORE drafting. Minimize questions.
 | Considered Options | Git diff / session / code comments | Only if alternatives aren't evident |
 | Decision Outcome | From the implemented change | No — read from code |
 | Consequences | Inferred from the change | Only if impact is unclear |
-| `timestamp` | Current time (ISO 8601) | No — generate it |
+| `generated` | `by` (actor) + `at` (current time, ISO 8601) | No — generate both |
 | **Deciders** | — | **ALWAYS ASK** |
 | **Status** | — | **ALWAYS ASK** |
 
@@ -95,7 +95,9 @@ description: "<one-line summary>"
 tags: [<relevant>, <tags>]
 deciders: [<person>, <person>]
 status: <proposed | rejected | accepted | deprecated | superseded>
-timestamp: <YYYY-MM-DDTHH:MM:SSZ>
+generated:
+  by: <actor>
+  at: <YYYY-MM-DDTHH:MM:SS+HH:MM>
 ---
 ```
 
@@ -105,7 +107,8 @@ timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 - `tags` MUST be a YAML list of relevant tags
 - `deciders` MUST be a YAML list of people involved in the decision
 - `status` MUST be one of the lifecycle values (see Status Lifecycle)
-- `timestamp` MUST be ISO 8601 of last meaningful change — bump it on every meaningful edit
+- `generated` MUST be present with `by` + `at` (OKF v0.2 provenance): `by` follows the actor convention — `opencode/<model-id>` for agent-drafted, `human:<id>` for human-edited, `process:<id>` for automated runs; `at` MUST be ISO 8601 with UTC offset. (Legacy `timestamp` is retired; the OKF validator only emits a WARN nudge for it.)
+- `generated.at` MUST be ISO 8601 of last meaningful change — bump it on every meaningful edit
 - When `status: superseded`, `superseded_by: <relative path to the superseding ADR>` is REQUIRED
 - Optional MADR fields: `consulted: [<person>]` (two-way input) and `informed: [<person>]` (one-way updates) MAY be added
 
@@ -164,7 +167,7 @@ Fix any errors reported by the script. A valid ADR MUST pass all checks.
 ## Superseding an ADR
 
 1. Create the new ADR with the next sequence number. In its `## More Information` section, link back: `Supersedes [ADR-NNNN](<path-to-old-adr>)`.
-2. In the OLD ADR's frontmatter: set `status: superseded`, add `superseded_by: <relative path to the new ADR>`, and bump `timestamp`.
+2. In the OLD ADR's frontmatter: set `status: superseded`, add `superseded_by: <relative path to the new ADR>`, and bump `generated.at` (and consider appending a `verified` entry when the new ADR was human-confirmed).
 3. Update both rows in `index.md`.
 4. NEVER delete the old ADR and NEVER reuse its number — the history is the point.
 
@@ -184,12 +187,14 @@ Fix any errors reported by the script. A valid ADR MUST pass all checks.
 | `deprecated` | No longer relevant | Replaced by newer thinking, no superseding ADR |
 | `superseded` | Replaced by another ADR | Requires `superseded_by` in frontmatter + link back in the new ADR |
 
+**Status vocabulary (house exception):** ADRs deliberately do NOT adopt the OKF v0.2 `status` vocabulary (`draft` / `stable` / `deprecated`). This skill keeps its own richer ADR lifecycle vocabulary — the table above. The ADR `status` remains an OKF-unknown extension key, which OKF consumers MUST tolerate (§4.1 Extensions). This is a documented, deliberate house exception, not an oversight.
+
 ## Conformance
 
 An ADR is conformant if:
 
 1. The file contains valid YAML frontmatter delimited by `---`
-2. The frontmatter contains `type: ADR`, `title`, `description`, `tags`, `deciders`, `status`, and `timestamp`
+2. The frontmatter contains `type: ADR`, `title`, `description`, `tags`, `deciders`, `status`, and `generated` (with `by` and `at`)
 3. The frontmatter `title` matches the H1 heading
 4. The required MADR 4.0 body sections are present: `## Context and Problem Statement`, `## Considered Options`, `## Decision Outcome`
 5. `status` is one of the valid lifecycle values; `status: superseded` implies a `superseded_by` path
