@@ -4,6 +4,12 @@ These templates are starting points, not mandatory structures. `type` values are
 not registered anywhere: pick descriptive, self-explanatory values, reuse `type`
 values already present in the bundle, and adapt the sections to the concept at hand.
 
+All templates use the OKF v0.2 provenance and lifecycle families: `generated`
+(with the house actor convention) and `status` are house-required, and claims
+are backed by `sources` frontmatter entries via `[^id]` footnotes. The Generic
+Concept template shows `status: draft` (it is a fill-in scaffold, work in
+progress until completed); the others show `status: stable`.
+
 ## Generic Concept
 
 ```markdown
@@ -12,12 +18,17 @@ type: <Concept Type>
 title: "<Display Name>"
 description: "<One-line summary>"
 tags: [<domain>, <technology>]
-timestamp: <YYYY-MM-DDTHH:MM:SSZ>
+generated: { by: opencode/<model-id>, at: <ISO 8601> }
+status: draft
+sources:
+  - id: primary-source
+    resource: <Source URL or reference>
+    title: "<Source title>"
 ---
 
 # <Display Name>
 
-<Overview paragraph explaining what this concept is.>
+<Overview paragraph explaining what this concept is.>[^primary-source]
 
 ## Details
 
@@ -28,9 +39,7 @@ timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 - Related to [other concept](/path/to/other.md) — <description of relationship>
 - Part of [parent concept](/path/to/parent.md)
 
-# Citations
-
-[1] <Source URL or reference>
+[^primary-source]: <Source title>
 ```
 
 ## Data Asset (Table/Dataset)
@@ -42,12 +51,17 @@ title: "<Table Name>"
 description: "<One-line summary of what each row represents>"
 resource: <URI of the asset, e.g. a database or catalog URL>
 tags: [<domain>, <data>]
-timestamp: <YYYY-MM-DDTHH:MM:SSZ>
+generated: { by: opencode/<model-id>, at: <ISO 8601> }
+status: stable
+sources:
+  - id: source-docs
+    resource: https://example.com/docs
+    title: "Source documentation"
 ---
 
 # <Table Name>
 
-<Overview of the table's purpose and contents.>
+<Overview of the table's purpose and contents.>[^source-docs]
 
 # Schema
 
@@ -61,9 +75,7 @@ timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 
 - Joined with [other table](/tables/other.md) on `id`.
 
-# Citations
-
-[1] [Source documentation](https://example.com/docs)
+[^source-docs]: Source documentation
 ```
 
 ## API Endpoint
@@ -75,12 +87,17 @@ title: "<Endpoint Name>"
 description: "<One-line summary>"
 resource: https://api.example.com/v1/<path>
 tags: [<service>, <api>]
-timestamp: <YYYY-MM-DDTHH:MM:SSZ>
+generated: { by: opencode/<model-id>, at: <ISO 8601> }
+status: stable
+sources:
+  - id: api-docs
+    resource: https://api.example.com/docs
+    title: "API Documentation"
 ---
 
 # <Endpoint Name>
 
-<Overview of what this endpoint does.>
+<Overview of what this endpoint does.>[^api-docs]
 
 ## Request
 
@@ -126,9 +143,7 @@ timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 | 404  | Resource not found    |
 | 500  | Internal server error |
 
-# Citations
-
-[1] [API Documentation](https://api.example.com/docs)
+[^api-docs]: API Documentation
 ```
 
 ## Playbook / Runbook
@@ -139,12 +154,17 @@ type: Playbook
 title: "<Playbook Name>"
 description: "<One-line summary of when this playbook applies>"
 tags: [<team>, <incident>]
-timestamp: <YYYY-MM-DDTHH:MM:SSZ>
+generated: { by: opencode/<model-id>, at: <ISO 8601> }
+status: stable
+sources:
+  - id: source-docs
+    resource: <Source or documentation link>
+    title: "<Source title>"
 ---
 
 # <Playbook Name>
 
-<Overview of when to use this playbook.>
+<Overview of when to use this playbook.>[^source-docs]
 
 # Trigger
 
@@ -165,9 +185,7 @@ timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 - [Monitoring dashboard](https://example.com/dash)
 - [Related playbook](/playbooks/related.md)
 
-# Citations
-
-[1] <Source or documentation link>
+[^source-docs]: <Source title>
 ```
 
 ## Service / Component
@@ -178,12 +196,17 @@ type: Service
 title: "<Service Name>"
 description: "<One-line summary of what this service does>"
 tags: [<team>, <domain>]
-timestamp: <YYYY-MM-DDTHH:MM:SSZ>
+generated: { by: opencode/<model-id>, at: <ISO 8601> }
+status: stable
+sources:
+  - id: service-docs
+    resource: https://wiki.example.com/service
+    title: "Service documentation"
 ---
 
 # <Service Name>
 
-<Overview of the service's purpose and responsibilities.>
+<Overview of the service's purpose and responsibilities.>[^service-docs]
 
 ## Architecture
 
@@ -209,7 +232,5 @@ timestamp: <YYYY-MM-DDTHH:MM:SSZ>
 
 - [Incident response](/playbooks/service-incident.md)
 
-# Citations
-
-[1] [Service documentation](https://wiki.example.com/service)
+[^service-docs]: Service documentation
 ```
