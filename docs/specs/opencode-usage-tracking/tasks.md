@@ -1,3 +1,18 @@
+---
+type: Task List
+title: "Usage Tracking Plugin — Implementation Tasks"
+description: "Implementation task checklist for the OpenCode Usage Tracking FTD: grouped batches mapped to FTD user stories, each with its own Definition of Done."
+tags: [ftd, tasks, opencode, usage-tracking]
+generated:
+  by: opencode/glm-5.3-flash
+  at: 2026-09-11T17:25:16+00:00
+status: stable
+sources:
+  - id: usage-tracking-ftd
+    resource: /docs/specs/opencode-usage-tracking/ftd-v1.0.md
+    title: "Usage Tracking FTD v1.0"
+---
+
 # Usage Tracking Plugin — Implementation Tasks
 
 Implements [FTD-opencode-usage-tracking-v1.0](ftd-v1.0.md) (project scenario).

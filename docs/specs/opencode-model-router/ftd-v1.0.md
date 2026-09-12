@@ -3,7 +3,10 @@ type: FTD
 title: "OpenCode Model Router — Functional Technical Design"
 description: "Plugin-based sub-agent model routing for OpenCode: 3-tier selection by the parent agent, subscription-first failover chains (Codex before OpenRouter), a versioned model catalog, and validation tooling."
 tags: [ftd, scenario-project, opencode, model-routing, agent-orchestration]
-timestamp: 2026-08-19T18:36:09+00:00
+generated:
+  by: opencode/glm-5.3-flash
+  at: 2026-08-19T18:36:09+00:00
+status: stable
 ---
 
 # OpenCode Model Router — Functional Technical Design

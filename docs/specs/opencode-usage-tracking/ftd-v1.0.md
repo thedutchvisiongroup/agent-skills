@@ -3,7 +3,14 @@ type: FTD
 title: "OpenCode Usage Tracking — Functional Technical Design"
 description: "Plugin-based real-time usage and cost telemetry for OpenCode sessions: event-stream logging (JSONL) plus derived session aggregates covering models, providers, token breakdown, tool statistics, active agent time, and recursive subagent usage."
 tags: [ftd, scenario-project, opencode, usage-tracking, cost-transparency, observability]
-timestamp: 2026-08-20T13:03:20+00:00
+generated:
+  by: opencode/glm-5.3-flash
+  at: 2026-08-20T13:03:20+00:00
+status: stable
+sources:
+  - id: usage-tracking-plugin
+    resource: /opencode/plugins/usage-tracking/
+    title: "Usage Tracking plugin implementation"
 ---
 
 # OpenCode Usage Tracking — Functional Technical Design
