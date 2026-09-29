@@ -1,77 +1,75 @@
 # Where NFRs land
 
-Non-functional requirements belong to a grouping of tasks. One list is one
-group, so that grouping is the list itself. Naming an NFR at group level is not
-enough: an NFR counts as covered only when it lands in exactly one of three
-places.
+An NFR counts as covered only when it lands in exactly one place and has a
+check there. Naming it without a check does not count.
 
-## The three landing spots
+## The landing spots
 
 | # | Landing spot | When to use | What closes it |
 | --- | --- | --- | --- |
-| 1 | Task of its own | The NFR needs its own deliverable and owner | Task acceptance criteria |
-| 2 | Acceptance criterion of a task | The NFR is satisfied by that task's output | The task's verification |
-| 3 | Group-level closing rule | The NFR applies to the whole group and is checked once for all of it | Checked before the group closes |
+| 1 | Own to-dos plus a DoD item, inside the phase it belongs to | The NFR needs real work of its own (profiling, a hardening pass) | That DoD item |
+| 2 | DoD item of the phase whose output satisfies it | The NFR is a property of one phase's result | The phase DoD |
+| 3 | List DoD | One check over the whole list | Checked before the list closes |
+| 4 | DoD item of the observation phase | The NFR is measured over time (a week of runs, five pushes) | The observation phase DoD |
 
-Closing rules carry an id `GR1`, `GR2`, … so `Group rules` and the coverage
-table can refer to them. Tasks do **not** reference group rules in the `NFR`
-field: group rules already apply to every task in the group.
+Landing 4 exists because an NFR measured over time cannot be checked when the
+phase that built it closes. Dropping it is not an option: the source still
+requires it.
 
-## Choosing between the three
+## Choosing
 
 ```
-Does the NFR need separate work with its own deliverable?
-├─ Yes → 1. task of its own
+Is the NFR measured over time or over several runs?
+├─ Yes → 4. observation phase
 └─ No
-   ├─ Is it a single check over the whole group?
-   │  ├─ Yes → 3. group closing rule
-   │  └─ No → 2. acceptance criterion of the relevant task
+   ├─ Does it need separate work of its own?
+   │  ├─ Yes → 1. own to-dos plus DoD item
+   │  └─ No
+   │     ├─ Is it one check over the whole list?
+   │     │  ├─ Yes → 3. list DoD
+   │     │  └─ No → 2. DoD item of the producing phase
 ```
+
+Every NFR item carries the source marker of the NFR itself:
+`([[ftd#13. Non-functional requirements|NFR-04]])`.
 
 ## Examples
 
-### Performance budget for report generation
+### Job duration budget
 
-- Needs profiling and a benchmark: **task of its own** (landing 1), with its
-  own acceptance criterion like "p95 render < 2 s for 1 000 rows".
+- "The job completes in ≤ 5 minutes": a property of one phase's output.
+  **Landing 2**: DoD item of that phase, with the measured duration as
+  evidence.
 
-### Error messages in the user language
+### Cache-hit share over one week
 
-- One check over the whole group — every task either adds user-facing strings
-  or adds none, and the rule is verified once for the batch: **group closing
-  rule** (landing 3), for example GR2 "every new user-facing string exists in
-  `messages.nl.yaml`". Tasks do not repeat this in their `NFR` field.
+- "≥ 80% of runs over one week": measured over time. **Landing 4**: DoD item
+  of the observation phase, with a count table in the run log as evidence.
 
-### Audit trail for one export action
+### Least privilege on every workflow
 
-- Tied to exactly one deliverable: **acceptance criterion** (landing 2) of the
-  export task: "every export writes a row to `audit_log` with actor and
-  timestamp".
+- "Every workflow in scope holds only `contents: read`": one check over all
+  files. **Landing 3**: list DoD.
 
 ## Anti-pattern
 
 ```markdown
-## Group rules
-- Performance: must be good
-- Security: keep it in mind
-- Accessibility: probably fine
+### DoD
+- [ ] Performance is good
+- [ ] Security is taken into account
 ```
 
-None of these lands anywhere. Not covered. Rewrite to:
+Neither item can be answered with yes or no, and neither names evidence.
+Rewrite as a measurable check with evidence and a marker:
 
 ```markdown
-## Group rules
-- [ ] GR1: every new endpoint has a documented rate limit
-- [ ] GR2: contrast ratio ≥ 4.5:1 on new screens (spot-check: home + form)
+### DoD
+- [ ] The GraphQL gate completes in ≤ 5 minutes; duration recorded in the run log ([[ftd#13. Non-functional requirements|NFR-04]])
 ```
-
-And put "export writes audit row" as an acceptance criterion on the export
-task. The group rules above are verified once when the group closes; tasks
-refer to neither of them.
 
 ## Cross-cutting NFRs
 
-Security, accessibility, performance, and auditability often touch several
-tasks. Prefer landing 3 when the check is uniform; prefer landing 1 when a
-hardening pass is real work. Never spread one NFR over several landing spots —
-that is how it falls between the cracks.
+Security, accessibility, performance and auditability often touch several
+phases. Prefer landing 3 when the check is uniform. Prefer landing 1 when a
+hardening pass is real work. Never spread one NFR over several spots: that is
+how it falls between the cracks.

@@ -1,273 +1,257 @@
 ---
 name: takenlijsten-formuleren
-description: Formulates software development task lists with traceability, INVEST and SMART criteria for execution by team members and orchestrated AI agents. Use when creating, splitting, or revising task lists, backlogs, work plans, or sprint tasks for software development.
+description: Formulates executable software development task lists from a source document (FTD, spec, plan), organised in phases with a to-do and a Definition of Done per phase, every item wikilinked to its place in the source. Supports three variants - one person, a team (shared list plus one list per person), or one person working with an agent - at a level a beginning programmer can follow. Use when creating or revising task lists, backlogs, work plans or sprint tasks for software development.
 ---
 
 # Formulating task lists
 
-Produce task lists where every task is unambiguous, no longer splittable,
-traceable to its source, and — where needed — executable by an agent with
-verifiable evidence.
+A task list turns a source document into work someone can actually do, down
+to a beginning programmer writing their first program. Every item is one
+concrete action or one check, linked to the exact place in the source. Every
+phase closes on checks that can be ticked off at the moment the phase ends.
 
 ## When NOT to use
 
-- Capturing change policy, failure handling, ownership, collaboration
-  agreements, or estimation philosophy. Those do not belong in a task list.
-- Managing shared project status across people. Out of scope here.
-- Designing or architecting solutions. Fix the source document first; the
-  list only reflects it.
+- Capturing change policy, failure handling, collaboration agreements or
+  estimation philosophy. Those do not belong in a task list.
+- Designing a solution. Fix the source first. The list reflects the source;
+  where it must add something, it says so under Additions.
 
-## Before You Start
+## Before you start
 
-You MUST confirm these three points with the user before writing the list:
+Establish four things. Take them from the request and the source first. Ask
+only for what is still missing.
 
-1. **Source**: which document is authoritative, with version or date.
-2. **Audience**: humans, agents, or both.
-3. **Ceiling**: the single theme this list covers, and where scope stops.
+1. **Source**: the authoritative document, its version or date, and its file
+   name and location. The file name is the wikilink target.
+2. **Variant**: `solo`, `team` or `human-agent`. See
+   [references/list-variants.md](references/list-variants.md). For `team`,
+   also the people and who does what. The user decides the split; you may
+   propose one.
+3. **Ceiling**: which part of the source the list covers. The ceiling never
+   drops the source's own Definition of Done, success criteria or rollout
+   steps. If the user wants that anyway, record it under Open questions.
+4. **Working material**: is the repository available? If yes, read the files
+   the source names (workflows, scripts, config, package manifests) so items
+   name real paths, steps and commands. If no, an item that needs a location
+   starts with a lookup action (a search command), never with a guess.
 
-Do not proceed without answers. If the user cannot name a source, the list
-cannot have traceability — say so.
+If no source can be named, the list cannot be traced. Say so and stop.
 
 ## Workflow
 
-Copy this checklist and track your progress:
+Copy this checklist and track progress:
 
 ```
 Task-list progress:
-- [ ] 1. Confirm source, audience, ceiling
-- [ ] 2. Write preflight (dependencies, tools)
-- [ ] 3. Write scope (in / out) and group rules (incl. NFRs)
-- [ ] 4. Decompose into terminal tasks (see references/splitting-rules.md)
-- [ ] 5. Fill every task against the task contract
-- [ ] 6. Check: every source element maps to at least one task or is explicitly
-      under Out; no two tasks deliver the same output (100% rule)
-- [ ] 7. Check: agent tasks have verification, evidence, limits, rollback; and
-      limits + steps together can reach every acceptance criterion
-- [ ] 8. Fill the coverage table (one row per source element → T-ids, `GR<n>`, or `Out`)
-- [ ] 9. Deliver the list in the output structure below
+- [ ] 1. Establish source, variant, ceiling, working material
+- [ ] 2. Read the whole source and enumerate its elements
+- [ ] 3. Verify what the list will rely on (becomes phase 0)
+- [ ] 4. Divide into phases
+- [ ] 5. Write each phase: header, to-do, DoD
+- [ ] 6. Give every item one marker: source link or addition
+- [ ] 7. Timing check: every DoD item can be ticked when its phase closes
+- [ ] 8. Coverage check: every element lands; every DoD item has a to-do that produces it; nothing twice
+- [ ] 9. Link check: every item marked, every wikilink resolves to a heading
+- [ ] 10. Deliver in the output structure, per variant
 ```
 
-### Step 1: Confirm the three points
+### Step 2: Enumerate source elements
 
-Ask, then record the answers in the list header:
+Elements come from every section, not only the user stories: acceptance
+criteria, success criteria, Definition of Done, NFRs, constraints, risks and
+their mitigations, quality and failure scenarios, security and privacy
+controls, rollout and rollback steps, open questions. Build the coverage
+table from this enumeration, not from the finished list. A table built from
+the list only proves the list covers itself.
+
+### Step 3: Verify, do not assume
+
+Everything the list relies on is checked before any phase starts. The checks
+become the to-dos of phase 0.
+
+- **References in the source.** Open every document, ADR or convention the
+  source refers to. Check that it exists and says what the source claims.
+  "Per convention X" is a claim until you have read X.
+- **Tools and commands.** Check that each one is available through the
+  project's declared toolchain (for example `devbox run`, the package
+  manager, the CI image). Installable is not the same as available.
+- **Local prerequisites.** Dependencies installed, services running,
+  environment variables present. A beginner hits these first.
+- **External facts** the list builds on, where the source states them
+  (action versions, tool behaviour).
+
+When a check fails, fix it through an item, or record it under Open
+questions. Never cover it with a guessed task.
+
+### Step 4: Phases
+
+- One phase per feature or use case of the source, in source order unless a
+  dependency says otherwise.
+- Add cross-cutting phases for work that belongs to no single use case:
+  preparation (always phase 0), integration and review, release or merge,
+  and observation after release when the source's DoD or success criteria
+  need measurement over time.
+- A phase closes on its own DoD. The list closes when every phase has closed
+  and the list DoD holds.
+- Splitting rules: [references/splitting-rules.md](references/splitting-rules.md).
+
+Every phase starts with a header:
 
 ```markdown
-## Header
-- Source: <document> version/date <...>
-- Audience: `humans` | `agents` | `both`
-- Ceiling: <top level and where scope stops>
+## Phase <n> — <use case id>: <outcome>
+
+Basis: <wikilinks to the source sections>
+Touches: <allowlist: files and areas, including lock and generated files a tool changes>
+Starts after: <phase or "phase 0">
+
+### Before you begin
+- [ ] <prerequisite, with the command that checks it>
 ```
 
-### Step 2: Preflight
+`Before you begin` is omitted when the phase has no local prerequisites.
+Variant-specific header lines are in the variants reference.
 
-The preflight block comes right after the `Header`. No task starts while
-preflight is unchecked.
+### Step 5: Item rules
 
-```markdown
-## Preflight
-- [ ] Dependencies available and correctly configured
-- [ ] Tools present and set up (list per task what is needed)
-- [ ] Group definition-of-done read (see Group rules)
-```
+**To-do items** are the work.
 
-### Step 3: Scope and group rules
+- One action per item, in the imperative. Two actions joined by "and" are
+  two items, unless one command does both.
+- Full path of every file.
+- The exact command in a code block when the command is known from the
+  source or the repository. Each command gets a one-line comment saying what
+  it does.
+- The expected result: `Expect: ...`.
+- When an action removes or replaces something, say what stays: "Replace the
+  script name in the step; the step itself stays."
+- A "leave unchanged" requirement is written as a check: "Check that X is
+  still present."
+- Side effects are stated: an action that deploys, costs money, notifies
+  people or cannot be undone says so.
+- Order within a phase is execution order. Install and prepare before run.
+- No tools or dependencies outside the project's declared toolchain. If one
+  seems needed, it becomes an Open question for the decision maker.
 
-One list is one group. The group level and the list level coincide: the
-ceiling is a single theme, so there is no subgroup membership to record.
+**DoD items** are the closing checks.
 
-```markdown
-## Scope
-In: ...
-Out: ... (list-level anti-goals)
+- An observable result, answerable with yes or no, with the evidence named:
+  run link, command output, diff.
+- **Checkable when the phase closes**, with the triggers, branches and
+  environment that exist at that moment. If not, add the to-do that makes it
+  checkable (and, if temporary, the to-do that removes it again), or move the
+  item to the phase where it becomes checkable.
+- Behaviour checks show red before green where possible. A check that has
+  never failed proves nothing.
+- A configuration or toolchain change is covered by three checks: what had
+  to go is gone (or what had to come is there); nothing else changed (the
+  diff); the behaviour changed (run it).
+- Every DoD item is produced by at least one to-do in the same or an earlier
+  phase. Every review or approval named in the source has a to-do that
+  performs it.
 
-## Group rules
-- [ ] GR1: <closing rule, including how it is checked>
-- [ ] GR2: <closing rule, including how it is checked>
-- <group definition-of-done items>
-```
+**Beginner level.** Write for a reader who knows the programming language
+basics but not this project, its tools or the source.
 
-Give every closing rule an id `GR1`, `GR2`, … in order. Tasks do not refer to
-these ids: group rules already apply to every task in the group. The ids
-serve `Group rules` itself and the coverage table. Definition-of-done items do
-not need an id.
+- No implicit steps. If a step only works after another, that other step is
+  an item before it.
+- The first use of a project term or tool links to the source glossary, or
+  gets one line in the list's Terms section.
+- A step that can fail in a known way gets `If it fails:` with what the
+  failure means and the next action. Often: stop and ask.
 
-NFRs MUST land in exactly one of these places — see
-[references/nfr-landing.md](references/nfr-landing.md):
+**Human steps** (variants `team` and `human-agent`) are for judgment,
+decisions, approvals, external settings and anything needing credentials.
+Checking an outcome that a run already shows is not a human step.
 
-1. a task of their own;
-2. an acceptance criterion of a task in the group;
-3. a group-level closing rule that is checked before the group is closed.
+### Step 6: Markers and wikilinks
 
-Naming an NFR without a verification point does not count.
+Every to-do and DoD item ends with exactly one marker:
 
-### Step 4: Decompose
+- a wikilink to the source section it implements:
+  `([[<source-file>#<heading>|§<n>]])`
+- or an addition: `(addition, [[#A<n> <title>|A<n>]])`, pointing to the
+  Additions section of the list.
 
-Split until every item is a **work package**: one deliverable, one owner, not
-further splittable without changing its content. The decision rules are in
-[references/splitting-rules.md](references/splitting-rules.md).
+Wikilink rules (Obsidian):
 
-**Owner** means the party named in `Executor` — nothing more. Do not record
-ownership, responsibility, or accountability separately: those are
-collaboration agreements and are out of scope for this list.
+- Target: the source file name without extension.
+- Heading: exactly as in the source, with `:` removed. Headings containing
+  `#`, `|`, `^`, `[` or `]` cannot be linked; link the nearest parent heading.
+- Link the most specific heading that states the requirement. Bold
+  paragraphs are not headings: link their heading and name the item in the
+  alias (`§10.3 DD-5`).
+- Alias: the section number or the source id (`§7.1`, `US-01`, `R-02`).
+- Links between lists of one variant: `[[<list-file>#<heading>]]`.
 
-Two levels inside a task:
+**Additions** are what the list needs but the source does not say. Each gets
+a heading `### A<n> <short title>` with three lines: what the source does not
+say, why the list needs it, and who confirms it. An addition never
+contradicts the source silently. A deviation from the source is named as a
+deviation and repeated under Open questions.
 
-| Level | What it is | Rule |
-| --- | --- | --- |
-| Task | Work package with its own acceptance criteria | Tracked and closed |
-| Steps | Execution order inside one deliverable | Do not count toward closing rules |
+After writing, check mechanically that every item carries a marker and that
+every wikilink target heading exists. Report the result in one line.
 
-### Step 5: Fill the task contract
+### NFRs
 
-Every task MUST use this format:
+An NFR lands in exactly one place: its own to-dos with a DoD item, a DoD item
+of the phase whose output satisfies it, or the list DoD when it is one check
+over the whole list. NFRs measured over time land in the observation phase.
+Details: [references/nfr-landing.md](references/nfr-landing.md).
 
-```markdown
-### T<n> — <what, one line>
-- **Source:** <document> v<version/section>
-- **In:** <boundary>
-- **Out:** <anti-goals for this task>
-- **Acceptance criteria:**
-  - [ ] <observable, testable result>
-- **Verification:** <command, check, or review>
-- **Evidence:** <what is delivered: test output, diff, screenshot, commit>
-- **Executor:** `human` | `agent` | `agent-human`
-- **Limits:** <agent only: allowlist of what may be touched>
-- **Rollback:** <agent only: branch/commit/backup>
-- **Depends on:** <T-ids or "none">
-- **NFR:** <`own criterion` | `none`>
-- **Steps:**
-  - [ ] ...
-```
+## Execution strategy follows the source
 
-Worked examples: [references/task-examples.md](references/task-examples.md).
+Branches, number of pull requests and rollback follow the source's rollout.
+Do not invent a branch or rollback per item. Rollback is described per phase
+(or per list), in terms the rollout supports.
 
-## Field rules
-
-### Title
-
-One line, outcome-oriented, not an activity. "Validation rules for exam
-fields added", not "working on validation".
-
-### Source
-
-Every task points to the original document with version or section. Depth
-about what/why/how lives there. Keep the task short; no walls of text.
-
-### SMART — weighting
-
-- **S**pecific — MUST. Unambiguous, one interpretation.
-- **M**easurable — MUST. Core question: can we tick this off?
-- **A**chievable — MUST. Doable with available means.
-- **R**elevant — MUST. Contributes to the theme; otherwise it does not belong.
-- **T**ime-boxed — least important. Size already sits in story and scope; do
-  not record clock time. For agent tasks one size rule does apply: it MUST fit
-  one executor session — one executor completes it without renegotiating scope
-  or switching to another deliverable.
-
-### INVEST — full
-
-- **I**ndependent — minimise dependencies; whatever remains MUST be explicit.
-  Hard chain? Merge into one task only if the result still passes the terminal
-  test and fits one executor session.
-- **N**egotiable — fix *what* and acceptance criteria; leave *how* open.
-- **V**aluable — delivers value to user or client. Slice vertically (through
-  all layers), not horizontally per layer.
-- **E**stimable — you need not estimate, but size MUST be such that you could.
-- **S**mall — terminal. If a part has standalone value *and* its own acceptance
-  criteria, it becomes a sibling task; the rest becomes steps.
-- **T**estable — every acceptance criterion MUST be checkable.
-
-### Acceptance criteria
-
-Observable results. Describe what comes out of the system, not internal state.
-For code tasks the order is: red tests first, then code, then tests again.
-Schedule other tests immediately where possible.
-
-### Verification and evidence
-
-Verification says *how* "done" is checked. Evidence says *what* is handed over
-so someone else can confirm without redoing the work. Both MAY sit at group
-level when identical for all tasks in the group.
-
-For tasks with tests, evidence MUST include the red run as well as the green
-run: the red run is the proof that the test actually checks the behaviour.
-
-### NFR reference
-
-Use exactly one of these forms in the `NFR` field, and no other:
-
-- `own criterion` — the NFR sits in this task's acceptance criteria;
-- `none` — no NFR of its own in this task.
-
-Group rules are never named here: they apply to every task in the group
-automatically and are checked once when the group closes.
-
-These two forms are contract language: keep them English in every list. An
-optional clarification in parentheses MAY follow, e.g. `own criterion (audit
-trail)`. Nothing else may be added: no dash, no free text, no second form.
-
-### Executor
-
-| Field | `human` | `agent` | `agent-human` |
-| --- | --- | --- | --- |
-| Acceptance criteria | yes | yes, machine-checkable | yes |
-| Verification | optional | MUST | MUST |
-| Evidence | optional | MUST | MUST |
-| Limits | optional | MUST | MUST |
-| Rollback | not needed | MUST (e.g. git) | MUST |
-
-**`agent-human`** is one task in two phases: the agent executes what it can, a
-human performs the steps that need a person (review, external settings,
-judgment). Still one deliverable, one owner (= the executor class), one closing
-moment.
-
-An agent task without verification and evidence MUST NOT be included.
-
-### Dependencies
-
-Explicit T-ids. If T2 blocks T3, say so. Preflight catches technical
-prerequisites; this field catches order.
-
-### Limits
-
-An **allowlist**, not a denylist: name what may be touched (files, commands,
-areas). Anything not listed is off limits. Together with the steps, the
-allowlist must be able to reach every acceptance criterion — if a criterion
-needs something the allowlist forbids, fix the task instead of loosening the
-limit silently.
-
-## Closing rules per level
-
-One list is one group, so there are two levels to close:
+## Closing rules
 
 | Level | Closed when |
 | --- | --- |
-| Task | Acceptance criteria ticked, verification green, evidence present |
-| List (= the group) | Group definition-of-done met, including NFR checks; preflight still valid; list anti-goals respected; coverage table complete |
-
-Without a closing rule, "done" is a feeling.
+| Item | Ticked, with its evidence recorded |
+| Phase | All `Before you begin`, to-do and DoD items ticked |
+| List | All phases closed, list DoD met, coverage complete, open questions resolved or explicitly accepted |
 
 ## Output
 
-Deliver the list as markdown with these sections, in this order:
+Sections in this order. Omit a section that would be empty.
 
-1. `Header` (source, audience, ceiling)
-2. `Preflight`
-3. `Scope` (In / Out)
-4. `Group rules`
-5. `Tasks` (T1..Tn)
-6. `Coverage` — one row per source element, mapped to T-ids, `GR<n>`, or `Out`
-7. `Open questions` — scope or source questions; omit the section if there are
-   none
+1. Title, and frontmatter only if documents in the target folder use it
+   (copy the fields of an existing document there).
+2. Reading guide: three lines on markers, executor labels and Additions.
+3. Additions (`A1`..`An`)
+4. Terms
+5. Phases 0..n
+6. List DoD
+7. Coverage: source element (as wikilink) → phase(s), person in `team`, or
+   "not in this list" with the reason. Every element from step 2 appears.
+8. Open questions
 
-**Language.** Write the whole list in one language: that of the **user's
-request** — that is who reads it. Everything that is contract stays English
-whatever the list language: field names, section names (`Header`, `Preflight`,
-`Scope`, `Group rules`, `Tasks`, `Coverage`, `Open questions`), and all
-backticked contract values (`human`, `agent`, `agent-human`, `own criterion`,
-`none`, `Out`, `GR<n>`, `humans`, `agents`, `both`). Source terms, identifiers
-and quotes stay in their original language. Everything else follows the list
-language. No other mixing.
+Variant structure and file names:
+[references/list-variants.md](references/list-variants.md). Examples:
+[references/task-examples.md](references/task-examples.md).
 
-Do not summarize these rules in the output — only the list itself. Never hide
-open questions as vague tasks: they belong in `Open questions`.
+**Language.** The whole list is in the language of the user's request,
+including headings and labels. Only these labels are fixed per language:
+
+| English | Dutch |
+| --- | --- |
+| Phase | Phase |
+| Before you begin | Voordat je begint |
+| To-do | To-do |
+| DoD | DoD |
+| Basis / Touches / Starts after | Basis / Raakt / Start na |
+| Expect: / If it fails: | Verwacht: / Als het misgaat: |
+| (human) / (agent) | (mens) / (agent) |
+| (addition, …) | (aanvulling, …) |
+| Additions / Terms / Coverage / Open questions | Aanvullingen / Begrippen / Dekking / Open vragen |
+
+Source terms, identifiers, commands and quotes stay as they are. Programming
+terms stay English.
+
+**Files.** Hyphens instead of spaces. Default name `<source-stem>-tasks.md`,
+next to the source when its location is known.
+
+Never hide an open question as a vague item. It belongs under Open questions.

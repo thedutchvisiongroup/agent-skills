@@ -1,151 +1,151 @@
-# Task examples
+# Examples
 
-Format and quality examples. Format fields are mandatory; content within
-fields is free. For the decision rules behind splitting, see
-[splitting-rules.md](splitting-rules.md).
+Quality examples for phases and items. The format is fixed; the content is
+free. The source in these examples is `ftd.md`, so wikilinks target `ftd`.
 
-## Good task
+## Good phase (`solo`)
 
 ```markdown
-### T3 — Validation rules for exam fields added
-- **Source:** FTD-exam-checker v3.1 §4.2
-- **In:** fields `duration`, `exam_date`, `weight`; server-side validation
-- **Out:** client-side validation (separate task); other fields; changes to the CSV parser
-- **Acceptance criteria:**
-  - [ ] `duration` outside 1–240 minutes yields an error message per field name
-  - [ ] invalid `exam_date` is rejected before storage
-  - [ ] error messages appear in the validation report, not only in the log
-- **Verification:** `pytest tests/test_exam_fields.py -q`
-- **Evidence:** red test run, green test output, diff of `validators/exam_fields.py`
-- **Executor:** `agent`
-- **Limits:** only `validators/` and `tests/test_exam_fields.py`
-- **Rollback:** work on branch `feat/t3-exam-field-validation`
-- **Depends on:** T1
-- **NFR:** none
-- **Steps:**
-  - [ ] write red tests for `duration`, `exam_date`, `weight`
-  - [ ] implement validation until the tests are green
-  - [ ] run the tests and keep the output
+## Phase 1 — US-01: Quality ratchet removed from the fast gate
+
+Basis: [[ftd#7.1 US-01 Remove the quality ratchet|§7.1]], [[ftd#3.2 In scope|§3.2]]
+Touches: `.github/workflows/run-tests-app.yml`, `devbox.json`, `devbox.lock`
+Starts after: phase 0
+
+### Before you begin
+- [ ] Install the Node dependencies exactly as the lock file pins them ([[ftd#5.4 Constraints|§5.4]])
+      ```bash
+      # Same install as CI; removes node_modules first
+      devbox run -- npm ci
+      ```
+      Expect: no errors; `node_modules/` exists.
+
+### To-do
+- [ ] In `.github/workflows/run-tests-app.yml`, job `client`, step "Run client tests with coverage": replace `test:client:coverage` with `test:client` and rename the step to "Run client tests". The step itself stays ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
+- [ ] In the same job, delete the whole step "Upload client coverage", from `- name:` up to and including `if-no-files-found: warn` ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
+- [ ] Check that `test:client:coverage` is still present in `packages/app/package.json` ([[ftd#3.3 Out of scope|§3.3]])
+      ```bash
+      # Expect one line: "test:client:coverage": "vitest run --coverage"
+      grep -n '"test:client:coverage"' packages/app/package.json
+      ```
+- [ ] Remove `php84Extensions.xdebug` from `devbox.json` ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
+- [ ] Sync the lock file with `devbox.json`. Do not run `devbox update`: that upgrades every package ([[ftd#5.4 Constraints|§5.4]])
+      ```bash
+      # Removes lock entries that devbox.json no longer declares
+      devbox install
+      ```
+
+### DoD
+- [ ] No coverage left in the workflow: `grep -n "coverage" .github/workflows/run-tests-app.yml` gives no output ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
+- [ ] The client tests pass without coverage: `devbox run -- npm --workspace @pta-vision/app run test:client` is green and creates no `packages/app/coverage/` ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
+- [ ] Xdebug is gone: `grep -n xdebug devbox.json devbox.lock` gives no output ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
+- [ ] Nothing else changed: `git diff devbox.lock` shows only the removed `php84Extensions.xdebug@latest` block ([[ftd#5.4 Constraints|§5.4]])
+- [ ] PHP runs without Xdebug: `devbox run -- php -v` prints a version line and no Xdebug line ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
+      If it fails: no PHP version line means PHP itself did not start. Stop and ask.
 ```
 
-Why this works: one deliverable, observable acceptance criteria, machine
-check, evidence defined (including the red run), agent boundaries as an
-allowlist, rollback present, source with version, short fields. `NFR` is
-`none` because the language rule for error messages is a group rule: those
-apply to every task automatically and are never named per task.
+Why this works:
 
-## Weak task
+- Every item is one action or one check, with full paths.
+- Replacements say what stays; "leave unchanged" is written as a check.
+- `Before you begin` covers the install a beginner would otherwise miss.
+- The configuration change is covered three ways: gone, nothing else
+  changed, behaviour changed.
+- Every item links to the section it implements. The two items that protect
+  the toolchain link to the constraint, not to the user story.
+
+## Weak phase
 
 ```markdown
-### T3 — Make validation better
+### T4 — Push-only triggers
 - **Source:** FTD
 - **Acceptance criteria:**
-  - [ ] validation works better
-  - [ ] no bugs
-- **Executor:** `agent`
+  - [ ] a front-end-only push skips the php job
 - **Steps:**
-  - [ ] check validation
-  - [ ] add tests
-  - [ ] maybe documentation too
-  - [ ] and the parser?
+  - [ ] set triggers to push-only
+  - [ ] add gating
+  - [ ] validate the YAML (actionlint or PyYAML)
 ```
 
 What is wrong:
 
 | Problem | Rule broken |
 | --- | --- |
-| Title is an activity, not an outcome | Title |
-| Source without version or section | Source |
-| No in/out boundary | In/Out |
-| Acceptance criteria not observable or testable | SMART M/T, INVEST T |
-| No verification or evidence | Agent contract |
-| No limits or rollback for agent work | Agent contract |
-| Steps contain a different deliverable ("and the parser?") | Task is not terminal |
-| "Maybe" indicates undecided scope | Negotiable ≠ undecided |
+| No phase structure; task instead of phase with to-do and DoD | Phases |
+| Source without section, no wikilink per item | Markers |
+| Steps repeat the criterion instead of naming actions, paths, commands | To-do items |
+| The criterion needs a push that, after this change, only runs on `main`/`dev`: not checkable when the phase closes | Timing check |
+| "actionlint or PyYAML" without checking that either is in the toolchain | Verify step |
+| No red-before-green: nothing shows the gating can fail | DoD items |
 
-## Task with human executor
+## Timing: making a DoD item checkable
 
-```markdown
-### T7 — Acceptance interview with client documented
-- **Source:** PVA-exam-generator 2026-08-17 §3
-- **In:** one-topic interview on storing seeded school years
-- **Out:** other topics; decision-making in this interview
-- **Acceptance criteria:**
-  - [ ] client answers recorded in the decision document
-  - [ ] open points marked as open, not smoothed over
-- **Verification:** review by the client
-- **Evidence:** decision document with date
-- **Executor:** `human`
-- **Depends on:** T5
-- **NFR:** none
-- **Steps:**
-  - [ ] prepare the questions
-  - [ ] conduct the interview
-  - [ ] record the answers
-```
-
-Verification is optional for human tasks; here it is present because the
-output is a document that someone must accept.
-
-## Task with human-agent pairing
+A DoD item that can only be checked after merge needs a to-do that makes it
+checkable earlier, plus one that removes the temporary route:
 
 ```markdown
-### T10 — CI-pipeline for exam-checker set up
-- **Source:** ci-pipeline-rationale 2026-09-12
-- **In:** test and lint steps on GitHub Actions
-- **Out:** deploy pipelines; release workflows
-- **Acceptance criteria:**
-  - [ ] the workflow runs lint + tests on every PR
-  - [ ] merging is blocked when checks are red (repository setting, human step below)
-  - [ ] the test step runs without outbound network access
-- **Verification:** open a test PR, check the block on red tests, and confirm the test step runs without outbound network access
-- **Evidence:** workflow file + screenshot of the block
-- **Executor:** `agent-human`
-- **Limits:** only `.github/workflows/`; no secrets changes; no repository settings
-- **Rollback:** workflow file via git; disable the protection rule via repository settings
-- **Depends on:** T2
-- **NFR:** own criterion
-- **Steps:**
-  - [ ] agent: generate the workflow file
-  - [ ] human: review and commit
-  - [ ] human: set the required status check in branch protection
-  - [ ] agent: open a test PR
-  - [ ] human: assess the block
+### To-do
+- [ ] Create validation branch `ci/validate-simplification` from the working branch (addition, [[#A1 Validation before merge|A1]])
+- [ ] On that branch only, add it to `branches` of both test workflows, in one commit starting with `TEMP:` (addition, [[#A1 Validation before merge|A1]])
+
+### DoD
+- [ ] Run evidence: a push touching only `packages/app/resources/ts/**` shows `php` as skipped, not failed ([[ftd#7.2 US-02 Push-only triggers with per-job change gating|§7.2]])
 ```
 
-Note the split of concerns: the acceptance criterion "merging is blocked" is a
-repository setting, not a workflow change. The task therefore has an explicit
-human step for branch protection and its Limits bar the agent from touching
-repository settings. Limits and steps must together be able to reach every
-acceptance criterion.
-
-## Edge case: task that must not be split further but looks large
+And in the integration phase:
 
 ```markdown
-### T4 — Legal base elements linked to exam fields
-- **Source:** legal-base-elements.md v2026-09-01
-- **In:** mapping of 12 elements to exam fields, including the mapping table
-- **Out:** checking existing exams; migration of old data
-- **Acceptance criteria:**
-  - [ ] the mapping table covers all 12 elements, each exactly once
-  - [ ] a missing element blocks the check with an explicit error
-- **Verification:** `pytest tests/test_legal_mapping.py -q`
-- **Evidence:** red test run, green test output, mapping table in `mapping/legal_elements.json`
-- **Executor:** `agent`
-- **Limits:** only `mapping/` and `tests/test_legal_mapping.py`
-- **Rollback:** branch `feat/t4-legal-mapping`
-- **Depends on:** none
-- **NFR:** none
-- **Steps:**
-  - [ ] build the mapping table from the source
-  - [ ] write red tests for missing and duplicate elements
-  - [ ] implement the mapping
-  - [ ] keep the test run and coverage table
+- [ ] Check that the working branch contains no temporary triggers: `grep -rn "validate-simplification" .github/` gives no output (addition, [[#A1 Validation before merge|A1]])
 ```
 
-One deliverable (the mapping) even though it covers twelve elements. Splitting
-per element would produce twelve tasks with identical acceptance criteria and
-no standalone value — that would violate Independent and Valuable in the other
-direction. This is a terminal task through rule 3 (not rule 1) of
-[splitting-rules.md](splitting-rules.md): splitting per element keeps the
-meaning of "a mapping", but the contracts would be identical.
+## `human-agent` fragment
+
+```markdown
+Agent limits: `.github/workflows/_verify-graphql-contract.yml`; commands `devbox run …`, `git`
+Agent evidence: run links and command output in the run log
+Rollback: revert the phase commits on the working branch
+
+### To-do
+- [ ] (agent) Create `.github/workflows/_verify-graphql-contract.yml` as a `workflow_call` workflow, modelled on `_verify-pdf-contract.yml` ([[ftd#10.3 Design decisions (ADR-style; recorded formally as ADR-0010 where marked)|§10.3 DD-5]])
+- [ ] (agent) Push a deliberately stale `schema.graphql` to the validation branch ([[ftd#3.4 Success criteria|SC-4]])
+- [ ] (human) Decide whether the minimal inline env fallback is acceptable, if the gate failed on booting artisan ([[ftd#16. Risk register|R-01]])
+
+### DoD
+- [ ] Run evidence: the stale-schema run is red and prints the regeneration command ([[ftd#3.4 Success criteria|SC-4]])
+```
+
+The human item is a decision. "Check that the run is red" would not be a
+human item: the run already shows it.
+
+## `team` fragment
+
+General list `ftd-tasks.md`:
+
+```markdown
+## Phase 1 — US-01: Quality ratchet removed from the fast gate
+
+Basis: [[ftd#7.1 US-01 Remove the quality ratchet|§7.1]]
+Starts after: phase 0
+Assigned: [[ftd-tasks-eva#Phase 1 — US-01 Quality ratchet removed from the fast gate|Eva]], [[ftd-tasks-lonneke#Phase 1 — US-01 Quality ratchet removed from the fast gate|Lonneke]]
+
+### Shared to-do
+- [ ] Lonneke hands the ADR-0010 number to Eva before the OI-03 closure ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
+
+### DoD
+- [ ] ADR-0010 exists and supersedes ADR-0008 ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
+```
+
+Personal list `ftd-tasks-eva.md`:
+
+```markdown
+## Phase 1 — US-01: Quality ratchet removed from the fast gate
+
+Status and DoD: [[ftd-tasks#Phase 1 — US-01 Quality ratchet removed from the fast gate|general list]]
+
+### To-do
+- [ ] Start after: [[ftd-tasks-lonneke#Phase 1 — US-01 Quality ratchet removed from the fast gate|Lonneke — ADR-0010 number]]
+- [ ] Close OI-03 in `packages/app/docs/specs/testing-framework/open-issues.md` as "won't do (ratchet scrapped)", with a link to ADR-0010 ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
+```
+
+The DoD lives only in the general list. The personal list links to it and
+keeps the source link on every item.
