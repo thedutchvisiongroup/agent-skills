@@ -6,7 +6,8 @@ Context voor AI-agents die in deze repository werken.
 
 Gedeelde AI-agent-configuratie van The Dutch Vision Group. De repo is de enige
 source of truth; alles wordt via **symlinks** naar de globale mappen van agent
-harnesses gesynchroniseerd, dus wijzigingen hier zijn direct overal actief.
+harnesses gesynchroniseerd, dus wijzigingen zijn direct zichtbaar in de gelinkte
+bestanden. OpenCode laadt agent- en configuratiewijzigingen na een herstart.
 
 ## Structuur
 

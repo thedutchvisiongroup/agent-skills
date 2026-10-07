@@ -121,12 +121,15 @@ Verifieer na elke wijziging aan deze laag de merge met `opencode debug config`.
 
 De map `opencode/agents/` bevat custom agents (markdown met YAML-frontmatter; de body is de system prompt):
 
-| Agent | Skill (verplicht) | Rol |
-| ----- | ----------------- | --- |
-| `code-reviewer` | `code-review` | Advisory-only code review (lint/types/format/tests, testkwaliteit, logica, design). Edit nooit code. Security-vermoedens → `security-reviewer`. |
+| Agent | Rolskill (altijd eerst) | Rol |
+| ----- | ---------------------- | --- |
+| `orchestrator` | `using-subagents` | Primary coordinator: scope en mogelijke overkill vroeg bespreken, expliciet planakkoord verkrijgen, delegeren en verifiëren. Implementeert geen gedelegeerde code. |
+| `code-reviewer` | `code-review` | Advisory-only code review (lint/types/format/tests uitvoeren, logica en design beoordelen). Edit nooit code. Testkwaliteit → `tdd-expert`; security-vermoedens → `security-reviewer`. |
 | `security-reviewer` | `security-review` | Advisory-only security review (dataflow, 11 vulnerability classes, verplicht online onderzoek). Fixt nooit. Kwaliteitsissues → `code-reviewer`. |
+| `tdd-expert` | `test-driven-development` | Schrijft, beoordeelt en verbetert uitsluitend tests; productiecode en de Green-implementatie worden overgedragen. |
 
-Beide agents: `mode: all` (primary én subagent), `temperature: 0.1`, enige tool-restrictie is `edit: deny`. Hun system prompts zijn kort en delegeren alle methodiek aan de bijbehorende skill, die ze als eerste actie laden en stap voor stap volgen. Elke agent probeert de ander bij twijfel als subagent aan te roepen; lukt dat niet (bijv. `subagent_depth: 1` op OpenCode < 1.18.2), dan eindigt het rapport met een expliciete handoff-aanbeveling.
+Alle vier gebruiken `temperature: 0.1`. De orchestrator is `mode: primary`; de drie specialisten zijn `mode: all` (primary én subagent). De agentbestanden bevatten de exacte permissions en handoffregels. Hun korte XML-system prompts delegeren de methodiek aan de rolskill, die ze als eerste actie laden.
+
 
 Na het linken van nieuwe/gewijzigde agent- of config-bestanden: **herstart OpenCode** — config wordt alleen bij opstarten geladen.
 
