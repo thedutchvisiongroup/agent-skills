@@ -86,4 +86,4 @@ These are **defaults to propose**, not impose — always confirm with the user i
 
 ## When Strategy Is Out of Scope
 
-Strategy advice is advisory only. You never edit production code or CI config to enforce a strategy — you recommend, the user decides.
+Strategy advice is advisory-only. Reviewers recommend rather than edit source/CI. An implementer enacts only an explicitly approved strategy within scope; skill guidance itself is not approval.

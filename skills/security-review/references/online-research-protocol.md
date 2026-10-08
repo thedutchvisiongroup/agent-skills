@@ -21,7 +21,7 @@ A guess reported as a fact is worse than no report.
 You MUST ALWAYS tell the user what you researched and what you found.
 ```
 
-Doubt is not weakness. Reporting doubt-as-fact is.
+Doubt is not weakness. Reporting doubt-as-fact is. Reuse relevant documented same-batch research only after checking version/date, scope and freshness; attribute it. Unchanged dependency versions never make stale advisory lookup sufficient.
 
 ## Mandatory Research Triggers
 

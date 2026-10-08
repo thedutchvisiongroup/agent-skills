@@ -1,6 +1,6 @@
 ---
 name: using-subagents
-description: Orchestrates sub-agents for multi-step coding work. Starts with a mandatory Delegation Gate that decides between doing it directly, dispatching one sub-agent, or full orchestrator mode — in which the main agent NEVER writes code and only delegates, steers, and verifies. Enforces live sub-agent discovery, a work plan that requires explicit user approval (including the storage location) before any dispatch, delegation-contract prompts with a mandatory status contract (DONE / DONE_WITH_CONCERNS / BLOCKED / NEEDS_CONTEXT) plus report files, quality loops with independent code review after every implementation (max 3 fix iterations, then escalate; security review only for security-relevant work), parallel writing only for provably disjoint scopes, and recursion limited to depth 2 for approved advisory handoffs only. Use for feature implementation, large refactors, multi-part bug hunts, or any task big enough to delegate. Not for trivial edits or tightly coupled work the main agent should do directly.
+description: Coordinates approval-gated implementation with bounded workers, evidence reports and independent reviews. Use for delegated features, refactors, fixes and multi-part work. In TDVG OpenCode, implementer owns tests/source through Red-Green-Refactor; every phase/batch requires code and post-implementation TDD review, separate advance-approved test exceptions and risk-triggered security review. Preserves discovery, plan/storage approval, evidence reuse, resumed fixes, disjoint parallel work and bounded advisory nesting. Dedicated coordinators never implement project files themselves.
 ---
 
 # Using Subagents
@@ -11,6 +11,8 @@ description: Orchestrates sub-agents for multi-step coding work. Starts with a m
 IN ORCHESTRATOR MODE YOU DELEGATE, STEER, AND VERIFY. YOU NEVER WRITE CODE.
 NO DISPATCH WITHOUT A WORK PLAN THE USER HAS EXPLICITLY APPROVED.
 NO IMPLEMENTATION IS DONE WITHOUT INDEPENDENT REVIEW.
+ONE IMPLEMENTER OWNS TESTS AND SOURCE; TDD REVIEW FOLLOWS IMPLEMENTATION.
+EVERY PHASE/BATCH HAS CODE AND TEST REVIEW, UNLESS TEST REVIEW WAS EXPLICITLY EXEMPTED IN ADVANCE.
 ```
 
 An orchestrator that writes code is not an orchestrator — it is an author with extra steps. And a sub-agent dispatched without a contract is not a worker — it is a guess with a budget.
@@ -26,6 +28,8 @@ Sub-agent orchestration means: the main agent decomposes a task, dispatches boun
 1. **The orchestrator owns every decision.** Sub-agents execute bounded tasks; they NEVER make architectural choices, NEVER talk to the user directly, and NEVER see the whole plan. Actions carry implicit decisions — so every decision that matters must be explicit in the delegation contract.
 2. **Fresh context is the feature.** A sub-agent's value is its clean context window. Feed it a bounded brief, NEVER the conversation history.
 3. **Delegation has a real cost.** Every dispatch writes a fresh system prompt and burns tokens. The Delegation Gate (Phase 1) exists to make sure the task is worth it.
+4. **Cohesive feedback:** one worker owns Red–Green–Refactor; independent specialists review completed phases/batches, not separate Red/Green stages.
+5. **Reuse evidence, not verdicts:** share applicable tooling, research and checks when scope/revision/versions/environment match; reviewers still analyze independently.
 
 ## When to Use
 
@@ -45,7 +49,7 @@ Use when a task is big enough to delegate:
 
 ## When NOT to Use
 
-- **Trivial or mechanical edits** — a typo fix, a rename, a config tweak: do it directly (Phase 1 decides)
+- **Trivial edits by an implementation-capable primary** may be direct. Dedicated coordinators group them in lightweight approved implementer batches; route (a) never widens their role.
 - **Tightly coupled changes** — every file depends on every other file; delegation only adds telephone
 - **High-stakes exploratory work** — architecture decisions, ambiguous requirements: these need continuous user dialogue, not dispatch
 - **Sequential dependency chains** — step B cannot start without step A's output: one sub-agent or direct work, never fan-out
@@ -66,7 +70,7 @@ You MUST confirm the following with the user (before or during Phase 1–3):
 
 Decide the route BEFORE any work:
 
-**(a) Do it yourself** — the task is trivial, tightly coupled to the conversation, or needs continuous user judgement. Execute directly. This skill ends here.
+**(a) Direct work within your role** — advice/investigation or small work an implementation-capable primary may execute directly. Dedicated coordinators never gain project-edit authority; implementation requires (b), batching coupled work, or a user-approved switch to a direct implementation role.
 
 **(b) One sub-agent** — one bounded task that benefits from a fresh context (or would flood yours). You become the orchestrator for that single dispatch; Phases 2–6 apply in lightweight form.
 
@@ -89,7 +93,7 @@ NEVER dispatch to an assumed agent. Inventory what actually exists in THIS envir
 1. **List available sub-agents** via the harness's live mechanism (task-tool listing, agent directories — see `references/harness-notes.md`). Never rely on memory: agents differ between projects and machines.
 2. **Read each agent's description** — it is the capability contract: what it does, when to use it, what it may not do.
 3. **Match tasks to agents**: specialist over generalist. A dedicated review agent beats a generic prompt every time.
-4. **Handle gaps**: no fitting agent → dispatch a general-purpose sub-agent with the matching template from `templates/`. If a missing specialist would have recurring value, RECOMMEND the user create it — NEVER create agents yourself (that is writing config: forbidden in orchestrator mode).
+4. **Handle gaps:** require `implementer` for execution and `code-reviewer`/`tdd-expert` for mandatory seats. Missing agents are BLOCKED, never a silent general fallback. Other harnesses need explicitly approved equivalent role-capable workers. Coordinators recommend missing agents, never create their definitions themselves.
 5. **Consider model routing**: cheap/fast models for mechanical work, strong models for planning and review — record the choices in the work plan.
 
 Read `references/subagent-discovery.md` for the matching matrix and fallback rules.
@@ -98,7 +102,7 @@ Read `references/subagent-discovery.md` for the matching matrix and fallback rul
 STOP. Is your inventory live?
 - [ ] Yes, I listed the actually-available sub-agents in THIS environment
 - [ ] Yes, I read their descriptions before matching
-- [ ] Yes, every planned dispatch has a real agent or a template fallback
+- [ ] Yes, each required execution/review seat has a real role-capable agent, no silent fallback
 If any box is unchecked: GO BACK and discover.
 ```
 
@@ -107,9 +111,9 @@ If any box is unchecked: GO BACK and discover.
 NO DISPATCH WITHOUT AN APPROVED WORK PLAN. Build the plan per `references/work-plan.md`:
 
 1. **Goal & success criteria** (from Before You Start)
-2. **Decomposition** — tasks with an independence analysis (see `references/task-decomposition.md`): which may run in parallel (provably disjoint scope — see `references/parallel-execution.md`), which must be sequential
+2. **Decomposition:** phases/batches with Definitions of Done, cohesive tests + source tasks, and an independence analysis
 3. **Agent assignment** per task (from Phase 2), including model routing
-4. **Quality loops** per task (Phase 5 minimums: independent code review ALWAYS; security review only for security-relevant work)
+4. **Quality loops:** code + post-implementation TDD review per phase/batch; risk-triggered security review. New-test and test-review exceptions each need explicit advance approval, reason and alternative checks; one never implies the other.
 5. **Nesting**, if any — only advisory handoffs, total depth ≤ 2, and only because the plan says so (see `references/nesting-policy.md`)
 6. **Integration & final verification** steps (Phase 6)
 7. **Abort criteria** — when to stop and re-plan
@@ -135,15 +139,16 @@ Per task, dispatch with a full delegation contract (use `templates/`; see `refer
 - **Context** — scene-setting for THIS task only (see `references/context-engineering.md`)
 - **Boundaries** — what NOT to touch; no interactive ask-the-user tools; no dispatching sub-agents (unless approved nesting)
 - **Acceptance criteria** — measurable
+- **Role/verification policy:** tests + source ownership, advisory-only reviewers, confirmed gate answers, evidence identity, approved exceptions and scheduled seats
 - **Output contract** — report file + a <15-line status message (`DONE` / `DONE_WITH_CONCERNS` / `BLOCKED` / `NEEDS_CONTEXT`)
 
 Steering rules (deep rules in `references/orchestrator-control.md`):
 
 1. **Track progress in a ledger** (it survives context compaction): task → agent → status → report path.
-2. **Parallel**: dispatch multiple sub-agents in ONE message only when the plan marked them parallel-safe. Read-only work (explorers) is always parallel-safe. Writing is parallel-safe ONLY for provably disjoint scopes. Never re-dispatch a task the ledger marks complete.
+2. **Parallel:** approved waves in one message; read-only analysis needs stable inputs/independent questions, probes no shared mutable state, writes disjoint scope. Never re-dispatch completed work.
 3. **Never duplicate delegated work.** While a sub-agent runs, do other non-overlapping orchestrator work or wait — do not "also have a look yourself".
 4. **Handle statuses:**
-   - `DONE` → verify the report exists, continue
+   - `DONE` → verify evidence/report and schedule mandatory reviews; execution completion is not phase acceptance
    - `DONE_WITH_CONCERNS` → read the concerns; accept them or attach them to the Phase 5 review
    - `NEEDS_CONTEXT` → answer from your own context when you can; otherwise BUNDLE the question(s) to the user in one go — NEVER relay piecemeal
    - `BLOCKED` → re-plan: more context, smaller scope, stronger model, or take it back to the user
@@ -153,15 +158,17 @@ Steering rules (deep rules in `references/orchestrator-control.md`):
 
 Self-review NEVER replaces independent review.
 
-1. **Independent code review — ALWAYS.** After every implementation task (or batch, per the approved plan), dispatch a reviewer that is NOT the implementer (see `references/quality-loops.md`). Never tell a reviewer what not to flag. Never pre-rate findings.
-2. **Security review — ONLY when security-relevant.** Trigger when the change touches sensitive paths: authentication/authorization, payments, personal data, cryptography, secrets, file uploads, external input handling, permission checks. Dispatch a security-specialist reviewer when one exists; otherwise record the handoff need explicitly in your final summary.
-3. **Fix loop**: `CHANGES_REQUESTED` → dispatch the fix (resume the implementer with the findings when the harness supports it), then re-review. **Max 3 fix iterations per task.** Third failure → STOP and escalate to the user: the plan, the approach, or the task size is wrong.
-4. **Never carry open Critical/Important findings** into the next dependent task.
+1. **Code review — ALWAYS per phase/batch.** An independent reviewer, scope per approved plan; never suppress or pre-rate findings.
+2. **TDD review — ALWAYS after implementation per phase/batch**, unless explicitly exempted in advance. Advisory B assesses assertions, requirements/edges, Red/Green proof, determinism/coverage and test-contract changes; never authors fixes.
+3. **Security review when relevant:** auth/permissions, payments, PII, crypto/secrets, uploads/external input, dependencies/lockfiles or security-relevant config/IaC. Missing required specialists block acceptance; a handoff note is not a passing verdict.
+4. **Fix loop:** consolidate findings, resume implementer, verify amended evidence and obtain affected re-reviews. Changes invalidating another seat require its recheck. Three unsuccessful iterations maximum, then escalate.
+5. **Acceptance:** all required verdicts present and no Critical/Important or equivalent blocking High findings before dependent work. Parallel reviews need stable inputs/non-conflicting probes; no duplicated scheduled seats.
 
 ```
 STOP. Is quality gated?
 - [ ] Yes, every implementation got independent review
-- [ ] Yes, security-relevant changes got (or explicitly scheduled) security review
+- [ ] Yes, each phase/batch got post-implementation TDD review or its explicit advance exception
+- [ ] Yes, required security review is completed before acceptance
 - [ ] Yes, no task exceeded 3 fix iterations without user escalation
 - [ ] Yes, no open Critical/Important findings are being carried forward
 If any box is unchecked: GO BACK.
@@ -172,9 +179,9 @@ If any box is unchecked: GO BACK.
 Sub-agent results are NOT visible to the user — you are their messenger.
 
 1. **Conflict check** (after parallel work): verify no two sub-agents touched the same files; reconcile before continuing (see `references/parallel-execution.md`).
-2. **Full verification**: run the whole test suite (and lint/type/format checks) over the integrated result — not per task, but over everything together.
+2. **Full verification:** obtain relevant full checks over the integrated revision, delegating execution when coordinator permissions require. Reuse identical batch-final evidence only when revision/config/environment match; report gaps/inapplicable checks and exceptions.
 3. **Final whole-change review**: one reviewer over the complete change set catches what per-task reviews miss (interface drift, duplicated logic across tasks).
-4. **Summarize to the user**: what was built, by which agents, review outcomes, test results, concerns, and where the plan + reports are stored. Close the ledger.
+4. **Summarize:** implementation, code/test/security verdicts, executed/reused evidence, exceptions and report paths. A single-batch review may also be whole-change review; avoid identical duplicate seats. Close the ledger.
 
 ## Red Flags — STOP and Follow Process
 
@@ -227,7 +234,7 @@ If you catch yourself thinking:
 | **2. Discovery** | Live inventory, matching, fallbacks, model routing | Every dispatch mapped to a real agent or template |
 | **3. Work Plan** | Decompose, assign, loops, abort criteria, storage | Explicit user approval, incl. storage location |
 | **4. Execution** | Contracts, ledger, status handling, parallel rules | All tasks DONE-with-reports or escalated |
-| **5. Quality** | Independent review, security trigger, fix loops ≤ 3 | All approved; no open Critical/Important findings |
+| **5. Quality** | Code + post-implementation TDD reviews, security triggers, fixes ≤ 3 | Required verdicts; explicit exceptions; no blockers |
 | **6. Integration** | Conflict check, full suite, final review, summary | Verified whole; user informed; ledger closed |
 
 ## Reference Index

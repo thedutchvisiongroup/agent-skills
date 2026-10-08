@@ -1,10 +1,10 @@
 # Online Research Protocol
 
-Read this during Phase 2 (language deep-dive) and whenever a doubt trigger fires. Language-specific test idioms, framework defaults, and tool behavior evolve faster than your training data. **A guess reported as a fact is worse than no report.**
+Read this during Phase 2 and doubt resolution. A guess is not a fact. Reuse current documented batch research only after checking sources, scope and project versions; attribute it instead of repeating the search.
 
 ## When Research Is MANDATORY
 
-Any of these triggers forces online research before you proceed:
+These triggers require authoritative verification; research online when existing documented current sources do not resolve the question for actual scope/versions:
 
 - You use a test framework, assertion library, mocking library, or runner feature you do not fully recognize.
 - A finding or recommendation depends on **version-specific behavior** (a flag, a default, a deprecation).
@@ -56,7 +56,7 @@ For every research action, include in your report (Phase 6 online research log):
 ## What Research Is NOT For
 
 - General programming concepts (AAA, the pyramid) — these are stable; use the references.
-- Refactoring business logic — out of scope (you never edit production code).
+- Choosing behavior or authorizing refactoring — research never expands approved role/scope.
 - Security review — hand off to the `security-review` skill.
 
 Research validates language-specific specifics; the principles in the other references are the stable foundation.

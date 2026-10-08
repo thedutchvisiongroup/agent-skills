@@ -113,6 +113,7 @@ OpenCode laadt en merget meerdere config-bestanden (later wint bij conflicten; n
 Naast `share: disabled` en de bash-permissions dwingt `tdvg-required.json` ook agent-beleid af (niet te overriden):
 
 - De ingebouwde `plan` agent is volledig uitgeschakeld (`agent.plan.disable: true`) — Tab-cyclen tussen Build en Plan bevat Plan niet meer.
+- De ingebouwde `general` is volledig uitgeschakeld (`agent.general.disable: true`); gedelegeerde implementaties/fixes gaan naar `implementer`.
 - De verborgen systeem-agents `compaction`, `summary` en `title` draaien op `openrouter/z-ai/glm-5.3-flash` i.p.v. de provider-default (`anthropic/claude-haiku-4.5`); ook `small_model` is op dit model gepind als vangnet voor overige lichte taken.
 
 Verifieer na elke wijziging aan deze laag de merge met `opencode debug config`.
@@ -123,13 +124,19 @@ De map `opencode/agents/` bevat custom agents (markdown met YAML-frontmatter; de
 
 | Agent | Rolskill (altijd eerst) | Rol |
 | ----- | ---------------------- | --- |
-| `orchestrator` | `using-subagents` | Primary coordinator: scope en mogelijke overkill vroeg bespreken, expliciet planakkoord verkrijgen, delegeren en verifiëren. Implementeert geen gedelegeerde code. |
-| `code-reviewer` | `code-review` | Advisory-only code review (lint/types/format/tests uitvoeren, logica en design beoordelen). Edit nooit code. Testkwaliteit → `tdd-expert`; security-vermoedens → `security-reviewer`. |
+| `orchestrator` | `using-subagents` | Primary coordinator: expliciet plan/runmapakkoord, alle uitvoering naar implementer, verplichte code- en achteraf-testreview per fase/batch. Implementeert zelf geen projectbestanden. |
+| `implementer` | `test-driven-development` | Schrijft tests én broncode via Red–Green–Refactor, verifieert en levert één bewijsrapport. Geen eigen subagents, gebruikersvragen of automatische commits; model erft van de aanroeper. |
+| `code-reviewer` | `code-review` | Advisory-only: verifieert checkbewijs, onderzoekt twijfel gericht en beoordeelt logica/design zelfstandig. Test-/securitysignalen gaan tijdens orchestration naar coordinator. |
 | `security-reviewer` | `security-review` | Advisory-only security review (dataflow, 11 vulnerability classes, verplicht online onderzoek). Fixt nooit. Kwaliteitsissues → `code-reviewer`. |
-| `tdd-expert` | `test-driven-development` | Schrijft, beoordeelt en verbetert uitsluitend tests; productiecode en de Green-implementatie worden overgedragen. |
+| `tdd-expert` | `test-driven-development` | Verplichte onafhankelijke achteraf-testreview per fase/batch. Gedelegeerd review-only; direct aangeroepen mag hij tests schrijven/verbeteren, nooit productiecode. |
 
-Alle vier gebruiken `temperature: 0.1`. De orchestrator is `mode: primary`; de drie specialisten zijn `mode: all` (primary én subagent). De agentbestanden bevatten de exacte permissions en handoffregels. Hun korte XML-system prompts delegeren de methodiek aan de rolskill, die ze als eerste actie laden.
+Alle vijf gebruiken `temperature: 0.1`. Orchestrator is `primary`, implementer `subagent`, de drie specialisten `all`. Engelse XML-prompts laden eerst hun rolskill, dan `writing-simple-code`; dynamische eisen staan in delegation contracts.
 
+**Per fase/batch:** goedgekeurd plan → implementer (tests + broncode, Red–Green–Refactor) → onafhankelijke code- en TDD-review, plus security waar relevant → fixes bij dezelfde implementer → vereiste herbeoordeling → afhankelijke fase. Parallelle reviews vereisen stabiele inputs, aparte rapporten en checks zonder conflicterende mutable state.
+
+Uitzonderingen op nieuwe tests en op TDD-review zijn **afzonderlijke vooraf expliciet goedgekeurde besluiten**, met reden en alternatieve checks. Geen nieuwe tests betekent niet automatisch geen testreview. Gedelegeerde TDD-review wijzigt geen tests; fixes gaan naar implementer.
+
+Iedere agent schrijft zijn benoemde rapport in de goedgekeurde runmap. Bewijshergebruik vereist passende scope, revisie/fingerprint, commando's/resultaten, versies en omgeving; reviewers beoordelen zelfstandig en onderzoeken twijfel opnieuw. Implementers mogen dependencies alleen binnen expliciet goedgekeurde scope/permissions aanpassen of installeren; reviewers installeren niets. Tests worden niet afgezwakt voor Green; echte correcties vereisen specificatiegebonden redenen en onafhankelijke review.
 
 Na het linken van nieuwe/gewijzigde agent- of config-bestanden: **herstart OpenCode** — config wordt alleen bij opstarten geladen.
 

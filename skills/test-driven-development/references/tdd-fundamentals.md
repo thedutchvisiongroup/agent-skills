@@ -1,6 +1,6 @@
 # TDD Fundamentals
 
-Read this during Mode A (write new tests). This skill drives Red-Green-Refactor on the **test side only** — it never writes production code.
+Read this during Mode A. An implementer owns Red–Green–Refactor. A direct tests-only specialist stops at its production boundary; delegated specialists review afterward, never execute separate Red/Green stages.
 
 ## The Three Laws of TDD (Uncle Bob)
 
@@ -10,31 +10,31 @@ Read this during Mode A (write new tests). This skill drives Red-Green-Refactor 
 
 These form the **nano-cycle** (second-by-second). The **micro-cycle** is Red → Green → Refactor (minute-by-minute, once per complete test).
 
-## Red-Green-Refactor (with the handoff)
+## Red-Green-Refactor (one implementation worker)
 
-Because this skill never writes production code, the cycle is adapted:
+Use vertical slices: one behavior, its test, minimal implementation and verification, then the next behavior. Outline future cases in a test list, not a bulk test implementation.
 
 ### RED — Write one failing test
 - Write ONE minimal test for ONE behavior. A clear name that describes behavior, not "test1".
 - Use real code. Avoid mocks unless the dependency is a genuine seam (see `test-doubles.md`).
-- The test IS the specification — it expresses the desired behavior.
+- The test expresses approved behavior; it is an executable specification claim, not authority to invent requirements.
 
 ### Verify RED (MANDATORY — never skip)
 Run the test and confirm:
-- It **fails** (not errors — errors mean a setup/compile problem, fix and re-run).
+- It fails for the missing behavior or an explicitly specified public API, including a corresponding compilation failure. A bad fixture/import path, typo or missing test dependency is invalid setup, not Red.
 - The **failure message** is what you expect.
 - It fails because the **feature is missing**, not because of a typo or wrong import.
 
-A test that passes immediately tests existing behavior (or nothing). Fix the test. A test you didn't watch fail proves nothing — you don't know it can catch the bug.
+Investigate new-behavior/reproduction tests that pass immediately. Characterization intentionally preserves existing behavior and need not be Red. Capture expected failure commands/output before new implementation.
 
-### HANDOFF (NOT Green — you never write production code)
-The failing test is the specification. Report to the user/another agent: "production code is now needed to make this test pass — it must [behavior the test expresses]." Do NOT write the production code. When the user/another agent supplies it, proceed to Verify Green (Phase 5).
+### GREEN — Implement the current behavior
+Write minimal production code for approved behavior, then run focused tests and regressions. Never weaken tests to pass. Justify incorrect expectations against the specification and submit corrections to independent review.
 
-### GREEN-verify (when production code is supplied by the user/another agent)
-Run the test. Confirm it passes AND the rest of the suite still passes. If it fails, the production code is wrong — report back. Do not fix production code.
+### REFACTOR — Improve local structure while Green
+Clarify names and test/source structure inside role/task scope; rerun covering tests and avoid unrelated cleanup. Verify the relevant full suite at batch completion; reuse applicable unchanged-revision evidence.
 
-### REFACTOR (tests only)
-After green, refactor the **test code** for clarity: remove duplication, improve names, extract helpers. Keep tests green. **Do not refactor production code** — that is out of scope; report production refactor opportunities as a handoff note.
+### Tests-only role boundary
+A direct specialist delivers verified Red and reports required production behavior/seams to the user/implementer, never implements them. This role boundary does not impose agent swaps on the normal implementation cycle.
 
 ## Test-List First (Martin Fowler)
 
@@ -44,9 +44,9 @@ Before the first RED, write a list of test cases. Sequence them to drive quickly
 
 When you have only one test, the simplest passing implementation is often a constant (`return 3`). **Triangulate**: write a second test with different inputs that forces a general implementation. Only then generalize. Triangulation is how Chicago/classical TDD drives out general algorithms from specifics.
 
-## Minimal Code (the Green principle, for the handoff)
+## Minimal Code (the Green principle)
 
-When you hand off, the production-code implementer should write the **simplest** code that passes the current test — no anticipated features, no options object "for the future", no premature abstraction. Over-engineering breaks TDD's feedback. If the implementer adds behavior no test demands, that is a finding worth reporting.
+Implement current approved behavior simply and completely, without speculative features/options/abstractions. Minimal never means hardcoding observed examples while ignoring the contract; triangulate and exercise boundaries.
 
 ## Good vs Bad Tests (language-neutral shape)
 
@@ -57,11 +57,13 @@ When you hand off, the production-code implementer should write the **simplest**
 | **Honest** | Asserts on real outcomes | Asserts on mock data |
 | **Deterministic** | No wall-clock, no unseeded random, no real network | Sleeps, `Date.now()`, real HTTP |
 
-## When NOT to do test-first (ask the user)
+## Exceptions (approve before execution)
 
 - Throwaway prototypes — characterize instead.
 - Generated code — test the seam, not the generated output.
 - Pure configuration files — usually not unit-tested; integration-test the effect.
+
+Record reason, scope and alternative checks in the approved plan. New-test and independent test-review exceptions are separate decisions, each explicitly approved.
 
 ## Exceptions Are Not Loopholes
 

@@ -20,9 +20,9 @@ Read this during Modes B/C whenever flakiness is suspected. A flaky test passes 
 
 ## Detection (Mode B)
 
-1. **Re-run the suite** when failures look intermittent. Consistent pass/fail → deterministic. Alternating results with no code change → flaky. Report it.
+1. **Repeat suspect tests** when failures look intermittent. Alternating outcomes under unchanged conditions demonstrate flakiness; consistent finite samples do not prove determinism. Assess applicable recorded repeats before duplication.
 2. **Compare sequential vs parallel execution** if the runner supports it. Failures appearing only in one mode signal shared state or order dependence.
-3. **Run the isolated suspect test N times** (e.g. `--repeat-until-fail 20`, `pytest-repeat`, `flaky` plugin, jest `--testNamePattern` in a loop). A flaky test will surface.
+3. Repeat isolated suspect tests using existing runner support when evidence leaves a concrete doubt. A finite repeat sample may expose flakiness but cannot guarantee it will surface; report sample size/conditions and remaining limits.
 4. **Search test files** for the signals above: `sleep`, `now`, `Date`, `random`, `uuid`, network clients, env reads, shared static state.
 5. **Check retry/quarantine config.** A `@flaky` decorator, `pytest.mark.flaky(reruns=N)`, jest `retryTimes`, or skipped-with-`@Ignore` — these are treatments, not cures. Report the underlying test.
 6. **CI history** — platforms track pass/fail rates over time; a test that flips is a candidate.
@@ -33,7 +33,9 @@ Read this during Modes B/C whenever flakiness is suspected. A flaky test passes 
 - Retry/quarantine config that masks instability.
 - Skipped/ignored tests: why skipped, how long, who owns re-enabling. A skip without owner + reason is silent rot.
 
-## Root-Cause Fixes (Mode C — edit test files only)
+## Root-Cause Fixes (Mode C — respect the caller's role)
+
+Implementers may change necessary source seams within approved scope. Direct specialists edit tests only and report source needs. Delegated specialists remain in advisory B; fixes go to implementer.
 
 ### Time dependence
 - **Inject a clock** (`freezegun`/`time-machine` Python, `TimeProvider` .NET 8+, `vi.useFakeTimers`/`jest.useFakeTimers`, `FakeAsyncClock`); never read wall-clock in the unit.
@@ -48,7 +50,7 @@ Read this during Modes B/C whenever flakiness is suspected. A flaky test passes 
 ### Order dependence
 - Each test creates and destroys its own state. Reset DBs/slices per test (transaction rollback, per-test schema, ephemeral container).
 - No static/class-level mutable state across tests.
-- Run the suite in random order (`pytest-randomly`, jest `--randomize`, .NET `[Collection]` behavior) — order-dependent tests surface immediately.
+- Exercise suspect tests under varied supported ordering when order dependence is plausible. Such runs can expose it, not guarantee its absence. Reuse applicable recorded ordering evidence.
 
 ### External resources
 - Double volatile external deps at the seam (HTTP: `responses`/`msw`/`nock`/`WireMock`; DB: in-memory fake or test container; filesystem: temp dirs). See `test-doubles.md`.
@@ -66,12 +68,12 @@ Read this during Modes B/C whenever flakiness is suspected. A flaky test passes 
 
 ## Quarantine Policy (Mode C)
 
-If a test **cannot** be made deterministic immediately, quarantine it deliberately:
+If a root cause cannot be resolved in current scope, propose explicit quarantine approval rather than manufacture Green. Reviewers report the need; an authorized writer applies the separately approved test-contract change:
 - Mark it skipped with a **reason** and an **owner** and a **ticket**.
 - Quarantined tests run separately (or not at all) so they don't poison the main suite.
 - Track the count — a rising quarantine list is a quality signal to leadership.
 
-Never quarantine silently. Never delete a test for being flaky unless you can prove the behavior is covered elsewhere.
+Never quarantine silently or delete a test merely because it is flaky. Any approved removal must preserve the behavior's independent coverage and document that evidence.
 
 ## Retry Policy (the last resort, reported honestly)
 
@@ -84,12 +86,12 @@ Default to **no retries**. A suite that needs retries is a finding.
 
 ## Checklist
 
-- [ ] Re-ran the suite; identified flaky tests with evidence
+- [ ] Assessed applicable flakiness/repeat evidence or ran focused probes for concrete doubt; reported conditions and limits
 - [ ] Searched for sleep / wall-clock / unseeded random / order / external / async signals
 - [ ] Checked retry/quarantine config — reported masking
 - [ ] (Mode C) Fixed root causes: injected clock, seeded random, isolated state, awaited conditions, doubled seams
-- [ ] (Mode C) Tests deterministic under repeat + random-order runs
-- [ ] (Mode C) Skipped tests have reason + owner + ticket, or are deleted
+- [ ] (Mode C) Root-cause fix checked under relevant repeats/orderings; finite successes not presented as proof of determinism
+- [ ] (Mode C) Quarantine/removal explicitly approved, justified, traceable and coverage-preserving
 
 ## See Also
 - `test-smells.md` — sleepy test and shared state as smells.

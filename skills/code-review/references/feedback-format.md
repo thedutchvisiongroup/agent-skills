@@ -83,7 +83,8 @@ The verdict is always **advisory** — the user makes the final call.
 | Types | ✓ PASS / ✗ FAIL / — not available |
 | Format | ✓ PASS / ✗ FAIL / — not available |
 | Tests | ✓ PASS (n/n) / ✗ FAIL (n failed) |
-| Coverage | n% (n gaps identified) |
+| Evidence identity | revision/fingerprint, scope, commands/results, versions/environment; executed vs reused |
+| Coverage | attributed TDD outcome / out of scope; no independent gap analysis by code reviewer |
 
 ### Blocking Findings
 1. `issue (blocking):` file:line — what. Why. Recommendation.
@@ -95,13 +96,13 @@ The verdict is always **advisory** — the user makes the final call.
 ### Questions for the Author
 - `question:` file:line — …
 
-### Test Suite Findings
-- Flakiness signals, test smells, assertion quality observations
-- Coverage gaps + the user's answers / recommendations
+### Test-Quality Handoff
+- Scheduled TDD seat or explicit exception; obvious located signals only, no test-smell/assertion/coverage analysis
+- Attributed specialist outcome if available; otherwise route to coordinator without duplicating a scheduled review
 
 ### Security Handoff
 - User's answer to the security-review question
-- Sensitive paths detected (if any) + recommendation for a separate security-review agent
+- Sensitive-path signals + coordinator/scheduled-seat routing; recommend a new seat only when not already assigned
 
 ### Praise
 - `praise:` …
@@ -128,7 +129,8 @@ The verdict is always **advisory** — the user makes the final call.
 - [ ] Every blocking finding has an explicit rationale
 - [ ] Findings are ordered: blocking → non-blocking → questions → praise
 - [ ] Automated check results table is complete (including "not available" entries)
-- [ ] Coverage gaps include the user's answers
+- [ ] Check evidence identifies executed/reused sources and applicability; coverage remains attributed/out of scope
+- [ ] Test-quality handoff identifies scheduled seat/exception and avoids duplicate reviews
 - [ ] Security handoff section is present (answer + sensitive-path recommendation if triggered)
 - [ ] At least one sincere praise — or none, if genuinely nothing merits it
 - [ ] Verdict matches the severity mapping

@@ -23,9 +23,9 @@ Working directory: [DIRECTORY]
 
 <instructions>
 1. Implement exactly what the brief specifies — no more, no less (YAGNI).
-2. Write or update tests covering the change. [TDD: required | not required for this task]
-3. Run the focused tests for what you changed; run the full suite once before reporting done.
-4. [COMMIT RULE: e.g. "Commit your work with a concise conventional-commit message" | "Do not commit; leave the changes in the working tree"]
+2. Load TDD, then simplicity and relevant domain skills. Own tests/source in one-behavior Red–Green–Refactor cycles. [Advance-approved new-test exception: reason/scope/alternative checks; never imply review exemption.]
+3. Focused checks during cycles/fixes; relevant full checks at phase/batch completion. Record revision-bound evidence; reuse only qualified applicable evidence.
+4. No commits unless user explicitly requested them and that request is carried here. [Explicit commit request, if any.]
 5. Self-review your own diff (see <self_review>).
 6. Write your full report to [REPORT_FILE] following <output_format>, then return the short status message.
 </instructions>
@@ -36,6 +36,9 @@ Working directory: [DIRECTORY]
 - Do NOT dispatch sub-agents of your own. If the task is too big, report BLOCKED instead.
 - Do NOT use interactive ask-the-user tools. If you need information or a decision, report NEEDS_CONTEXT or BLOCKED with your questions — the orchestrator answers, or escalates to the user.
 - Follow existing codebase patterns and conventions.
+- Phase/batch and Definition of Done: [PHASE + DONE CRITERIA]. Coordinator schedules independent code/TDD review afterward; never start it yourself.
+- Project dependency changes/installations require explicitly approved scope and permissions; new tooling/scope returns to coordinator.
+- Never weaken tests for Green; explain specification-based assertion/snapshot/mock/skip corrections and preserve coverage.
 </boundaries>
 
 <escalation>
@@ -63,7 +66,7 @@ Fix what you find before reporting.
 <output_format>
 Write your full report to [REPORT_FILE] using the structure from `templates/report.md`:
 what you implemented (or attempted), files changed, tests written + commands run + results
-(this is the test evidence — reviewers may not re-run them), self-review findings, concerns,
+(RED/GREEN, revision/fingerprint, scope/versions/environment and executed/reused evidence), test-contract corrections, self-review findings, concerns,
 handoff notes.
 
 Then return ONLY this status message (under 15 lines):

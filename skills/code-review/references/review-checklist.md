@@ -25,6 +25,8 @@ The complete checklist for a thorough review, mirroring the six phases of `SKILL
 - [ ] **Ask the security question:** "Security is out of scope for this review. Do you want me to start a separate security-review agent in parallel?"
 - [ ] **Ask the test-quality question:** "Test-suite quality (flakiness, smells, assertion strength, coverage gaps) is out of scope. Do you want me to start a separate `test-driven-development` agent to review the tests?"
 
+Delegated matching user-confirmed answers satisfy these questions; unresolved items go to coordinator. Record scheduled seats and avoid duplicate reviews.
+
 ## Phase 1: Understand the Change
 
 - [ ] Know what the change does and why
@@ -34,10 +36,11 @@ The complete checklist for a thorough review, mirroring the six phases of `SKILL
 ## Phase 2: Automated Checks (ALWAYS)
 
 - [ ] Tooling detected (config files + CI configuration)
-- [ ] Linter run — all errors/warnings reported
-- [ ] Type checker run (or: reported missing + user asked)
-- [ ] Format check run (or: reported missing + user asked)
-- [ ] Full test suite run
+- [ ] Lint execution evidence verified; source/revision/warnings recorded
+- [ ] Types evidence verified or gap/decision resolved
+- [ ] Format-check evidence verified, never applied
+- [ ] Relevant full test evidence verified or approved alternative recorded
+- [ ] Reused evidence matches scope/revision/commands/versions/environment; unanswered doubts checked
 - [ ] Missing tooling: reported AND asked — nothing skipped silently
 - [ ] Failing tests: review STOPPED, failures reported, user consulted
 - [ ] **Nothing fixed, formatted, or edited**
@@ -53,13 +56,13 @@ Tests:   [ ] PASS  [ ] FAIL (___ passed, ___ failed, ___ skipped)
 
 Test-suite quality (flakiness, test smells, assertion strength, coverage gaps, mutation mindset) is OUT OF SCOPE — owned by the `test-driven-development` skill.
 
-- [ ] Suite run (in Phase 2); pass/fail + skipped/ignored counts reported
+- [ ] Applicable suite evidence verified; executed/reused attribution and counts reported
 - [ ] Obvious signals flagged as ONE-LINE handoff triggers (no analysis):
   - skipped/ignored tests without a visible reason
   - sleeps / wall-clock / unseeded randomness in test files
   - coverage number significantly below the project's configured threshold (if visible)
   - large skipped count
-- [ ] `test-driven-development` agent invoked (via `task` / `tdd-expert`) if the user accepted it in Pre-Review, OR if obvious signals were flagged
+- [ ] Signals routed to scheduled TDD/coordinator; direct unscheduled handoffs only when approved/permitted
 - [ ] If handoff not possible/requested: a "Test-quality handoff" section will be added in Phase 6
 - [ ] **No test-smell analysis, no coverage-gap questions, no assertion-quality checks performed by you**
 
@@ -110,8 +113,7 @@ See `feedback-format.md`.
 ## Post-Review
 
 - [ ] All user questions answered or recorded as open
-- [ ] `test-driven-development` agent started if the user requested it (or recommended)
-- [ ] Security-review agent started if the user requested it
+- [ ] Required TDD/security seats scheduled by coordinator; direct handoffs avoid duplicates and obey approval/permissions
 - [ ] Any fix work confirmed as a SEPARATE task — never silently merged into the review
 
 ## Review Etiquette

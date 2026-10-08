@@ -16,7 +16,7 @@ bestanden. OpenCode laadt agent- en configuratiewijzigingen na een herstart.
 | `skills/<name>/SKILL.md` | Universele agent skills | `~/.agents/skills/`, `~/.claude/skills/`, `~/.codeium/windsurf/skills/`, `~/.gemini/config/skills/` |
 | `opencode/agents/*.md` | OpenCode custom agents (frontmatter + body = system prompt) | `~/.config/opencode/agents/` (per bestand) |
 | `opencode/configs/tdvg-standards.json` | Overschrijfbare TDVG-defaults | `~/.config/opencode/config.json` |
-| `opencode/configs/tdvg-required.json` | Afgedwongen managed settings (agent-beleid: `plan` uitgeschakeld; `compaction`/`summary`/`title` + `small_model` op `openrouter/z-ai/glm-5.3-flash`) | `/etc/opencode/opencode.jsonc` (root vereist) |
+| `opencode/configs/tdvg-required.json` | Afgedwongen managed settings (`plan` en `general` uitgeschakeld; `compaction`/`summary`/`title` + `small_model` op `openrouter/z-ai/glm-5.3-flash`) | `/etc/opencode/opencode.jsonc` (root vereist) |
 | `opencode/plugins/usage-tracking.ts` + `opencode/plugins/usage-tracking/*` | Usage-tracking plugin (real-time gebruik/kosten-telemetrie; het platte entry-bestand is vereist voor auto-discovery) | `~/.config/opencode/plugins/` (per bestand) |
 | `opencode/command/usage-status.md` | `/usage-status` slash-commando (status van de usage-tracking plugin) | `~/.config/opencode/command/` (per bestand) |
 
@@ -65,6 +65,10 @@ uv run scripts/link.py list     # harnesses, skills en items tonen
 
 ## Gedragsregels voor agents in deze repo
 
+- Custom orchestrator blijft coordinator: alle implementaties/fixes gaan naar `implementer`, nooit naar uitgeschakelde `general`. Implementer bezit tests én broncode via Red–Green–Refactor, erft het model en start geen eigen subagents of automatische commits.
+- Iedere fase/batch met Definition of Done krijgt achteraf onafhankelijke code- en TDD-review, plus security waar relevant. Afhankelijke fases wachten op vereiste verdicts/opgeloste blockers. Nieuwe-test- en TDD-reviewuitzonderingen vereisen elk afzonderlijk vooraf expliciet akkoord en alternatieve checks.
+- Gedelegeerde TDD-expert is advisory-only en wijzigt tests noch broncode; fixes gaan via coordinator naar implementer. Direct aangeroepen mag hij tests schrijven/verbeteren, nooit broncode. Geplande reviewstoelen worden niet dubbel genest gestart.
+- Bewijshergebruik vereist passende scope, revisie/fingerprint, commando's/resultaten, versies en omgeving. Reviewers beoordelen zelfstandig; gaps/veroudering/twijfel vragen gerichte verificatie. Iedere agent levert zijn benoemde rapport in de goedgekeurde runmap.
 - Wijzig nooit iets aan de persoonlijke laag van de gebruiker buiten deze repo.
 - Na het wijzigen van `scripts/link.py`: draai `uv run scripts/link.py status`
   en `uv run scripts/link.py list` ter verificatie.

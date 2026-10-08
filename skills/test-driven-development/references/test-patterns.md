@@ -34,7 +34,7 @@ With one test, the simplest passing implementation is often a constant (`return 
 When code has no tests or behavior is unclear, **characterize** current behavior:
 1. Write a test that captures what the code *currently* does (warts and all).
 2. Run it; if it fails, your assumption about behavior was wrong — fix the test, not the code.
-3. These tests lock in behavior so you can refactor safely (production refactoring is still out of scope for this skill — you only provide the safety net).
+3. These tests let an authorized implementer refactor safely; tests-only specialists provide the safety net and hand off source changes.
 Characterization tests are the entry point for legacy code without tests.
 
 ## Golden Master / Snapshot / Approval Tests
@@ -99,6 +99,6 @@ Keep Setup small and visible; one Exercise; specific Verify; reliable Teardown.
 | Cross-functional scenario alignment | BDD / Given-When-Then |
 
 ## See Also
-- `tdd-fundamentals.md` — the Red-Green-Refactor cycle and the handoff.
+- `tdd-fundamentals.md` — the one-worker Red-Green-Refactor cycle and role boundaries.
 - `test-doubles.md` — what to mock at the seams.
 - `assertion-quality.md` — structuring the Verify phase.

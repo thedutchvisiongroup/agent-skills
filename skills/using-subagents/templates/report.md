@@ -26,7 +26,7 @@ Delete sections the delegation prompt marks optional; do not invent new top-leve
 
 ## Test evidence
 
-[Commands run and their relevant output. When TDD was required: RED evidence (failing test before implementation) and GREEN evidence (passing after). Reviewers: assessment of the implementer's evidence plus any re-runs you performed. This section is the evidence — keep the real commands and outputs.]
+[Revision/commit or content fingerprint, scope, tool/dependency versions and environment. Real RED/GREEN commands/output, refactor/fix checks and relevant full final checks. Distinguish executed/reused evidence with references. Record separate new-test/test-review exceptions and alternatives; justify test-contract corrections against requirements. Reviewers assess applicability independently and report probes/unverified claims.]
 
 ## Self-review findings
 

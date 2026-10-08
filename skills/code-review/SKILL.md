@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Performs advisory-only, language-agnostic code reviews. Runs linters, formatters, and tests, then analyzes logic, design (DRY, SOLID, YAGNI), complexity, naming, dead code, performance, and documentation. Use when reviewing pull requests, validating code changes, or performing pre-merge quality checks. The reviewer NEVER modifies code — it only reports findings. Test-suite quality (flakiness, test smells, assertion strength, coverage gaps, mutation mindset) is out of scope; the reviewer hands test-quality off to the test-driven-development skill. Security review is out of scope; the reviewer asks the user whether a separate security-review agent should be started.
+description: Performs advisory-only code reviews. Verifies applicable lint/type/format/test evidence, executes checks for gaps/doubts, and independently analyzes logic/design, complexity, naming, dead code, performance and documentation. Use for PRs, implementation validation and pre-merge checks. Never edits reviewed files. Test quality/security belong to specialists; delegated signals return to coordinator without duplicating scheduled seats.
 ---
 
 # Comprehensive Code Review
@@ -8,15 +8,23 @@ description: Performs advisory-only, language-agnostic code reviews. Runs linter
 ## The Iron Law
 
 ```
-NO REVIEW IS COMPLETE WITHOUT RUNNING: LINTERS, FORMATTERS, AND TESTS
+NO REVIEW IS COMPLETE WITHOUT VERIFIED APPLICABLE CHECK EVIDENCE.
 THE REVIEWER ADVISES. THE REVIEWER NEVER EDITS CODE.
 TEST-SUITE QUALITY IS OUT OF SCOPE. ALWAYS HAND IT OFF TO test-driven-development.
 SECURITY IS OUT OF SCOPE. ALWAYS ASK ABOUT A SEPARATE SECURITY REVIEW.
 ```
 
-A code review that only reads code is not a review. It is a glance.
+A review accepting unexamined author claims is not independent verification. Judge code on its merits and verify applicable evidence.
 
 **You MUST execute all verification steps before providing your review.**
+
+## Evidence Reuse and Delegated Reviews
+
+- Check lint/types/format/tests applicability. Reuse only revision/fingerprint-, scope-, command/result-, version- and environment-matching evidence, with attribution. Bare “passes” is insufficient.
+- Analyze independently: reusing outputs never means accepting the author's correctness/design verdict. Execute focused checks for gaps, changed inputs or unresolved doubts; repeat full suites when their scope/environment changed.
+- Distinguish executed, reused, missing and inapplicable checks. Absence of tooling is not automatic N/A; explain gaps and resolve missing decisions.
+- Validate each clarification item against explicit user-confirmed delegation answers. Missing/mismatching answers return as NEEDS_CONTEXT; direct work asks the user.
+- Never duplicate code/TDD/security seats already scheduled by coordinator. Return located signals to it; direct or explicitly approved unscheduled handoffs may invoke specialists within nesting/permissions.
 
 ## Advisory-Only — Non-Negotiable
 
@@ -37,7 +45,7 @@ This skill does NOT perform security review. A dedicated security review is a se
 
 This skill does NOT review test quality (flakiness, test smells, assertion strength, coverage gaps, mutation mindset). That is the domain of the `test-driven-development` skill.
 
-- You MUST run the test suite (Phase 2) to confirm the suite passes — but you do NOT assess test quality yourself.
+- Verify relevant suite execution evidence; run checks when reuse is insufficient. Test-quality analysis remains out of your discipline.
 - You MUST ask the user in the clarification step whether a separate `test-driven-development` agent should be started for a test-quality review.
 - If you notice something that looks test-quality-relevant (flaky tests, skipped tests, over-mocking, weak assertions, coverage gaps), note it as a **test-quality handoff trigger** in your final report (Phase 6) — nothing more.
 - The coverage thresholds and gap analysis that previously lived in this skill have moved to `test-driven-development`; this skill no longer carries coverage config or coverage-gap questions.
@@ -49,8 +57,8 @@ You MUST confirm the following before beginning review:
 - [ ] **Scope**: What files/changes are being reviewed?
 - [ ] **Context**: What is the purpose of this change? (feature, fix, refactor)
 - [ ] **Commands**: How do you run lints, formatters, and tests in this project? (You will also detect this yourself in Phase 2 — ask if detection fails.)
-- [ ] **Security review**: Ask: "Security is out of scope for this review. Do you want me to start a separate security-review agent in parallel?" — ALWAYS ask this.
-- [ ] **Test-quality review**: Ask: "Test-suite quality (flakiness, smells, assertion strength, coverage gaps) is out of scope for this review. Do you want me to start a separate `test-driven-development` agent to review the tests?" — ALWAYS ask this. (Coverage thresholds are now owned by `test-driven-development`.)
+- [ ] **Security review:** validate approved routing/trigger decision in delegation; ask about a separate review in direct work.
+- [ ] **Test review:** validate scheduled TDD seat or explicit exception in delegation; ask about separate review in direct work. Coverage goals belong to TDD.
 
 **If any are unclear, ASK the user before proceeding.**
 
@@ -139,9 +147,9 @@ STOP. Do you understand the change?
 If any box is unchecked: read more context before reviewing code.
 ```
 
-### Phase 2: Run Automated Checks (ALWAYS)
+### Phase 2: Verify Automated Checks (ALWAYS)
 
-**You MUST run linters, formatters, type checkers, and tests. NO EXCEPTIONS.**
+Verify each applicable category through qualified evidence or execution; never silently skip missing evidence.
 
 1. **Discover Available Tools**
 
@@ -155,11 +163,11 @@ If any box is unchecked: read more context before reviewing code.
    | `Cargo.toml` | `cargo clippy`, `cargo fmt --check`, `cargo test` |
    | `go.mod` | the project's lint command, `go test ./...` |
 
-2. **Run Everything You Found**
+2. **Verify Everything Applicable:** assess qualified evidence or execute missing/current checks and focused doubts. Formatting is check-only.
    - Linting
    - Type checking (if available)
    - Formatting check (if available) — run the formatter in CHECK mode only. NEVER apply formatting.
-   - Full test suite
+   - Relevant full suite/batch-final evidence
 
 3. **If Tooling Is Missing: Detect → Report → Ask**
 
@@ -183,31 +191,31 @@ If any box is unchecked: read more context before reviewing code.
    - Do NOT fix the tests. Do NOT continue reviewing on a red suite without explicit user confirmation.
 
 ```
-STOP. Did you run all automated checks?
-- [ ] Yes, I ran the linter
-- [ ] Yes, I ran the type checker (or reported it missing + asked)
-- [ ] Yes, I ran the formatter check (or reported it missing + asked)
-- [ ] Yes, I ran the full test suite
+STOP. Did you verify applicable checks?
+- [ ] Lint evidence verified or gap resolved/reported
+- [ ] Type evidence verified or gap resolved/reported
+- [ ] Format evidence verified or gap resolved/reported
+- [ ] Relevant test evidence verified or applicability exception recorded
 - [ ] Yes, I reported all issues — and fixed NOTHING
 If any box is unchecked: GO BACK and complete them.
 ```
 
 ### Phase 3: Test Suite — Hand Off Quality Assessment
 
-**You run the suite (Phase 2) to confirm it passes. You do NOT assess test quality.**
+Verify suite execution evidence in Phase 2; do not assess test quality.
 
 Test quality — flakiness, test smells, assertion strength, coverage gaps, mutation mindset — is the domain of the `test-driven-development` skill. This skill no longer carries the test-quality catalog, coverage-strategies reference, or coverage-gap questions.
 
-1. **Run the suite** (already done in Phase 2) and report pass/fail counts including skipped/ignored tests.
+1. Report verified counts and whether execution was performed or reused; record missing evidence honestly.
 2. **Flag obvious signals for handoff** (do NOT analyze them): tests marked skipped/ignored without a visible reason, sleeps/wall-clock in tests, unseeded randomness, large skipped count, or a coverage number significantly below what the project configures. List these as one-line handoff triggers — no smell analysis, no coverage-gap questions.
-3. **Hand off to `test-driven-development`**: if the user accepted the test-quality review in the Before-You-Start gate, or if Phase 2 flagged obvious signals, invoke the `test-driven-development` agent (via the `task` tool / `tdd-expert` subagent) to perform the test-quality review. Include its outcome in your final report.
+3. Route delegated test signals to coordinator's scheduled TDD seat, never duplicate it. Direct/approved unscheduled handoffs may invoke `tdd-expert` within nesting/permissions; include its outcome.
 4. **If the handoff is not possible or not requested**: include a "Test-quality handoff" section in your final report (Phase 6) listing the flagged signals and recommending the `test-driven-development` agent — no analysis of your own.
 
 ```
 STOP. Did you handle test quality correctly?
-- [ ] Yes, I ran the suite and reported pass/fail + skipped counts
+- [ ] Yes, suite evidence was verified and counts/gaps reported
 - [ ] Yes, I flagged obvious signals as one-line handoff triggers (no analysis)
-- [ ] Yes, I handed off to `test-driven-development` (or recommended it) if triggered
+- [ ] Yes, signals were routed without duplicating scheduled review
 - [ ] Yes, I did NOT perform test-smell/coverage-gap analysis myself
 If any box is unchecked: GO BACK. Do not analyze test quality.
 ```
@@ -337,6 +345,8 @@ See `references/feedback-format.md` for the full format, labels, and tone guidel
 
 2. **Automated Check Results**
 
+   Label executed/reused results with source/revision and distinguish missing/inapplicable categories and approved alternatives.
+
    ```
    Lint:      ✓ PASS (0 errors, 0 warnings)
    Types:     ✓ PASS (0 errors)
@@ -357,12 +367,12 @@ See `references/feedback-format.md` for the full format, labels, and tone guidel
 
 4. **Test-Quality Handoff**
    - Restate the answer to the Before-You-Start test-quality question.
-   - If obvious signals were flagged in Phase 3 (skipped tests, sleeps, low coverage), you MUST explicitly recommend: "The test suite shows [signals]. I did not review test quality. I recommend starting a separate `test-driven-development` agent."
+    - Route located signals to scheduled TDD/coordinator; recommend a new specialist only if not already assigned.
    - If the `test-driven-development` agent was invoked, summarize its outcome here.
 
 5. **Security Handoff**
    - Restate the answer to the Before-You-Start security question.
-   - If sensitive paths were detected in Phase 1, you MUST explicitly recommend: "This change touches [auth/payments/user data/...]. I did not review security. I recommend starting a separate security-review agent."
+    - Route sensitive-path signals to coordinator/scheduled security seat; recommend additional review only if not already assigned.
 
 6. **Verdict** (advisory — the user makes the call):
    - `APPROVE` — no blocking findings
@@ -374,9 +384,9 @@ See `references/feedback-format.md` for the full format, labels, and tone guidel
 ## Red Flags — STOP and Follow Process
 
 If you catch yourself thinking:
-- "LGTM, looks fine" — You didn't run checks
+- "LGTM, looks fine" — Verify evidence and analyze code, not author optimism
 - "Tests probably pass" — You didn't verify
-- "I don't need to run lint" — You're skipping Phase 2
+- "I don't need lint evidence" — Phase 2 still requires applicable checks
 - "These tests look flaky, let me analyze them" — Out of scope. Hand off to `test-driven-development`.
 - "Coverage looks low, let me check the gaps" — Out of scope. Hand off to `test-driven-development`.
 - "I'll just fix this typo myself" — You NEVER edit code. Report it.
@@ -391,7 +401,7 @@ If you catch yourself thinking:
 ## User Signals You're Doing It Wrong
 
 **Watch for these redirections:**
-- "Did you actually run the tests?" — You assumed without running
+- "Did you run or reuse these tests?" — Distinguish execution from attributed evidence
 - "Why did you change that file?" — You edited code. You NEVER edit code.
 - "Did you review the test suite quality?" — Out of scope. Hand off to `test-driven-development`.
 - "What about edge case X?" — You missed Phase 4
@@ -405,7 +415,7 @@ If you catch yourself thinking:
 
 | Excuse | Reality |
 |--------|---------|
-| "Tests are slow, skip them" | Slow tests are better than broken code. Run them. |
+| "Tests are slow, skip them" | Obtain applicable execution evidence; qualified reuse is not skipping. |
 | "Lint is noisy, ignore warnings" | Warnings exist for a reason. Report them all. |
 | "Test quality is part of code review" | No — it's a separate discipline. Hand off to `test-driven-development`. |
 | "Coverage doesn't matter for this" | Coverage is owned by `test-driven-development`; don't analyze it here. |
@@ -421,8 +431,8 @@ If you catch yourself thinking:
 | Phase | Key Activities | Success Criteria |
 |-------|---------------|------------------|
 | **1. Understand** | Read description, identify files, detect sensitive paths | Know what and why; handoff triggers noted |
-| **2. Automated Checks** | Run lint, types, format check, tests | All clean or issues reported; nothing fixed |
-| **3. Test Handoff** | Run suite, flag obvious signals, hand off quality to `test-driven-development` | Suite confirmed; quality handed off, not self-reviewed |
+| **2. Automated Checks** | Verify applicable evidence; resolve gaps/doubts through execution | Executed/reused identity recorded; no edits |
+| **3. Test Handoff** | Route signals to scheduled TDD/coordinator | No duplicate seats; no test-quality analysis here |
 | **4. Logic** | Every line, logic patterns, error handling, edges | No correctness errors found |
 | **5. Design** | DRY, SOLID, YAGNI, complexity, naming, dead code, performance, docs | Maintainability verified |
 | **6. Synthesize** | Labeled findings, verdict, test-quality + security handoff | Advisory review delivered; nothing edited |
@@ -446,5 +456,5 @@ Load these files as needed during the matching phase:
 
 > Test-suite quality (flakiness, test smells, assertion strength, coverage gaps, mutation testing) is owned by the `test-driven-development` skill. Do not load test-quality references here — hand off instead.
 
-Base directory for this skill: /root/htdocs/projects-tdvg/agent-skills/skills/code-review
+Base directory for this skill: the directory containing this SKILL.md.
 Relative paths in this skill (e.g., references/) are relative to this base directory.

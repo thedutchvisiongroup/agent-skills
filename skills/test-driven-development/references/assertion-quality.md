@@ -13,7 +13,7 @@ Apply it before writing (Mode A) and during review (Mode B): mentally mutate the
 - swap a return value
 - invert an error check
 
-and ask: **does any test fail?** If not, the test does not cover that behavior. A "surviving mutant" is a real gap. Mutation-testing tools automate this (see `coverage-and-mutation.md`); the manual mindset is always available.
+and ask: **does any test fail for a plausible, non-equivalent behavioral fault?** A survivor is an investigation lead: establish an observable behavioral change before reporting a coverage/assertion gap. Equivalent, invalid or tool-error mutants need separate treatment. See `coverage-and-mutation.md`; the manual mindset remains available.
 
 ## Signs a Test Can't Fail (flag as `issue`)
 

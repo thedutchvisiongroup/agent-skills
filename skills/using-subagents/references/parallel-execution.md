@@ -1,6 +1,6 @@
 # Parallel Execution
 
-Read in Phases 3, 4 and 6. Parallelism is the most over-used and least verified optimization in multi-agent work. The rule of this skill: **read-only work is always parallel-safe; writing is parallel-safe ONLY for provably disjoint scopes.**
+Read-only analysis may run concurrently on stable inputs/independent scopes; probes need non-conflicting mutable state. Writes require disjoint scope.
 
 ## Contents
 
@@ -13,7 +13,7 @@ Read in Phases 3, 4 and 6. Parallelism is the most over-used and least verified 
 
 ## The two kinds of parallel work
 
-**Read-only fan-out (always safe).** Explorers, researchers, analyzers: they change nothing, so they cannot conflict. Run them concurrently whenever the questions are independent. This is where most of the real speed lives — breadth-first investigation compressed into small answers.
+Read-only analysis uses frozen sources and separate reports. Code/TDD/security seats may share a snapshot; database resets, services and generated fixtures need isolation or sequencing.
 
 **Write fan-out (conditionally safe).** Two implementers writing concurrently is safe ONLY when the disjointness test passes in full. When it doesn't, parallel writing doesn't just risk conflicts — it manufactures them: conflicting implicit decisions, colliding edits, duplicated logic.
 
@@ -49,7 +49,7 @@ After ANY parallel wave, before the next phase:
 
 1. **Read every summary** — status + concerns, not just DONE-checkmarks.
 2. **Conflict check** — verify no two agents touched the same files. If they did: STOP, reconcile now (this is orchestrator judgement — or user escalation), and re-verify.
-3. **Run the full test suite** — per-task greens can hide cross-task breakage. The suite over the INTEGRATED result is the verdict.
+3. Verify full relevant checks after integration changes. Identical batch-final evidence may be reused; read-only review waves do not invalidate existing runs. Coordinator delegates execution when permissions require it.
 4. **Spot check** — read a sample of actual diffs. Systematic errors (wrong convention applied consistently by all agents) only show up when you look.
 
 Skipping integration verification turns Phase 6 into archaeology.
