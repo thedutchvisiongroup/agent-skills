@@ -107,7 +107,7 @@ generated:
 - `tags` MUST be a YAML list of relevant tags
 - `deciders` MUST be a YAML list of people involved in the decision
 - `status` MUST be one of the lifecycle values (see Status Lifecycle)
-- `generated` MUST be present with `by` + `at` (OKF v0.2 provenance): `by` follows the actor convention — `opencode/<model-id>` for agent-drafted, `human:<id>` for human-edited, `process:<id>` for automated runs; `at` MUST be ISO 8601 with UTC offset. (Legacy `timestamp` is retired; the OKF validator only emits a WARN nudge for it.)
+- `generated` MUST be present with `by` + `at` (OKF v0.2 provenance): `by` follows the actor convention — `<harness>/<model-id>` (`opencode` or `claude-code`) for agent-drafted, `human:<id>` for human-edited, `process:<id>` for automated runs; `at` MUST be ISO 8601 with UTC offset. (Legacy `timestamp` is retired; the OKF validator only emits a WARN nudge for it.)
 - `generated.at` MUST be ISO 8601 of last meaningful change — bump it on every meaningful edit
 - When `status: superseded`, `superseded_by: <relative path to the superseding ADR>` is REQUIRED
 - Optional MADR fields: `consulted: [<person>]` (two-way input) and `informed: [<person>]` (one-way updates) MAY be added

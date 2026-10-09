@@ -2,7 +2,7 @@
 
 Use for bounded read-only investigation on stable inputs. Independent explorers may run concurrently with separate named reports; execution probes must not share conflicting mutable state. Fill all placeholders before dispatch.
 
-Before dispatch, confirm the selected role/tools authorize writing the named report. Native OpenCode explore is normally edit-denied: use direct coordinator investigation if that permission is absent. A template is not permission to bypass an agent's restrictions.
+Before dispatch, confirm the selected role/tools authorize writing the named report. Read-only explorers are normally edit-denied (e.g. OpenCode `explore` and Claude Code `Explore`): use direct coordinator investigation if that permission is absent. A template is not permission to bypass an agent's restrictions.
 
 ---
 

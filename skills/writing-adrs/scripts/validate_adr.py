@@ -2,8 +2,8 @@
 """Validate ADR files against OKF frontmatter + MADR 4.0 body structure.
 
 OKF v0.2 provenance: the frontmatter requires a `generated` block ({by, at}).
-`by` must follow the actor convention (opencode/<model-id> | human:<id> |
-process:<id>); `at` must be an ISO 8601 datetime with explicit UTC offset.
+`by` must follow the actor convention (<harness>/<model-id>, harness opencode or
+claude-code | human:<id> | process:<id>); `at` must be an ISO 8601 datetime with explicit UTC offset.
 A legacy `timestamp` field triggers a WARN migration nudge only, never an error.
 
 Deliberate divergence vs validate_okf.py (ADR layer is intentionally stricter):
@@ -49,8 +49,9 @@ REQUIRED_SECTIONS = [
 
 FILENAME_PATTERN = re.compile(r"^\d{4}-[a-z0-9]+(-[a-z0-9]+)*\.md$")
 
-# Actor convention (house): opencode/<model-id> | human:<id> | process:<id>
-ACTOR_PATTERN = re.compile(r"^(opencode/[A-Za-z0-9._-]+|human:[A-Za-z0-9@._-]+|process:[A-Za-z0-9._-]+)$")
+# Actor convention (house): <harness>/<model-id> (harness opencode or claude-code)
+# | human:<id> | process:<id>
+ACTOR_PATTERN = re.compile(r"^((?:opencode|claude-code)/[A-Za-z0-9._-]+|human:[A-Za-z0-9@._-]+|process:[A-Za-z0-9._-]+)$")
 
 # ISO 8601 datetime with explicit UTC offset, e.g. 2026-07-21T10:00:00Z or 2026-07-21T10:00:00+02:00
 GENERATED_AT_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})$")
@@ -124,7 +125,7 @@ def check_actor_format(by_value, field_label, result):
     if not ACTOR_PATTERN.match(str(by_value).strip()):
         result.warn(
             f"Frontmatter '{field_label}' does not follow the actor convention "
-            f"opencode/<model-id> | human:<id> | process:<id>, got '{by_value}'."
+            f"<harness>/<model-id> (opencode or claude-code) | human:<id> | process:<id>, got '{by_value}'."
         )
 
 

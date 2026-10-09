@@ -29,7 +29,7 @@ behavior and clear intent come before line count, file count, or a tiny diff.
    and what would demonstrate completion. Briefly align on the intended task.
 2. **Ask before guessing.** If scope, behavior, constraints or success criteria
    are uncertain, ask concrete questions before acting on that uncertainty. Use
-   the question tool when available. Suggest a simpler alternative when a
+   the interactive question tool (`question` in OpenCode, `AskUserQuestion` in Claude Code) when available. Suggest a simpler alternative when a
    request appears overbuilt; get agreement before changing its scope or guarantees.
 3. **Reuse confirmed context.** Do not manufacture questions when the scope is
    already fully clear. A sufficient, approved delegation contract counts as

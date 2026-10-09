@@ -1,6 +1,6 @@
 ---
 name: using-subagents
-description: Coordinates approval-gated implementation with bounded workers, evidence reports and independent reviews. Use for delegated features, refactors, fixes and multi-part work. In TDVG OpenCode, implementer owns tests/source through Red-Green-Refactor; every phase/batch requires code and post-implementation TDD review, separate advance-approved test exceptions and risk-triggered security review. Preserves discovery, plan/storage approval, evidence reuse, resumed fixes, disjoint parallel work and bounded advisory nesting. Dedicated coordinators never implement project files themselves.
+description: Coordinates approval-gated implementation with bounded workers, evidence reports and independent reviews. Use for delegated features, refactors, fixes and multi-part work. In TDVG harnesses (OpenCode, Claude Code), implementer owns tests/source through Red-Green-Refactor; every phase/batch requires code and post-implementation TDD review, separate advance-approved test exceptions and risk-triggered security review. Preserves discovery, plan/storage approval, evidence reuse, resumed fixes, disjoint parallel work and bounded advisory nesting. Dedicated coordinators never implement project files themselves.
 ---
 
 # Using Subagents
