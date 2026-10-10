@@ -176,7 +176,7 @@ Naast OpenCode ondersteunt de repo ook Claude Code; beide blijven naast elkaar w
 
 | Repo | Doel | Sync-mechanisme |
 | ---- | ---- | --------------- |
-| `claude/CLAUDE.md` | `~/.claude/CLAUDE.md` | Symlink. User-level instructies voor elk project: verplichte `writing-simple-code`-skill voor technisch werk, kostenregels, geen secrets, lijst met TDVG-subagents. |
+| `claude/CLAUDE.md` | `~/.claude/CLAUDE.md` | Symlink. User-level instructies voor elk project: verplichte `writing-simple-code`, vragen bij twijfel, kostenregels, routekeuze (zelf / `implementer` / `using-subagents`), Devbox/Just-tooling, kwaliteit, conventional commits (scope `a > b`), veiligheid en secrets. |
 | `claude/agents/*.md` (`implementer`, `code-reviewer`, `security-reviewer`, `tdd-expert`) | `~/.claude/agents/` | Symlink per bestand. |
 | `claude/hooks/tdvg-write-guard.py` | `~/.claude/hooks/` | Symlink. PreToolUse-hook uit de reviewer-frontmatter. Profielen: `reviewer` (alleen Markdown in `.agents/runs/`) en `tdd-expert` (plus testpaden). Faalt gesloten. De repo-only test `claude/hooks/test_tdvg_write_guard.py` wordt niet uitgerold. |
 | `claude/configs/tdvg-settings.json` | `~/.claude/settings.json` | **JSON-merge**, geen symlink. `permissions.ask`: `Bash(rm *)`, `Bash(git push *)`. `permissions.deny`: `Read(**/.env)`, `Read(**/.env.*)` (blokkeert ook `.env.example`), `Agent(general-purpose)`, `Agent(claude)`. |
