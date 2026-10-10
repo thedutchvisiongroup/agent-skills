@@ -8,7 +8,7 @@
 
 ## Installatie
 
-Het script `scripts/link.py` symlinkt de skills uit `skills/` naar de globale skills-mappen van de ondersteunde agent harnesses. Omdat het symlinks zijn, blijft deze repo het enige source of truth — een wijziging aan een skill is direct zichtbaar in elke gelinkte harness.
+Het script `scripts/link.py` symlinkt de skills uit `skills/` naar de globale skills-mappen van de ondersteunde agent harnesses. Daarnaast synchroniseert het de OpenCode- en Claude Code-configuratie (zie de secties hieronder). Omdat het symlinks zijn, blijft deze repo het enige source of truth — een wijziging aan een skill is direct zichtbaar in elke gelinkte harness.
 
 ### Ondersteunde harnesses
 
@@ -25,7 +25,7 @@ Het script `scripts/link.py` symlinkt de skills uit `skills/` naar de globale sk
 | Windsurf (Cascade)     | `~/.codeium/windsurf/skills/`            | ❌                        |
 | Google Antigravity     | `~/.gemini/config/skills/`               | ❌                        |
 
-Eén symlink naar `~/.agents/skills/` dekt zes harnesses; Claude Code, Windsurf en Antigravity hebben een eigen symlink nodig.
+Eén symlink naar `~/.agents/skills/` dekt zes harnesses; Claude Code, Windsurf en Antigravity hebben een eigen symlink nodig. Claude Code leest niet `~/.agents/skills/`: neem daarom `claude` op in `--harnesses=` (bijv. `--harnesses=agents,claude`).
 
 ### Vereisten
 
@@ -40,7 +40,7 @@ Eén symlink naar `~/.agents/skills/` dekt zes harnesses; Claude Code, Windsurf 
 uv run scripts/link.py status
 ```
 
-**Interactief linken** — kies eerst welke skills, dan welke OpenCode-items, dan welke harnesses (alleen relevant voor skills). Het script detecteert aanwezige harnesses automatisch en pre-selecteert ze. Bestaande echte bestanden in de doelmap worden interactief afgehandeld (backup / overschrijven / skip):
+**Interactief linken** — kies welke skills, OpenCode-items en Claude-items, en welke harnesses (alleen relevant voor skills). Het script detecteert aanwezige harnesses automatisch en pre-selecteert ze. Bestaande echte bestanden in de doelmap worden interactief afgehandeld (backup / overschrijven / skip):
 
 ```bash
 uv run scripts/link.py link
@@ -53,14 +53,15 @@ uv run scripts/link.py link --skills=excel-spreadsheets,writing-skills --harness
 uv run scripts/link.py link --skip-skills --opencode=opencode/agents/code-reviewer.md,opencode/configs/tdvg-standards.json
 ```
 
-Met `--skip-skills` of `--skip-opencode` beperk je een run tot één categorie.
+Met `--skip-skills`, `--skip-opencode` of `--skip-claude` beperk je een run tot één categorie. `--claude=` neemt Claude-items op via hun item-key (zie de sectie Claude Code-configuratie).
 
-**Unlinken** — verwijdert eerder aangemaakte symlinks (geen echte bestanden):
+**Unlinken** — verwijdert eerder aangemaakte symlinks (geen echte bestanden) en draait eerder gemergede Claude-configuratie terug:
 
 ```bash
 uv run scripts/link.py unlink
 uv run scripts/link.py unlink --skills=excel-spreadsheets --harnesses=agents
 uv run scripts/link.py unlink --opencode=opencode/configs/tdvg-required.json
+uv run scripts/link.py unlink --claude=claude/CLAUDE.md
 ```
 
 **Overzicht van harnesses en skills in de repo:**
@@ -79,15 +80,18 @@ uv run scripts/link.py list
 | `✗`     | Broken symlink                          |
 | `D`     | Echte map (wordt interactief afgehandeld) |
 | `F`     | Echt bestand (wordt interactief afgehandeld) |
+| `~`     | Gedeeltelijk gemerged of conflicterend (alleen Claude-merge-items) |
 | `*`     | Trackt in `.link-state.json`           |
+
+De aparte tabel **Claude sync status** toont per Claude-item het type (`symlink` of `merge`).
 
 ### Wat doet het script?
 
-1. Ontdekt alle skills in `skills/` (elke map met een `SKILL.md`) én alle OpenCode-items in `opencode/` (zie hieronder).
+1. Ontdekt alle skills in `skills/` (elke map met een `SKILL.md`), alle OpenCode-items in `opencode/` en alle Claude Code-items in `claude/` (zie hieronder).
 2. Detecteert geïnstalleerde harnesses op basis van hun config-mappen.
 3. Per geselecteerde skill × harness en per OpenCode-item: controleert de doel-locatie.
-4. Bij een conflict (echte map/bestand) vraagt het interactief om backup, overschrijven of skip — backups krijgen de suffix `.bak-<timestamp>`.
-5. Maakt de symlink aan en houdt de link bij in `scripts/.link-state.json`.
+4. Bij een conflict (echte map/bestand, of een bestaande waarde die afwijkt bij een merge) vraagt het interactief om backup, overschrijven of skip — backups krijgen de suffix `.bak-<timestamp>`.
+5. Maakt de symlink aan (of voert bij `claude/configs/` een JSON-merge uit) en houdt dat bij in `scripts/.link-state.json`.
 6. Items met een managed target (`/etc/opencode/`) vereisen root; zonder root worden ze netjes overgeslagen met een waarschuwing.
 
 ## OpenCode-configuratie
@@ -165,3 +169,46 @@ devbox run -- scripts/smoke_usage_tracking.sh --run --model PROVIDER/MODEL
 ```
 
 **Rollback** — `uv run scripts/link.py unlink` met dezelfde item-keys als hierboven, daarna OpenCode herstarten. Verzamelde data is afgeleid en disposabel; het event stream blijft bij als bron van herstel staan.
+
+## Claude Code-configuratie
+
+Naast OpenCode ondersteunt de repo ook Claude Code; beide blijven naast elkaar werken. De map `claude/` wordt gesynchroniseerd naar `~/.claude/` en `~/.claude.json`:
+
+| Repo | Doel | Sync-mechanisme |
+| ---- | ---- | --------------- |
+| `claude/CLAUDE.md` | `~/.claude/CLAUDE.md` | Symlink. User-level instructies voor elk project: verplichte `writing-simple-code`-skill voor technisch werk, kostenregels, geen secrets, lijst met TDVG-subagents. |
+| `claude/agents/*.md` (`implementer`, `code-reviewer`, `security-reviewer`, `tdd-expert`) | `~/.claude/agents/` | Symlink per bestand. |
+| `claude/hooks/tdvg-write-guard.py` | `~/.claude/hooks/` | Symlink. PreToolUse-hook uit de reviewer-frontmatter. Profielen: `reviewer` (alleen Markdown in `.agents/runs/`) en `tdd-expert` (plus testpaden). Faalt gesloten. De repo-only test `claude/hooks/test_tdvg_write_guard.py` wordt niet uitgerold. |
+| `claude/configs/tdvg-settings.json` | `~/.claude/settings.json` | **JSON-merge**, geen symlink. `permissions.ask`: `Bash(rm *)`, `Bash(git push *)`. `permissions.deny`: `Read(**/.env)`, `Read(**/.env.*)` (blokkeert ook `.env.example`), `Agent(general-purpose)`, `Agent(claude)`. |
+| `claude/configs/tdvg-mcp.json` | `~/.claude.json` (`mcpServers`) | **JSON-merge**: context7 en deepwiki (http). Sluit eerst alle Claude Code-sessies en -apps: Claude herschrijft dit bestand zelf. |
+
+### Merge-regels
+
+Objecten worden deep-merged, arrays worden samengevoegd (unie) en ontbrekende keys worden toegevoegd. Wijkt een bestaande waarde af, dan vraagt `link.py` interactief: behouden, overschrijven of overslaan. Kies bij een conflict **behouden** om je eigen waarde te houden; andere persoonlijke keys blijven onaangeroerd.
+
+Vóór elke schrijfactie komt er een backup `.bak-<timestamp>`. Het schrijven is atomisch en de bestandsmodus blijft behouden. `scripts/.link-state.json` (v3) registreert precies wat is toegevoegd of overschreven. `unlink` herstelt alleen dat: overschreven waarden worden teruggezet, en waarden die je sindsdien zelf hebt gewijzigd blijven staan.
+
+### Gebruik
+
+```bash
+uv run scripts/link.py link --skip-skills --skip-opencode --claude=claude/CLAUDE.md,claude/agents/implementer.md
+uv run scripts/link.py link --skip-skills --skip-opencode --claude=claude/configs/tdvg-settings.json
+uv run scripts/link.py unlink --claude=claude/CLAUDE.md
+uv run scripts/link.py list
+```
+
+`--claude=` accepteert repo-relatieve item-keys (CSV); `--skip-claude` slaat de hele categorie over. `status` toont een tabel **Claude sync status** met per item het type (`symlink` of `merge`); het symbool `~` betekent gedeeltelijk gemerged of conflicterend.
+
+### Skills
+
+Claude Code leest alleen `~/.claude/skills/`. Link skills daarom met `--harnesses=agents,claude` (`agents` vult `~/.agents/skills/`, `claude` vult `~/.claude/skills/`). De TDVG-skills `code-review` en `security-review` overschrijven de ingebouwde `/code-review` en `/security-review` van Claude Code; dat is voorlopig geaccepteerd.
+
+### Subagents ten opzichte van OpenCode
+
+- Claude kent geen `temperature`, `mode` of permissions per pad. De rolskill en `writing-simple-code` worden vooraf geladen via het `skills:`-frontmatterveld; er is geen volledige leesgate.
+- Reviewers gebruiken `model: sonnet` en `effort: high`. De implementer gebruikt `model: inherit` en `disallowedTools: Agent` (geen eigen subagents).
+- Er zijn geen primary agents. De orchestrator is nog niet geporteerd (vervolg: output style); het hoofdgesprek fungeert als coordinator.
+
+> ⚠️ **Herstart na linken** — Claude Code leest `CLAUDE.md`, agents en settings alleen bij sessiestart. Start na het linken een nieuwe sessie. Skills worden wel direct opgepakt.
+
+De usage-tracking plugin is alleen voor OpenCode.

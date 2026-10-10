@@ -43,17 +43,18 @@ The skill's core is harness-agnostic; this file maps its concepts to concrete me
 
 ## Claude Code
 
-- **Agents**: defined in `.claude/agents/` (project) and `~/.claude/agents/` (user) as markdown with YAML frontmatter (`name`, `description`, `tools`, `model`, `maxTurns`, ...). The `description` drives auto-delegation.
-- **Dispatch**: the `Task`/`Agent` tool; the sub-agent runs in its own context window and returns a final summary. Multiple Task calls in one message run concurrently.
-- **Question tool**: `AskUserQuestion` is UNAVAILABLE to sub-agents (it requires main-thread state; background sub-agents auto-deny permission-prompting calls). Sub-agents literally cannot ask — the status contract is the only escalation channel. Do not waste prompt bytes inviting questions.
-- **Nesting**: since v2.1.172 sub-agents may nest up to 5 levels. Mechanics that matter:
-  - A sub-agent nests only when `Agent` is in its `tools` list; **omit `Agent` from leaf agents** so they physically cannot nest.
-  - `Agent(name1, name2)` allowlists are IGNORED inside sub-agent definitions (they only bind when the agent runs as the main thread via `claude --agent`). Real restriction: `permissions.deny: ["Agent(name)"]` in `settings.json`.
-  - Each nested level pays a fresh system-prompt write (+30–60%); tier models per level (`CLAUDE_CODE_SUBAGENT_MODEL` as the default for un-set agents).
-  - This skill's policy (depth ≤ 2, advisory only) applies REGARDLESS of the 5-level product maximum.
-- **Model routing**: `model` frontmatter field (`opus`/`sonnet`/`haiku`/`inherit`); `inherit` uses the main conversation's model — usually too expensive for leaves.
-- **Isolation**: `isolation: worktree` frontmatter gives the sub-agent its own git worktree — the write fan-out escape hatch (see `references/parallel-execution.md`).
+- **Agents**: markdown files with YAML frontmatter in `~/.claude/agents/` (user) and `.claude/agents/` (project; nearest wins). Plugin and managed agents also exist. Fields: `name`, `description` (drives auto-delegation), `tools` / `disallowedTools`, `model` (`sonnet`, `opus`, `haiku`, a full model id, or `inherit`), `effort`, `maxTurns`, `skills` (preloads the FULL skill content at startup), `hooks`, `permissionMode`, `isolation: worktree`, `memory`, `color`. There is no `temperature` field and no per-path edit permission.
+- **No primary agents**: the main conversation is the coordinator. A session can run AS an agent via `claude --agent <name>` or the `agent` setting; its prompt then replaces the default system prompt, and `tools: Agent(a, b)` restricts which agent types it may spawn.
+- **Dispatch**: the `Agent` tool with `subagent_type` and `prompt`. The sub-agent gets a fresh context: its own system prompt, the delegation message, CLAUDE.md, git status and preloaded skills; no conversation history. Its final message returns to you. Multiple `Agent` calls in one message run concurrently, and calls can run in the background.
+- **Resuming**: `SendMessage` to the agent id or name continues it with its full history; use it for fix loops. Explore and Plan are one-shot and cannot be resumed.
+- **Discovery**: the `Agent` tool description lists the available agent types; `/agents` manages them; definitions live in the directories above.
+- **Question tool**: `AskUserQuestion` is removed from every sub-agent. The status contract is the only escalation channel, so do not invite questions in the prompt.
+- **Nesting**: allowed by default up to 3 levels below main. `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` sets the limit (`1` = off). Block nesting per agent by omitting `Agent` from `tools` or setting `disallowedTools: Agent`. Disable an agent type with `permissions.deny: ["Agent(name)"]`. The skill's depth policy (depth ≤ 2, advisory only) still applies.
+- **Model routing**: precedence is the per-invocation `model` parameter, then frontmatter `model`, then `CLAUDE_CODE_SUBAGENT_MODEL`, then the main model.
+- **Path-scoped write limits**: use a `PreToolUse` hook in the agent's frontmatter. TDVG ships `~/.claude/hooks/tdvg-write-guard.py` with profiles `reviewer` and `tdd-expert`. Shell writes remain a prompt-level rule.
+- **Isolation**: `isolation: worktree` gives the sub-agent its own git worktree — the write fan-out escape hatch (see `references/parallel-execution.md`).
 - **maxTurns**: cap turns per sub-agent (leaves ~8, mid-tier ~12) as a loop-circuit-breaker.
+- **TDVG policy**: `general-purpose` and `claude` built-ins are denied via TDVG settings. `implementer` (inherit model, no Agent tool) owns tests and source. `code-reviewer`, `security-reviewer` and `tdd-expert` run on sonnet. The coordinator role lives in the main conversation.
 
 ## Generic fallback guidance
 

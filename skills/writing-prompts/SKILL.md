@@ -23,7 +23,7 @@ If any box is unchecked: GO BACK. Do not draft.
 
 ## Phase 1: Clarify (REQUIRED — DO NOT SKIP)
 
-Ask these questions via the question tool before drafting. Group them; do not interrogate one at a time.
+Ask these questions via the interactive question tool (`question` in OpenCode, `AskUserQuestion` in Claude Code) before drafting. Group them; do not interrogate one at a time.
 
 **Mandatory (always ask):**
 1. **Structure** — XML (default) or Markdown? See [references/prompt-structure.md](references/prompt-structure.md).

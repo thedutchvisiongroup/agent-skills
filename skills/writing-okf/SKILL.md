@@ -115,7 +115,7 @@ status: <draft|stable|deprecated>
 
 | Actor | Format | Example |
 |-------|--------|---------|
-| Agent | `opencode/<model-id>` | `opencode/glm-5.3-flash` |
+| Agent | `<harness>/<model-id>` | `opencode/glm-5.3-flash`, `claude-code/claude-sonnet-5-5` |
 | Human | `human:<id>` | `human:thim` |
 | Process | `process:<id>` | `process:finance-nightly` |
 
@@ -319,7 +319,7 @@ House rules (file naming, non-empty body, standard scaffolding, same-level index
 | Choose a `type` | Reuse sibling types, or propose a descriptive new one |
 | Record provenance | `generated: { by, at }` and `status` REQUIRED at house level — see [references/house-rules.md](references/house-rules.md) |
 | Attribute a claim | `sources` entry plus a `[^id]` footnote keyed to `sources[].id` |
-| Pick an actor | `opencode/<model-id>` (agents), `human:<id>` (people), `process:<id>` (processes) |
+| Pick an actor | `<harness>/<model-id>` (agents: `opencode` or `claude-code`), `human:<id>` (people), `process:<id>` (processes) |
 | See per-type templates | Read [references/concept-templates.md](references/concept-templates.md) |
 | Check the format rules | Read [references/okf-spec.md](references/okf-spec.md) |
 | Check house conventions | Read [references/house-rules.md](references/house-rules.md) |

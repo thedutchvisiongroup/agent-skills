@@ -17,7 +17,7 @@ Inventory the agents that ACTUALLY exist in the current environment, using the h
 
 - **Task/delegation tool listing** — most harnesses inject the available sub-agents (with descriptions) into the delegation tool's description. Read it.
 - **Agent directories** — agent definition files on disk (user-level and project-level). See `references/harness-notes.md` for the conventional locations per harness.
-- **CLI listing** — some harnesses offer a list command (e.g. `opencode agent list`).
+- **CLI listing** — some harnesses offer a list command (e.g. `opencode agent list`, `/agents` in Claude Code).
 
 Record the inventory in the work plan: which agents exist, which you selected, which you deliberately did NOT select.
 
@@ -28,7 +28,7 @@ An agent's description is its capability contract. Extract from each:
 1. **What it does** — the verb: implements, reviews, explores, debugs, plans.
 2. **When to use it** — its trigger conditions; match them to your task.
 3. **Its constraints** — permissions (e.g. edit-denied reviewers), mode (subagent-only?), anything its prompt forbids.
-   Check required report capability too, not just role name. Native OpenCode `explore` normally cannot edit even a named Markdown report. If report authority is absent, the coordinator investigates directly with read-only tools or seeks an approved capable alternative; never dispatch an impossible report contract or write through shell to bypass denial.
+   Check required report capability too, not just role name. Read-only explorers often cannot edit even a named Markdown report (e.g. native OpenCode `explore` and Claude Code `Explore` are read-only). If report authority is absent, the coordinator investigates directly with read-only tools or seeks an approved capable alternative; never dispatch an impossible report contract or write through shell to bypass denial.
 4. **Its collaboration rules** — some agents hand off to other agents; that interacts with `references/nesting-policy.md`.
 
 Descriptions are one-sided advertisements: an agent claiming "does everything" is a generalist. Prefer narrow descriptions — they signal a specialist.
