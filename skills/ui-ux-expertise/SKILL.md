@@ -27,7 +27,7 @@ Before you change anything, confirm with the user, two or three questions per ro
 - **Target and boundaries:** which page, route, or component, and what must stay untouched.
 - **Mode:** propose Persuade, Operate, Read, or Experience from the surface (see Modes below) and let the user confirm.
 
-Skip what the request already settles; never re-ask. A trivial, unambiguous fix (one button label, one spacing error) needs only a one-line confirmation of what you will change. A command's own questions (shape, new-work, critique) come on top of this gate, never instead of it.
+When the request already names the target or mode, restate it in one line for confirmation instead of asking again. A trivial, unambiguous fix (one button label, one spacing error) needs only a one-line confirmation of what you will change. A command's own questions (shape, new-work, critique) come on top of this gate, never instead of it.
 
 ```
 STOP. Before the first edit:
@@ -131,6 +131,8 @@ Building something new has no command: "build a landing page", "make this settin
 - **Detector.** `python3 <skill-dir>/scripts/detect.py [--json] <paths>` scans HTML, CSS, template, and component files (including Tailwind classes) for the mechanical anti-patterns. Exit 0 clean, 1 findings, 2 usage error. Every hit needs verification in context; rule ids are explained in [references/anti-patterns.md](references/anti-patterns.md). It never replaces looking at the render.
 
 ## Delegated work
+
+A delegated subagent cannot ask the user. For it, the confirmed answers in its delegation contract (target, boundaries, mode, design context) satisfy Setup steps 1 and 2; anything missing or contradictory goes back to the coordinator as `NEEDS_CONTEXT`, never as a guess.
 
 When the work runs under the `using-subagents` skill:
 

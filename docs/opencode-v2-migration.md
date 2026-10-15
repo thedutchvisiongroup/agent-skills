@@ -258,7 +258,7 @@ toestemmingen werken ook bij daadwerkelijk uitvoeren en nested handoffs.
 - [ ] Werk v1-voorbeelden in discovery/templates/control bij zonder andere harnesssecties naar v2 te herschrijven.
 - [ ] Behoud runtime nesting 3 en de bestaande skillgrens maximaal 2 niveaus met alleen goedgekeurde advisory-handoffs; de hogere runtimewaarde verruimt het beleid niet.
 - [ ] Behoud standaard foreground-waves; background dispatch alleen gebruiken waar het bestaande/expliciet goedgekeurde plan dat toestaat.
-- [ ] Controleer overige harnessspecifieke paden, bijvoorbeeld `.opencode/skills/impeccable/scripts/`; gebruik de werkelijk geladen skill-base als dat pad niet bestaat.
+- [ ] Controleer overige harnessspecifieke paden, bijvoorbeeld `.opencode/skills/ui-ux-expertise/scripts/`; gebruik de werkelijk geladen skill-base als dat pad niet bestaat.
 - [ ] Inventariseer projectgebruik van `CLAUDE.md` en `instructions`; v2 laadt momenteel alleen `AGENTS.md` en resolveert de `instructions`-array niet.
 - [ ] Laat de eigenaar noodzakelijke projectinstructies in de juiste `AGENTS.md` opnemen; de repo migreert geen andere projecten stilzwijgend.
 - [ ] Controleer geladen instructies na reload/compaction; reeds ontdekte nested instructies kunnen een nieuwe sessie vereisen voor gewijzigde inhoud.

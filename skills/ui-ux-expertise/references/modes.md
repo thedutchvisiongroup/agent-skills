@@ -59,24 +59,24 @@ Someone who uses tools like this one should know where everything is before they
 
 Read every candidate direction through that limit before you propose it. A world taken from a tool or instrument the audience operates (a terminal, a scope, a control panel, a cockpit) or from a fictional interface comes back as a costume of that tool on a working screen: take from it only what transfers as type, palette, density, and a signature move, or replace the candidate.
 
-Write each direction's first viewport as the product's shell first: the navigation, the work areas and what each is for, the data the visitor reads first and its states, and then where the signature move lives. Expression may never obscure the task, state, or familiar affordance. Name the signature move concretely, so the comp and the build can find it: service health drawn as a transit map, a schedule set in a timetable's column rhythm. A direction whose world shows up only as a colour scheme has not found its move yet. Product clarity includes reading as a working product of this category.
+Write the direction's first viewport as the product's shell first: the navigation, the work areas and what each is for, the data the visitor reads first and its states, and then where the signature move lives. Expression may never obscure the task, state, or familiar affordance. Name the signature move concretely, so the build and the review can find it: service health drawn as a transit map, a schedule set in a timetable's column rhythm. A direction whose world shows up only as a colour scheme has not found its move yet. Product clarity includes reading as a working product of this category.
 
-### The product slop test
+### The Operate slop test
 
 Familiarity is often a feature here. The test is whether a category-fluent user can trust the interface immediately or must pause at every subtly-off component.
 
-Product UI's failure mode isn't flatness, it's strangeness without purpose: over-decorated buttons, mismatched form controls, gratuitous motion, display fonts where labels should be, invented affordances for standard tasks. The bar is earned familiarity. The tool should disappear into the task.
+An Operate surface's failure mode isn't flatness, it's strangeness without purpose: over-decorated buttons, mismatched form controls, gratuitous motion, display fonts where labels should be, invented affordances for standard tasks. The bar is earned familiarity. The tool should disappear into the task.
 
 ### Typography
 
-- **One family is often right.** Product UIs don't need display/body pairing. A well-tuned sans carries headings, buttons, labels, body, data.
-- **Fixed rem scale, not fluid.** Clamp-sized headings don't serve product UI. Users view at consistent DPI, and a fluid h1 that shrinks in a sidebar looks worse, not better.
-- **Tighter scale ratio.** 1.125–1.2 between steps is typical. More type elements here than on brand surfaces; exaggerated contrast creates noise.
+- **One family is often right.** Operate surfaces don't need display/body pairing. A well-tuned sans carries headings, buttons, labels, body, data.
+- **Fixed rem scale, not fluid.** Clamp-sized headings don't serve Operate surfaces. Users view at consistent DPI, and a fluid h1 that shrinks in a sidebar looks worse, not better.
+- **Tighter scale ratio.** 1.125–1.2 between steps is typical. More type elements here than on Persuade surfaces; exaggerated contrast creates noise.
 - **Line length still applies for prose** (65–75ch). Data and compact UI can run denser; tables at 120ch+ are fine.
 
 ### Color
 
-Product defaults to Restrained. A single surface can earn Committed (a dashboard where one category color carries a report, an onboarding flow with a drenched welcome screen), but Restrained is the floor.
+Operate defaults to Restrained. A single surface can earn Committed (a dashboard where one category color carries a report, an onboarding flow with a drenched welcome screen), but Restrained is the floor.
 
 - State-rich semantic vocabulary: hover, focus, active, disabled, selected, loading, error, warning, success, info. Standardize these.
 - Accent color used for primary actions, current selection, and state indicators only, not decoration.
@@ -99,9 +99,9 @@ Every interactive component has: default, hover, focus, active, disabled, loadin
 
 - 150–250 ms on most transitions. Users are in flow; don't make them wait for choreography.
 - Motion conveys state, not decoration. State change, feedback, loading, reveal: nothing else.
-- No orchestrated page-load sequences. Product loads into a task; users don't want to watch it load.
+- No orchestrated page-load sequences. A working screen loads into a task; users don't want to watch it load.
 
-### Product constraints
+### Operate constraints
 
 - Decorative motion that doesn't convey state.
 - Inconsistent component vocabulary across screens. If the "save" button looks different in two places, one is wrong.
@@ -110,9 +110,9 @@ Every interactive component has: default, hover, focus, active, disabled, loadin
 - Heavy color or full-saturation accents on inactive states.
 - Modal as first thought. Modals are usually laziness. Exhaust inline / progressive alternatives first.
 
-### Product permissions
+### Operate permissions
 
-Product can afford things brand surfaces can't.
+Operate surfaces can afford things Persuade surfaces can't.
 
 - System fonts and familiar sans defaults.
 - Standard navigation patterns: top bar + side nav, breadcrumbs, tabs, command palettes.
@@ -123,11 +123,11 @@ Product can afford things brand surfaces can't.
 
 **Read:** the visitor understands something. Docs, articles, guides, help, changelogs. Structure for comprehension, then make the reading experience worth staying in.
 
-The reader's question leads, and comprehension and wayfinding stay intact at every step. Documentation reads as documentation, a guide as a guide, an article as an article, a changelog as a changelog. The world owns the frame and serves the column. The frame is the masthead, the navigation rail, the ground, the title and section openers, and the way code, tables, and callouts are set: there the world's palette, type, and signature move commit fully, so the page could belong to no other product. The reading column inside it stays calm: a reading face, real contrast, a real measure, nothing performing behind the text. The world never supplies the reading order or replaces the navigation with something a reader has to learn. Documentation still reads as documentation, a guide as a guide, an article as an article.
+The reader's question leads, and comprehension and wayfinding stay intact at every step. Documentation reads as documentation, a guide as a guide, an article as an article, a changelog as a changelog. The world owns the frame and serves the column. The frame is the masthead, the navigation rail, the ground, the title and section openers, and the way code, tables, and callouts are set: there the world's palette, type, and signature move commit fully, so the page could belong to no other product. The reading column inside it stays calm: a reading face, real contrast, a real measure, nothing performing behind the text. The world never supplies the reading order or replaces the navigation with something a reader has to learn.
 
 Candidates from the world's own publishing traditions transfer best: reference books, type specimens, timetables, field guides, technical manuals, scholarly apparatus, a newspaper's wayfinding. A tool, instrument, or fictional interface from the audience's world comes back as a costume on a page meant for reading: take from it only what transfers as type, palette, density, and a signature move, or replace the candidate.
 
-Write each direction's first viewport as the document's shell first: the navigation and where the reader stands in it, the title and the opening that answers or frames the reader's question, the reading column, and the way forward (contents, section headings, next and previous). Then name where the world owns the frame and where the signature move lives: a masthead, a coloured rail, a running head, a margin system, a numbering scheme, a way of setting code or tables. Product clarity includes how fast a reader finds and understands the answer.
+Write the direction's first viewport as the document's shell first: the navigation and where the reader stands in it, the title and the opening that answers or frames the reader's question, the reading column, and the way forward (contents, section headings, next and previous). Then name where the world owns the frame and where the signature move lives: a masthead, a coloured rail, a running head, a margin system, a numbering scheme, a way of setting code or tables. Product clarity includes how fast a reader finds and understands the answer.
 
 Read surfaces use the Operate typography and consistency rules above; prose measure and navigation matter more than component density. Body text sits near 16px at a 60–75 character measure in a reading face with real contrast; monospace is for code, parameters, and small labels, never the running text.
 
