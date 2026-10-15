@@ -133,10 +133,11 @@ De map `opencode/agents/` bevat custom agents (markdown met YAML-frontmatter; de
 | `code-reviewer` | `code-review` | Advisory-only: verifieert checkbewijs, onderzoekt twijfel gericht en beoordeelt logica/design zelfstandig. Test-/securitysignalen gaan tijdens orchestration naar coordinator. |
 | `security-reviewer` | `security-review` | Advisory-only security review (dataflow, 11 vulnerability classes, verplicht online onderzoek). Fixt nooit. Kwaliteitsissues → `code-reviewer`. |
 | `tdd-expert` | `test-driven-development` | Verplichte onafhankelijke achteraf-testreview per fase/batch. Gedelegeerd review-only; direct aangeroepen mag hij tests schrijven/verbeteren, nooit productiecode. |
+| `ui-reviewer` | `ui-ux-expertise` | Optionele, puur visuele review van gerenderde UI (screenshots of browser) tegen brief, mode en craft floor. Beoordeelt nooit code; zonder visueel bewijs BLOCKED. De coordinator beslist of hij wordt ingezet. |
 
-Alle vijf gebruiken `temperature: 0.1`. Orchestrator is `primary`, implementer `subagent`, de drie specialisten `all`. Engelse XML-prompts laden eerst hun rolskill, dan `writing-simple-code`; dynamische eisen staan in delegation contracts.
+Alle zes gebruiken `temperature: 0.1`. Orchestrator is `primary`, implementer `subagent`, de vier specialisten `all`. Engelse XML-prompts laden eerst hun rolskill, dan `writing-simple-code` (behalve de puur visuele `ui-reviewer`); dynamische eisen staan in delegation contracts.
 
-**Per fase/batch:** goedgekeurd plan → implementer (tests + broncode, Red–Green–Refactor) → onafhankelijke code- en TDD-review, plus security waar relevant → fixes bij dezelfde implementer → vereiste herbeoordeling → afhankelijke fase. Parallelle reviews vereisen stabiele inputs, aparte rapporten en checks zonder conflicterende mutable state.
+**Per fase/batch:** goedgekeurd plan → implementer (tests + broncode, Red–Green–Refactor) → onafhankelijke code- en TDD-review, plus security waar relevant en optioneel visuele UI-review → fixes bij dezelfde implementer → vereiste herbeoordeling → afhankelijke fase. Parallelle reviews vereisen stabiele inputs, aparte rapporten en checks zonder conflicterende mutable state.
 
 Uitzonderingen op nieuwe tests en op TDD-review zijn **afzonderlijke vooraf expliciet goedgekeurde besluiten**, met reden en alternatieve checks. Geen nieuwe tests betekent niet automatisch geen testreview. Gedelegeerde TDD-review wijzigt geen tests; fixes gaan naar implementer.
 
@@ -177,7 +178,7 @@ Naast OpenCode ondersteunt de repo ook Claude Code; beide blijven naast elkaar w
 | Repo | Doel | Sync-mechanisme |
 | ---- | ---- | --------------- |
 | `claude/CLAUDE.md` | `~/.claude/CLAUDE.md` | Symlink. User-level instructies voor elk project: verplichte `writing-simple-code`, vragen bij twijfel, kostenregels, routekeuze (zelf / `implementer` / `using-subagents`), Devbox/Just-tooling, kwaliteit, conventional commits (scope `a > b`), veiligheid en secrets. |
-| `claude/agents/*.md` (`implementer`, `code-reviewer`, `security-reviewer`, `tdd-expert`) | `~/.claude/agents/` | Symlink per bestand. |
+| `claude/agents/*.md` (`implementer`, `code-reviewer`, `security-reviewer`, `tdd-expert`, `ui-reviewer`) | `~/.claude/agents/` | Symlink per bestand. |
 | `claude/hooks/tdvg-write-guard.py` | `~/.claude/hooks/` | Symlink. PreToolUse-hook uit de reviewer-frontmatter. Profielen: `reviewer` (alleen Markdown in `.agents/runs/`) en `tdd-expert` (plus testpaden). Faalt gesloten. De repo-only test `claude/hooks/test_tdvg_write_guard.py` wordt niet uitgerold. |
 | `claude/configs/tdvg-settings.json` | `~/.claude/settings.json` | **JSON-merge**, geen symlink. `permissions.ask`: `Bash(rm *)`, `Bash(git push *)`. `permissions.deny`: `Read(**/.env)`, `Read(**/.env.*)` (blokkeert ook `.env.example`), `Agent(general-purpose)`, `Agent(claude)`. |
 | `claude/configs/tdvg-mcp.json` | `~/.claude.json` (`mcpServers`) | **JSON-merge**: context7 en deepwiki (http). Sluit eerst alle Claude Code-sessies en -apps: Claude herschrijft dit bestand zelf. |
@@ -205,7 +206,7 @@ Claude Code leest alleen `~/.claude/skills/`. Link skills daarom met `--harnesse
 
 ### Subagents ten opzichte van OpenCode
 
-- Claude kent geen `temperature`, `mode` of permissions per pad. De rolskill en `writing-simple-code` worden vooraf geladen via het `skills:`-frontmatterveld; er is geen volledige leesgate.
+- Claude kent geen `temperature`, `mode` of permissions per pad. De rolskill en `writing-simple-code` worden vooraf geladen via het `skills:`-frontmatterveld (`ui-reviewer`: alleen `ui-ux-expertise`); er is geen volledige leesgate.
 - Reviewers gebruiken `model: sonnet` en `effort: high`. De implementer gebruikt `model: inherit` en `disallowedTools: Agent` (geen eigen subagents).
 - Er zijn geen primary agents. De orchestrator is nog niet geporteerd (vervolg: output style); het hoofdgesprek fungeert als coordinator.
 
