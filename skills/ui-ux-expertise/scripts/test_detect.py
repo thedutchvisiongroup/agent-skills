@@ -8,9 +8,11 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import shutil
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -48,14 +50,20 @@ class DetectTestCase(unittest.TestCase):
         return [f["line"] for f in findings if f["rule"] == rule]
 
     def assertFlags(self, rule, text, name="x.html", lines=None):
-        found = self.lines_for(rule, text, name)
+        """Assert `rule` fires exactly on `lines`.
+
+        One-line text defaults to `[1]` (exactly one finding); multi-line text
+        must name its lines. Runs as a subTest so a table reports every case.
+        """
         if lines is None:
-            self.assertTrue(found, f"{rule} not flagged in {name}: {text!r}")
-        else:
-            self.assertEqual(found, lines)
+            self.assertNotIn("\n", text, "multi-line text needs explicit lines")
+            lines = [1]
+        with self.subTest(rule=rule, name=name, text=text):
+            self.assertEqual(self.lines_for(rule, text, name), lines)
 
     def assertNotFlags(self, rule, text, name="x.html"):
-        self.assertEqual(self.lines_for(rule, text, name), [], f"{rule}: {text!r}")
+        with self.subTest(rule=rule, name=name, text=text):
+            self.assertEqual(self.lines_for(rule, text, name), [])
 
 
 class CliTests(DetectTestCase):
@@ -74,6 +82,47 @@ class CliTests(DetectTestCase):
         self.assertTrue(lines[0].startswith(f"{path}:2  [W] justified-text  "))
         self.assertGreater(len(lines[0]), len(f"{path}:2  [W] justified-text  "))
         self.assertEqual(lines[1], "1 finding (0 errors, 1 warning)")
+
+    def test_text_output_marks_errors_and_pluralizes_summary(self):
+        path = self.write(
+            "a.html",
+            '<img src="a.png" width="1" height="1">\n'
+            '<p class="text-justify z-[9999]">x</p>\n',
+        )
+        code, out, _ = self.run_cli(path)
+        self.assertEqual(code, 1)
+        lines = out.splitlines()
+        self.assertEqual(
+            [line.split("  ")[:2] for line in lines[:-1]],
+            [
+                [f"{path}:1", "[E] img-missing-alt"],
+                [f"{path}:2", "[W] arbitrary-z-index"],
+                [f"{path}:2", "[W] justified-text"],
+            ],
+        )
+        self.assertEqual(lines[-1], "3 findings (1 error, 2 warnings)")
+
+    def test_several_paths_are_all_scanned(self):
+        a = self.write("a.css", "p { text-align: justify; }\n")
+        b = self.write("dir/b.vue", "<p class='text-justify'>x</p>\n")
+        code, out, _ = self.run_cli("--json", a, self.tmp / "dir")
+        self.assertEqual(code, 1)
+        files = [f["file"] for f in json.loads(out)["findings"]]
+        self.assertEqual(files, [str(a), str(b)])
+
+    def test_json_output_respects_ignore(self):
+        path = self.write("a.css", "p { text-align: justify; transition: all 1s; }\n")
+        code, out, _ = self.run_cli("--json", "--ignore", "transition-all", path)
+        self.assertEqual(code, 1)
+        data = json.loads(out)
+        self.assertEqual([f["rule"] for f in data["findings"]], ["justified-text"])
+        self.assertEqual(data["count"], 1)
+
+    def test_json_output_with_everything_ignored_exits_0(self):
+        path = self.write("a.css", "p { text-align: justify; }\n")
+        code, out, _ = self.run_cli("--json", "--ignore", "justified-text", path)
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out), {"findings": [], "count": 0})
 
     def test_json_output_shape(self):
         path = self.write("a.css", "p {\n  text-align: justify;\n}\n")
@@ -125,6 +174,17 @@ class CliTests(DetectTestCase):
         self.assertIn(f"{path}:2  [W] justified-text", out)
 
 
+class PerformanceTests(unittest.TestCase):
+    def test_unterminated_tags_scan_in_linear_time(self):
+        # Each pattern used to rescan to the end of the file per `<tag`
+        # (quadratic: about 20 s here). Linear scanning takes milliseconds.
+        text = "".join(tag * 3000 for tag in ("<img ", "<a ", "<div ", "<p "))
+        start = time.perf_counter()
+        findings = detect.scan_text(text, "x.html")
+        self.assertLess(time.perf_counter() - start, 5)
+        self.assertEqual(findings, [])
+
+
 class RegistryTests(unittest.TestCase):
     def test_rule_ids_and_severities_match_the_contract(self):
         expected = {
@@ -158,6 +218,42 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(len(detect.RULES), len(expected))
         for rule in detect.RULES:
             self.assertTrue(rule.message.strip(), rule.id)
+
+
+@unittest.skipIf(os.name != "posix" or os.geteuid() == 0, "needs POSIX non-root")
+class UnreadableFileTests(DetectTestCase):
+    BAD = "p { text-align: justify; }\n"
+
+    def unreadable(self, rel):
+        path = self.write(rel, self.BAD)
+        path.chmod(0)
+        self.addCleanup(path.chmod, 0o644)
+        return path
+
+    def test_unreadable_file_in_directory_is_skipped_with_notice(self):
+        locked = self.unreadable("app/locked.css")
+        self.write("app/ok.css", self.BAD)
+        code, out, err = self.run_cli(self.tmp / "app")
+        self.assertEqual(code, 1)
+        self.assertIn("ok.css:1  [W] justified-text", out)
+        self.assertNotIn("locked.css", out)
+        self.assertEqual(err, f"{locked}: skipped (Permission denied)\n")
+
+    def test_unreadable_explicit_file_is_skipped_and_exit_stays_findings_based(self):
+        locked = self.unreadable("locked.css")
+        code, out, err = self.run_cli(locked)
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "No findings.\n")
+        self.assertEqual(err, f"{locked}: skipped (Permission denied)\n")
+
+    def test_dangling_symlink_in_directory_is_skipped_with_notice(self):
+        (self.tmp / "app").mkdir()
+        link = self.tmp / "app" / "gone.css"
+        link.symlink_to(self.tmp / "missing.css")
+        code, out, err = self.run_cli("--json", self.tmp / "app")
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out), {"findings": [], "count": 0})
+        self.assertEqual(err, f"{link}: skipped (No such file or directory)\n")
 
 
 class WalkTests(DetectTestCase):
@@ -216,6 +312,33 @@ class WalkTests(DetectTestCase):
         self.assertEqual(code, 1)
         self.assertEqual(files, [str(path)])
 
+    def test_same_file_passed_twice_is_scanned_once(self):
+        path = self.write("a.css", self.BAD)
+        code, out, _ = self.run_cli("--json", path, path)
+        self.assertEqual(code, 1)
+        self.assertEqual(json.loads(out)["count"], 1)
+
+    def test_file_inside_a_passed_directory_is_scanned_once(self):
+        path = self.write("app/sub/a.css", self.BAD)
+        code, out, _ = self.run_cli(
+            "--json", self.tmp / "app", path, self.tmp / "app/sub/../sub/a.css"
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(json.loads(out)["count"], 1)
+
+    def test_findings_are_sorted_by_path_then_line_across_rules(self):
+        # Registry order is gradient-text ... transition-all ... justified-text,
+        # so unsorted output would list b.css's transition-all (line 3) first.
+        b = self.write(
+            "b.css",
+            "p { text-align: justify; }\n\na { transition: all 1s; }\n"
+            "h1 { text-align: justify; }\n",
+        )
+        a = self.write("a.css", "\n" * 8 + "p { text-align: justify; }\n")
+        _, out, _ = self.run_cli(b, a)
+        locations = [line.split("  [")[0] for line in out.splitlines()[:-1]]
+        self.assertEqual(locations, [f"{a}:9", f"{b}:1", f"{b}:3", f"{b}:4"])
+
     def test_text_output_is_sorted_by_path_then_line(self):
         b = self.write("b.css", "p {}\n" + self.BAD + self.BAD)
         a = self.write("a.css", self.BAD)
@@ -240,6 +363,12 @@ class TransitionAllTests(DetectTestCase):
     def test_flags_css_and_tailwind(self):
         self.assertFlags("transition-all", "a { transition: all 0.3s ease; }", "a.css")
         self.assertFlags("transition-all", "a { transition-property: all; }", "a.css")
+        self.assertFlags(
+            "transition-all", "a { transition: opacity 1s, all 2s; }", "a.css"
+        )
+        self.assertFlags(
+            "transition-all", "a { transition-property: color, all; }", "a.css"
+        )
         self.assertFlags("transition-all", '<a class="transition-all duration-200">')
         self.assertFlags("transition-all", '<a style="transition: all .2s">x</a>')
 
@@ -290,11 +419,13 @@ class ArbitraryZIndexTests(DetectTestCase):
             "arbitrary-z-index", ".m { z-index: 99999 !important; }", "a.css"
         )
         self.assertFlags("arbitrary-z-index", '<div class="fixed z-[9999]">')
+        self.assertFlags("arbitrary-z-index", '<div class="fixed z-[999]">')
 
     def test_ignores_scale_values(self):
         self.assertNotFlags("arbitrary-z-index", ".m { z-index: 998; }", "a.css")
         self.assertNotFlags("arbitrary-z-index", ".m { z-index: 50; }", "a.css")
         self.assertNotFlags("arbitrary-z-index", '<div class="z-50 z-[100]">')
+        self.assertNotFlags("arbitrary-z-index", '<div class="z-[998]">')
 
 
 class TinyTextTests(DetectTestCase):
@@ -417,6 +548,17 @@ class ZoomDisabledTests(DetectTestCase):
 
 
 class BounceEasingTests(DetectTestCase):
+    def test_flags_each_overshoot_condition_alone(self):
+        # b<0, b>1, d<0, d>1: each curve violates exactly one bound.
+        for curve in (
+            "(.2, -.5, .3, 1)",
+            "(.2, 1.5, .3, 1)",
+            "(.2, 0, .3, -.5)",
+            "(.2, 0, .3, 1.5)",
+        ):
+            css = f".a {{ transition: transform .3s cubic-bezier{curve}; }}"
+            self.assertFlags("bounce-easing", css, "a.css")
+
     def test_flags_overshoot_curves_and_bounce_animations(self):
         for css in (
             ".a { transition: transform .3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }",
@@ -459,8 +601,9 @@ class OutlineRemovedTests(DetectTestCase):
             self.assertNotFlags("outline-removed", text, "a.vue")
 
     def test_focus_outline_none_is_not_a_replacement(self):
+        # Both occurrences are reported (contract: "report every occurrence").
         text = '<input class="outline-none focus:outline-none">'
-        self.assertFlags("outline-removed", text)
+        self.assertFlags("outline-removed", text, lines=[1, 1])
 
     def test_ignores_visible_outlines(self):
         self.assertNotFlags("outline-removed", "a { outline: 2px solid; }", "a.css")
@@ -526,6 +669,9 @@ class HardOffsetShadowTests(DetectTestCase):
             "0 6px 0 0 var(--ink)",
             "8px 8px #111",
             "4px 4px 0 #000, 0 1px 2px rgba(0,0,0,.1)",
+            "2px 2px 0 #000",
+            "0 -2px 0 #000",
+            "1.5px 0 0 #000",
         ):
             self.assertFlags(
                 "hard-offset-shadow", f".c {{ box-shadow: {value}; }}", "a.css"
@@ -551,6 +697,19 @@ class HardOffsetShadowTests(DetectTestCase):
         self.assertNotFlags(
             "hard-offset-shadow", '<div class="shadow-[0_0_0_1px_#000]">'
         )
+
+    def test_ignores_hairline_shadows_with_offsets_up_to_1px(self):
+        for value in (
+            "inset 0 -1px 0 #ddd",
+            "0 1px 0 rgba(255, 255, 255, 0.1)",
+            "1px 1px 0 #000",
+            "-1px 0 0 #000",
+            "0 0.0625rem 0 #000",
+        ):
+            self.assertNotFlags(
+                "hard-offset-shadow", f".c {{ box-shadow: {value}; }}", "a.css"
+            )
+        self.assertNotFlags("hard-offset-shadow", '<div class="shadow-[0_1px_0_#000]">')
         self.assertNotFlags(
             "hard-offset-shadow", '<div class="shadow-[0_4px_12px_#000]">'
         )
@@ -631,6 +790,24 @@ class GradientTextTests(DetectTestCase):
 
 
 class EyebrowKickerTests(DetectTestCase):
+    def test_threshold_edges(self):
+        flagged = (
+            "uppercase tracking-[0.1em] text-xs",
+            "uppercase tracking-wide text-[14px]",
+        )
+        for classes in flagged:
+            self.assertFlags("eyebrow-kicker", f'<p class="{classes}">x</p>')
+        for classes in (
+            "uppercase tracking-[0.09em] text-xs",
+            "uppercase tracking-wide text-[15px]",
+        ):
+            self.assertNotFlags("eyebrow-kicker", f'<p class="{classes}">x</p>')
+        rule = ".k {{ text-transform: uppercase; letter-spacing: {}; font-size: {}; }}"
+        for spacing, size in (("0.08em", "12px"), ("1px", "12px"), ("0.1em", "14px")):
+            self.assertFlags("eyebrow-kicker", rule.format(spacing, size), "a.css")
+        for spacing, size in (("0.07em", "12px"), ("0.9px", "12px"), ("0.1em", "15px")):
+            self.assertNotFlags("eyebrow-kicker", rule.format(spacing, size), "a.css")
+
     def test_flags_tailwind_eyebrow(self):
         for classes in (
             "text-xs uppercase tracking-widest text-indigo-600",
@@ -683,6 +860,17 @@ class EyebrowKickerTests(DetectTestCase):
 
 
 class ReflexFontTests(DetectTestCase):
+    FONTS = (
+        "Fraunces", "Playfair Display", "Cormorant", "Lora", "Crimson", "Newsreader",
+        "Syne", "Space Grotesk", "Space Mono", "IBM Plex", "DM Sans", "DM Serif",
+        "Outfit", "Plus Jakarta Sans", "Instrument Sans",
+    )  # fmt: skip
+
+    def test_flags_every_listed_font(self):
+        for font in self.FONTS:
+            css = f"h1 {{ font-family: '{font}', serif; }}"
+            self.assertFlags("reflex-font", css, "a.css")
+
     def test_flags_reflex_fonts_in_declarations_links_imports_and_classes(self):
         for css in (
             'h1 { font-family: "Playfair Display", serif; }',
@@ -798,6 +986,19 @@ class ClickableDivTests(DetectTestCase):
 
 
 class EmojiIconTests(DetectTestCase):
+    def test_range_edges(self):
+        for char in (
+            "\U0001f300",
+            "\U0001faff",
+            "\u2600",
+            "\u27bf",
+            "\U0001fa70",
+            "\u2764",
+        ):
+            self.assertFlags("emoji-icon", f"<button>{char} Go</button>")
+        for char in ("\U0001f2ff", "\U0001fb00", "\u25ff", "\u27c0"):
+            self.assertNotFlags("emoji-icon", f"<button>{char} Go</button>")
+
     def test_flags_emoji_text_in_buttons_and_links(self):
         self.assertFlags("emoji-icon", '<button class="btn">\U0001f680 Launch</button>')
         self.assertFlags("emoji-icon", '<a href="/settings">\u2699 Settings</a>')

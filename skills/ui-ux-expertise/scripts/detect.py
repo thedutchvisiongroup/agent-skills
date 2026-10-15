@@ -12,6 +12,9 @@ Exit codes:
   1  one or more findings
   2  usage error (bad arguments, nonexistent path, unknown ignore id)
 
+An unreadable file is reported on stderr as `path: skipped (reason)` and does
+not change the exit code. A file reached twice is scanned once.
+
 Standard library only; Python 3.9+.
 """
 
@@ -86,6 +89,9 @@ def class_lists(text):
 
 
 ATTR_VALUE = r"\"[^\"]*\"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\}"
+# The attributes of an opening tag. A bare `<` ends the match, so an
+# unterminated tag fails at the next tag instead of scanning to end of file.
+TAG_BODY = r"(?:%s|[^<>\"'{}])*" % ATTR_VALUE
 
 
 def tags(text, name):
@@ -95,7 +101,7 @@ def tags(text, name):
     names remain. Tags with spread or template syntax (`{...props}`,
     `{{ $attributes }}`) are skipped: their attributes are unknown.
     """
-    pattern = r"<(?:%s)(?![\w-])((?:%s|[^>\"'{}])*)>" % (name, ATTR_VALUE)
+    pattern = r"<(?:%s)(?![\w-])(%s)>" % (name, TAG_BODY)
     for m in re.finditer(pattern, text):
         attrs = re.sub(r"=\s*(?:%s)" % ATTR_VALUE, "=", m.group(1))
         if "{" not in attrs:
@@ -277,7 +283,8 @@ def shadows(text):
 def check_hard_offset_shadow(text, path):
     for offset, layers in shadows(text):
         lengths = layers[0][0]
-        has_offset = len(lengths) >= 2 and (lengths[0] != 0 or lengths[1] != 0)
+        # Offsets up to 1px are hairline dividers/highlights, not block shadows.
+        has_offset = len(lengths) >= 2 and max(abs(lengths[0]), abs(lengths[1])) > 1
         if has_offset and (len(lengths) == 2 or lengths[2] == 0):
             yield offset
 
@@ -347,9 +354,9 @@ def check_eyebrow_kicker(text, path):
 # An element whose text is only `01`, optionally followed by a separator and
 # a short label (`01 /`, `01.`, `01 - About`).
 SECTION_NUMBER_RE = re.compile(
-    r"<[a-zA-Z][\w-]*(?:%s|[^>\"'{}])*>\s*"
+    r"<[a-zA-Z][\w-]*%s>\s*"
     r"(0[1-9](?:\s*[./|:\u00b7\u2013\u2014-](?:\s*[^\W\d][^<>.!?]{0,30})?)?)\s*<"
-    % ATTR_VALUE
+    % TAG_BODY
 )
 LIST_OR_TABLE_OPEN_RE = re.compile(r"<(?:li|td|th|option)(?![\w-])")
 LIST_OR_TABLE_CLOSE_RE = re.compile(r"</(?:li|td|th|option)>")
@@ -522,7 +529,7 @@ def check_clickable_div(text, path):
 
 
 EMOJI_RE = re.compile("[\U0001f300-\U0001faff\u2600-\u27bf]")
-CONTROL_TAG_RE = re.compile(r"<(button|a)(?![\w-])(?:%s|[^>\"'{}])*>" % ATTR_VALUE)
+CONTROL_TAG_RE = re.compile(r"<(button|a)(?![\w-])%s>" % TAG_BODY)
 
 
 def check_emoji_icon(text, path):
@@ -554,7 +561,7 @@ BUZZWORD_RE = re.compile(
 # Scripts, styles, comments and tags: everything that is not visible text.
 NOT_VISIBLE_RE = re.compile(
     r"<script\b.*?</script\s*>|<style\b.*?</style\s*>|<!--.*?-->"
-    r"|</?[a-zA-Z][\w:.-]*(?:%s|[^>\"'{}])*>" % ATTR_VALUE,
+    r"|</?[a-zA-Z][\w:.-]*%s>" % TAG_BODY,
     re.DOTALL | re.IGNORECASE,
 )
 
@@ -776,6 +783,10 @@ def scan_file(path):
     return scan_text(text, str(path))
 
 
+def plural(count, word):
+    return f"{count} {word}" if count == 1 else f"{count} {word}s"
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="detect.py",
@@ -800,9 +811,19 @@ def main(argv=None):
             parser.error(f"path does not exist: {path}")
 
     findings = []
+    seen = set()  # real paths, so a file reached twice is scanned once
     for path in args.paths:
         for file in iter_files(path):
-            findings.extend(f for f in scan_file(file) if f["rule"] not in ignored)
+            real = os.path.realpath(file)
+            if real in seen:
+                continue
+            seen.add(real)
+            try:
+                file_findings = scan_file(file)
+            except OSError as exc:  # unreadable file or dangling symlink
+                print(f"{file}: skipped ({exc.strerror or exc})", file=sys.stderr)
+                continue
+            findings.extend(f for f in file_findings if f["rule"] not in ignored)
 
     findings.sort(key=lambda f: (f["file"], f["line"], f["rule"]))
     if args.json:
@@ -821,10 +842,6 @@ def main(argv=None):
         f"({plural(errors, 'error')}, {plural(warnings, 'warning')})"
     )
     return 1
-
-
-def plural(count, word):
-    return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
 
 if __name__ == "__main__":

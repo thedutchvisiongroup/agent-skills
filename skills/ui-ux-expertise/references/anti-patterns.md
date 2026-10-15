@@ -15,7 +15,8 @@ python3 <skill-dir>/scripts/detect.py [--json] [--ignore RULE[,RULE...]] PATH [P
 ```
 
 - Scans `.html .htm .css .scss .sass .less .vue .svelte .astro .jsx .tsx .twig .jinja .jinja2 .j2 .njk` and `.blade.php` files; dependency and build directories are skipped.
-- Exit 0 = no findings, 1 = findings, 2 = usage error.
+- Exit 0 = no findings, 1 = findings, 2 = usage error (bad arguments or a PATH that does not exist).
+- Files that cannot be read (permissions, dangling symlinks found while walking) are skipped with a `path: skipped (<reason>)` notice on stderr; a file reached twice is scanned once.
 - Output: `path:line  [E|W] rule-id  message`, or JSON with `--json`.
 - It reads source, not the rendered page: dynamic classes, computed styles, and contrast are invisible to it.
 
@@ -25,7 +26,7 @@ python3 <skill-dir>/scripts/detect.py [--json] [--ignore RULE[,RULE...]] PATH [P
 |---|---|---|---|---|
 | `gradient-text` | E | `background-clip: text` with a gradient; Tailwind `bg-clip-text` + gradient | Decorative, never meaningful; a top AI tell | One solid color; emphasis through weight or size |
 | `side-stripe-border` | E | Colored `border-left/right` ≥2px; `border-l-4` etc. | The reflex accent on cards, callouts, alerts | Full border, background tint, leading icon or number, or nothing |
-| `hard-offset-shadow` | W | Zero-blur offset shadow (`4px 4px 0`) | Neobrutalist costume outside a world that chose it | Offset plus soft blur, or no shadow |
+| `hard-offset-shadow` | W | Zero-blur offset shadow (`4px 4px 0`); 1px hairlines are ignored | Neobrutalist costume outside a world that chose it | Offset plus soft blur, or no shadow |
 | `glow-halo` | W | Zero-offset colored glow | Decoration posing as depth | Real elevation or a state color with meaning |
 | `glass-default` | W | `backdrop-filter: blur`; `backdrop-blur` | Glassmorphism as default chrome | Keep only as a specific, purposeful effect |
 | `eyebrow-kicker` | E | Small, uppercase, widely tracked label | The banned eyebrow above headings | Delete it; let the heading carry its weight |
