@@ -8,6 +8,7 @@ Each phase/batch needs independent code and post-implementation TDD review, plus
 - Independent TDD review (after implementation)
 - Independent code review (always)
 - Security review (conditional trigger)
+- UI review (optional, visual-only)
 - Reviewer rules
 - The fix loop and its limit
 - The final whole-change review
@@ -59,6 +60,16 @@ When triggered:
 2. Missing required specialist blocks acceptance; resolve availability or ask the user to amend the plan. A handoff note is not approval.
 
 Parallel code/TDD/security reviews require frozen inputs, separate reports and non-conflicting probes. Contracts name scheduled seats; new signals go to coordinator instead of duplicate nested reviews.
+
+## UI review (optional, visual-only)
+
+An optional seat for changes with visible UI impact (new or redesigned pages, screens, components, styling). It never replaces code, TDD or security review, and a missing `ui-reviewer` never blocks acceptance unless the approved plan made the seat required.
+
+- **When:** the coordinator decides per phase/batch and records the choice (seat or "no UI review — reason") in the work plan. The `ui-ux-expertise` skill recommends it for delegated UI work.
+- **Agent:** live `ui-reviewer`. It judges only rendered results against the request, the design brief, the mode and the craft floor; it never reviews code.
+- **Evidence is mandatory:** provide screenshots (desktop ~1440px and mobile ~390px, plus required states) in the run directory, or a reachable URL the reviewer can open with a browser tool. Without either it returns BLOCKED.
+- **Input:** the task brief with acceptance criteria, `design-brief.md` from the run directory when one exists, the screenshots or URL, and the states to review.
+- **Verdict contract:** `APPROVED` | `CHANGES_REQUESTED` | `NEEDS_CONTEXT` | `BLOCKED`, findings labeled Critical / Important / Minor. Visual fixes return to the implementer like any other finding.
 
 ## Reviewer rules
 

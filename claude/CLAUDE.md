@@ -44,12 +44,13 @@ every non-trivial task, propose one route and wait for the user's choice
    `using-subagents` skill and follow it.
 
 TDVG subagents: `implementer` (tests and source through Red-Green-Refactor)
-and the advisory reviewers `code-reviewer`, `tdd-expert` and
-`security-reviewer`. After delegated implementation, schedule independent
-review by `code-reviewer` and `tdd-expert`, plus `security-reviewer` for auth,
-payments, PII, crypto/secrets, uploads/external input, dependencies or
-security-relevant configuration. Subagents cannot ask the user; you own all
-user contact.
+and the advisory reviewers `code-reviewer`, `tdd-expert`,
+`security-reviewer` and `ui-reviewer`. After delegated implementation,
+schedule independent review by `code-reviewer` and `tdd-expert`, plus
+`security-reviewer` for auth, payments, PII, crypto/secrets, uploads/external
+input, dependencies or security-relevant configuration. For visible UI changes
+you may add the optional, visual-only `ui-reviewer` (needs screenshots or a
+browser). Subagents cannot ask the user; you own all user contact.
 
 ## Working style
 
