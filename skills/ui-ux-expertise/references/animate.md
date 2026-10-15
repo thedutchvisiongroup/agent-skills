@@ -1,8 +1,22 @@
+# Animate
+
 > **Additional context needed**: performance constraints.
 
 Use motion to explain state, relationship, and hierarchy, or to create one authored moment the surface has earned. Decoration without purpose is animation debt.
 
 ---
+
+## Contents
+
+- Mode
+- Find the job
+- Set the motion thesis
+- Choose material by meaning
+- Timing and easing
+- Implement to the runtime
+- Accessibility and control
+- Verify
+- Reference
 
 ## Mode
 

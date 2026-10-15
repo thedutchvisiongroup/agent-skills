@@ -2,6 +2,14 @@
 
 `init` captures durable product truth in a product context file (conventionally `PRODUCT.md`). It runs only when the user asks for it; no other command requires it. It does not invent a visual world and does not write a design-system file; [new-work.md](new-work.md) proposes a direction and [document.md](document.md) records an existing system.
 
+## Contents
+
+- Step 1: Load current state
+- Step 2: Explore the project
+- Step 3: Interview for product truth
+- Step 4: Write the product file
+- Step 5: Wrap up or resume
+
 ## Step 1: Load current state
 
 Reuse what Setup's context discovery found this session (see SKILL.md). Update an existing product file instead of creating a competing authority.

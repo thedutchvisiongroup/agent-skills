@@ -1,4 +1,13 @@
+# Harden
+
 Designs that only work with perfect data aren't production-ready. Harden the interface against the inputs, errors, languages, and network conditions that real users will throw at it.
+
+## Contents
+
+- Assess Hardening Needs
+- Hardening Dimensions
+- Testing Strategies
+- Verify Hardening
 
 ## Assess Hardening Needs
 

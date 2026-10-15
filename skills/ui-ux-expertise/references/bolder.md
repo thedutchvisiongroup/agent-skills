@@ -1,3 +1,5 @@
+# Bolder
+
 > **Additional context needed**: which section is the target, and what must stay untouched.
 
 "Bolder" said while a direction proposal from [new-work.md](new-work.md) is still open steers that proposal, not this command. This command refines a surface whose world already shipped.

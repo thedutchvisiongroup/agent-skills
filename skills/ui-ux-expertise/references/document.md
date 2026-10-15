@@ -1,6 +1,19 @@
+# Document
+
 Generate a design-system file that captures the current visual design system, so agents generating new screens stay on-brand. The conventional name is `DESIGN.md`; confirm the file name and location with the user before writing (projects often keep design docs in `docs/` or similar). This command runs only when the user asks for it.
 
 DESIGN.md follows the [official DESIGN.md format spec](https://raw.githubusercontent.com/google-labs-code/design.md/main/docs/spec.md): optional YAML frontmatter carrying machine-readable design tokens, followed by up to eight markdown sections in a fixed order. **Tokens are normative; prose provides context for how to apply them.** Sections may be omitted when not relevant, but those present stay in the specified order. Use the canonical headings below so the file remains portable across DESIGN.md-aware tools.
+
+## Contents
+
+- The frontmatter: token schema
+- The markdown body: eight sections (canonical order)
+- When to run
+- Two paths
+- Scan mode (approach C: auto-extract, then confirm descriptive language)
+- Seed mode
+- Style guidelines
+- Pitfalls
 
 ## The frontmatter: token schema
 

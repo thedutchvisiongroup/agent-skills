@@ -1,8 +1,20 @@
+# Colorize
+
 > **Additional context needed**: existing brand colors.
 
 Introduce color as hierarchy, meaning, and atmosphere. Preserve confirmed brand and semantic conventions; do not replace a visual world under the guise of colorizing it.
 
 ---
+
+## Contents
+
+- Mode
+- Audit before choosing
+- Choose a strategy
+- Apply at system scale
+- Contrast and perception
+- Verify
+- Reference
 
 ## Mode
 

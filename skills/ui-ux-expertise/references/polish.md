@@ -1,8 +1,19 @@
+# Polish
+
 > **Additional context needed**: quality bar and shipping constraints.
 
 Polish is refinement, never concealed redesign. Preserve the incumbent visual world, content, behavior, and everything outside scope. If the concept itself is wrong, say so and recommend redesign or `bolder` instead of smuggling in a replacement.
 
 A detector finding is defect evidence, not proof of quality. Inspect the rendered experience and real interaction path.
+
+## Contents
+
+- 1. Establish the system
+- 2. Gather the evidence
+- 3. Triage
+- 4. Polish the whole path
+- 5. Verify and finish
+- Checklist
 
 ## 1. Establish the system
 

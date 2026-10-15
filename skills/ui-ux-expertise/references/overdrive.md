@@ -1,3 +1,5 @@
+# Overdrive
+
 Start your response with:
 
 ```
@@ -24,6 +26,13 @@ Skipping this step risks building something embarrassing that needs to be thrown
 Technically ambitious effects almost never work on the first try. When browser automation or screenshot tools are available, you MUST use them to preview your work, visually verify the result, and iterate; without them, tell the user the effect is unverified visually and ask them to check it. Do not assume the effect looks right, check it. Expect multiple rounds of refinement. The gap between "technically works" and "looks extraordinary" is closed through visual iteration, not code alone.
 
 ---
+
+## Contents
+
+- Assess What "Extraordinary" Means Here
+- The Toolkit
+- Implement with Discipline
+- Verify the Result
 
 ## Assess What "Extraordinary" Means Here
 

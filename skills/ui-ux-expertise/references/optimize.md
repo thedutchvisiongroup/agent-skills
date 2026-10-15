@@ -1,4 +1,14 @@
+# Optimize
+
 Performance is a feature. Identify the actual bottleneck for THIS interface, fix it, then measure. Don't optimize what isn't slow.
+
+## Contents
+
+- Assess Performance Issues
+- Optimization Strategy
+- Core Web Vitals Optimization
+- Performance Monitoring
+- Verify Improvements
 
 ## Assess Performance Issues
 

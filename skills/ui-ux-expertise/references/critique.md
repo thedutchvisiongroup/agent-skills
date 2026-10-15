@@ -1,3 +1,16 @@
+# Critique
+
+## Contents
+
+- Purpose, Invariants, Setup
+- Assessment A: Design Review
+- Assessment B: Detector + Visual Evidence
+- Generate Combined Critique Report
+- Deliver the Report
+- Ask the User
+- Recommended Actions
+- Reference Material: Cognitive Load Assessment, Heuristics Scoring Guide, Persona-Based Design Testing
+
 ### Purpose
 
 Resolve one stable target, run two assessments in order, synthesize a design critique, and ask the user what to improve next. The chat response is the deliverable.
