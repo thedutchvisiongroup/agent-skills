@@ -18,7 +18,7 @@ type: <Concept Type>
 title: "<Display Name>"
 description: "<One-line summary>"
 tags: [<domain>, <technology>]
-generated: { by: opencode/<model-id>, at: <ISO 8601> }
+generated: { by: <harness>/<model-id>, at: <ISO 8601> }
 status: draft
 sources:
   - id: primary-source
@@ -51,7 +51,7 @@ title: "<Table Name>"
 description: "<One-line summary of what each row represents>"
 resource: <URI of the asset, e.g. a database or catalog URL>
 tags: [<domain>, <data>]
-generated: { by: opencode/<model-id>, at: <ISO 8601> }
+generated: { by: <harness>/<model-id>, at: <ISO 8601> }
 status: stable
 sources:
   - id: source-docs
@@ -87,7 +87,7 @@ title: "<Endpoint Name>"
 description: "<One-line summary>"
 resource: https://api.example.com/v1/<path>
 tags: [<service>, <api>]
-generated: { by: opencode/<model-id>, at: <ISO 8601> }
+generated: { by: <harness>/<model-id>, at: <ISO 8601> }
 status: stable
 sources:
   - id: api-docs
@@ -154,7 +154,7 @@ type: Playbook
 title: "<Playbook Name>"
 description: "<One-line summary of when this playbook applies>"
 tags: [<team>, <incident>]
-generated: { by: opencode/<model-id>, at: <ISO 8601> }
+generated: { by: <harness>/<model-id>, at: <ISO 8601> }
 status: stable
 sources:
   - id: source-docs
@@ -196,7 +196,7 @@ type: Service
 title: "<Service Name>"
 description: "<One-line summary of what this service does>"
 tags: [<team>, <domain>]
-generated: { by: opencode/<model-id>, at: <ISO 8601> }
+generated: { by: <harness>/<model-id>, at: <ISO 8601> }
 status: stable
 sources:
   - id: service-docs

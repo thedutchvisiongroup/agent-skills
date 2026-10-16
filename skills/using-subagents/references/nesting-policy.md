@@ -22,6 +22,7 @@ orchestrator (you)  →  sub-agent  →  specialist sub-agent
 - **Depth 2 exists exclusively for advisory handoffs**: a reviewer encountering something outside its discipline hands it to a specialist reviewer (the canonical case: code-reviewer → security-reviewer).
 - **Depth 2 requires explicit work-plan approval.** No plan approval, no nesting — the depth-1 agent reports handoff notes instead, and you dispatch the specialist yourself.
 - **Leaves never nest.** A depth-2 agent never dispatches anything.
+- Scheduled specialist seats must never be nested duplicates. Return cross-discipline signals to coordinator; implementer never spawns any agent.
 
 ## Why implementation nesting is forbidden
 
@@ -66,6 +67,6 @@ A failed nested dispatch is not a crisis: the depth-1 agent falls back to handof
 Rare, but real:
 
 - **Reviewer → specialist handoffs** (the approved pattern above).
-- **Tree-shaped read-only exploration**: a lead explorer fanning out scoped sub-explorers over independent areas (e.g. per-package in a monorepo), each leaf compressing before results roll up. Read-only means conflict-free; the tree shape means each leaf is genuinely bounded. Requires explicit plan approval like any nest.
+- **Parallel exploration stays flat:** the coordinator dispatches bounded independent explorer tasks directly and integrates their reports. A lead explorer never spawns sub-explorers; read-only work does not create an exception to advisory-only nesting.
 
 The stop rule for any proposed nest: *if the leaf's output is under ~500 tokens, or the parent could produce it with two tool calls — don't nest.*

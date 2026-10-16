@@ -19,10 +19,11 @@ A durable progress ledger — inside the plan file — is your external memory. 
 ```
 | Task | Agent | Status | Report |
 |------|-------|--------|--------|
-| 1. Auth config | implementer (general) | DONE | .agents/runs/…/task-1-report.md |
-| 2. Google adapter | implementer (general) | IN FLIGHT | — |
-| 3. GitHub adapter | implementer (general) | IN FLIGHT | — |
+| 1. Auth config | implementer | DONE — reviews pending | .agents/runs/…/task-1-report.md |
+| 2. Google adapter | implementer | IN FLIGHT | — |
+| 3. GitHub adapter | implementer | IN FLIGHT | — |
 | Review T1 | code-reviewer | APPROVED | .agents/runs/…/task-1-review.md |
+| Test review phase 1 | tdd-expert (B) | PENDING | — |
 ```
 
 Rules:
@@ -35,7 +36,7 @@ Rules:
 
 | Status | Meaning | Your action |
 |--------|---------|-------------|
-| `DONE` | Complete, criteria met | Verify report exists; spot-check at integration; continue |
+| `DONE` | Worker execution complete | Verify report/evidence; schedule mandatory reviews; dependent work waits for phase acceptance |
 | `DONE_WITH_CONCERNS` | Complete, with doubts | READ the concerns. Accept and note them, or attach them to the Phase 5 review brief |
 | `NEEDS_CONTEXT` | Missing info | Answer from your context, or bundle to the user (see below) |
 | `BLOCKED` | Cannot complete | Re-plan (see below). Never just re-send the same prompt |

@@ -27,6 +27,7 @@ Per dispatch, include exactly:
 - **Scene-setting**: where this task fits, dependencies on completed/planned tasks, interfaces to conform to, conventions to follow.
 - **Relevant artifacts as PATHS**: diff files, report files from earlier tasks, interface definitions, key file:line pointers.
 - **Constraints**: boundaries, forbidden areas, the no-interactive-questions rule, the output contract.
+- **Verification:** phase/batch Definition of Done, role/mode, separate exceptions, revision/version/environment-bound evidence paths and scheduled seats.
 
 Test: could a capable new hire execute this task with ONLY this prompt plus repo access? If not, the context is incomplete.
 

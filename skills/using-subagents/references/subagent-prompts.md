@@ -25,18 +25,20 @@ Every dispatch prompt contains ALL of these layers (the templates in `templates/
 | **Escalation rules** | When and how to report BLOCKED / NEEDS_CONTEXT | Bad work is worse than no work; make stopping safe |
 | **Output contract** | Report file + <15-line status message | Keeps YOUR context clean and the evidence on disk |
 
+Implementation contracts include phase/batch Definition of Done, tests/source ownership, confirmed gates, exceptions and commit/dependency authority. Review contracts include original requirements, evidence identity and scheduled seats; signals return to coordinator. Templates never expand agent permissions.
+
 Skip a layer and the sub-agent fills the hole with a guess. Guesses are where multi-agent systems go to die.
 
 ## The status contract (mandatory)
 
 Every sub-agent returns a status message of **under 15 lines** plus a report file:
 
-- **`DONE`** — work complete, acceptance criteria met, report written.
+- **`DONE`** — execution/assigned criteria complete, report written; independent verdicts remain phase acceptance gates.
 - **`DONE_WITH_CONCERNS`** — complete, but with doubts the orchestrator must read.
 - **`BLOCKED`** — cannot complete; the message itself contains what is stuck, what was tried, what is needed.
 - **`NEEDS_CONTEXT`** — information missing that only the orchestrator/user has; questions listed in the message.
 
-The **report file** (structure: `templates/report.md`) carries the detail: work performed, files changed, test evidence (commands + real output), self-review findings, concerns, handoff notes. The status message carries the pointer.
+Reports carry changed files, revision/fingerprint, scope/versions/environment, Red/Green/final commands/output, research, executed/reused evidence, exceptions, test-contract corrections and concerns. Short returns carry paths, not copied reports.
 
 Why a file: sub-agent output that flows only through the orchestrator's context degrades (the "game of telephone") and bloats it. Files preserve evidence exactly; summaries transport it. See `references/context-engineering.md`.
 

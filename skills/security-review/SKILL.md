@@ -17,6 +17,12 @@ A security review that only skims code is not a review. It is a liability.
 
 **You MUST complete all phases before delivering your report.**
 
+## Applicable Evidence Reuse
+
+Reuse documented tooling/research within an approved batch only after checking revision/fingerprint, scope, commands/results, dependencies/tools and environment. Sources must be current: advisory status can change without code changes, so verify freshness and attribute evidence. Gaps/staleness/unresolved doubt require focused checks/current research.
+
+Independently map trust boundaries and trace dataflow; output reuse never replaces analysis. Delegated matching confirmed answers satisfy gate items. Return cross-discipline signals to coordinator without duplicating scheduled seats.
+
 ## Advisory-Only — Non-Negotiable
 
 - You MUST NEVER edit, fix, patch, harden, or "quickly secure" any file under review. **No exceptions.**
@@ -113,7 +119,7 @@ If any box is unchecked: read more code before judging anything.
 
 ### Phase 2: Run Security Tooling (ALWAYS)
 
-**You MUST run every available security tool. You MUST NEVER install anything.**
+Verify every applicable available tool's evidence; execute when recorded evidence is absent/stale or doubts remain. NEVER install anything.
 
 1. **Discover Available Tools**
 
@@ -128,8 +134,8 @@ If any box is unchecked: read more code before judging anything.
 
 2. **Run the Skill's Own Scripts (always available)**
 
-   - `scripts/scan_secrets.py` — deterministic secrets scan (provider patterns + entropy). See `references/secrets-and-credentials.md`.
-   - `scripts/extract_dependencies.py` — normalizes manifests/lockfiles to a package list for online advisory lookup. See `references/dependencies-and-supply-chain.md`.
+   - `scripts/scan_secrets.py` — execute on authorized scope or assess applicable output; never broaden into personal secrets. See `references/secrets-and-credentials.md`.
+   - `scripts/extract_dependencies.py` — obtain applicable manifest/lockfile evidence for current advisory checks. See `references/dependencies-and-supply-chain.md`.
 
 3. **Missing Tools: Report + Benefit (MANDATORY)**
 
@@ -144,8 +150,8 @@ If any box is unchecked: read more code before judging anything.
 
 ```
 STOP. Did you handle tooling correctly?
-- [ ] Yes, I discovered and ran every available tool
-- [ ] Yes, I ran the skill's two scripts
+- [ ] Applicable tool categories verified through execution/qualified evidence
+- [ ] Applicable script outputs assessed/executed or non-applicability reported
 - [ ] Yes, I recorded missing tools WITH the benefit of installing them
 - [ ] Yes, I installed NOTHING
 - [ ] Yes, I treated tool output as leads to verify, not verdicts
@@ -158,7 +164,7 @@ If any box is unchecked: GO BACK and complete it.
 
 For EVERY language/ecosystem detected in Phase 1 that is actually present in the reviewed scope:
 
-1. **Research** the current language-specific vulnerability patterns relevant to the code at hand. Follow `references/online-research-protocol.md`.
+1. Validate current language-specific patterns using new or qualified documented sources; investigate unresolved questions online under the research protocol.
    Canonical examples (non-exhaustive — always verify online):
    - C/C++/Rust `unsafe` → memory safety: out-of-bounds read/write, use-after-free, buffer overflow (CWE-787/416/125/121/122)
    - JavaScript/TypeScript → prototype pollution, ReDoS, `eval`/`Function` usage
@@ -230,7 +236,7 @@ If any box is unchecked: GO BACK and finish the review.
 
 **A guess reported as a fact is worse than no report. Resolve doubt with research.**
 
-1. **Triggers — any of these forces online research:**
+1. Resolve triggers against qualified current sources; research online when evidence does not answer them:
    - You encounter an API, library, or construct you do not fully recognize.
    - A finding depends on version-specific behavior or a language/runtime quirk.
    - A candidate finding has low confidence but potentially High/Critical impact.
@@ -247,7 +253,7 @@ If any box is unchecked: GO BACK and finish the review.
 
 ```
 STOP. Did you resolve your doubts?
-- [ ] Yes, I researched every trigger (unknown APIs, version-specifics, low-confidence high-impact)
+- [ ] Triggers resolved against applicable current sources; remaining doubts researched
 - [ ] Yes, I checked dependency versions against online advisories
 - [ ] Yes, I told the user what I researched and how it changed my findings
 - [ ] Yes, unverifiable items are in "Could NOT verify", not in findings
@@ -261,6 +267,8 @@ If any box is unchecked: GO BACK and research.
 1. **Summary** — scope, exposure assumption, one-paragraph assessment.
 
 2. **Tooling Results**
+
+   Label executed/reused (with source/revision), missing or inapplicable results. Independent dataflow analysis remains mandatory.
 
    ```
    semgrep:     ✓ RAN (2 findings — both verified below)

@@ -21,7 +21,7 @@ The gate is Phase 1 of every run of this skill. It produces one deliberate decis
 | (b) One sub-agent | A single bounded dispatch | Orchestrator of one | No — Phases 2–6 in lightweight form |
 | (c) Orchestrator mode | Decomposition + multiple dispatches | Strict orchestrator | No — full flow |
 
-Routes (b) and (c) share the Iron Law: once you delegate a scope, you NEVER write code inside it.
+Routes (b)/(c): never implement delegated scope yourself. Route (a) never broadens a dedicated coordinator's role: direct advice/investigation is allowed, project changes require an approved implementer batch. Group small coupled edits rather than micro-dispatching.
 
 ## Route (a) signals — do it yourself
 

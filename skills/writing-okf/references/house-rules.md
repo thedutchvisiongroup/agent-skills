@@ -79,7 +79,7 @@ Actor convention for `generated.by` and `verified[].by`:
 
 | Actor | Format | Example |
 |-------|--------|---------|
-| Agent | `opencode/<model-id>` | `opencode/glm-5.3-flash` |
+| Agent | `<harness>/<model-id>` | `opencode/glm-5.3-flash`, `claude-code/claude-sonnet-5-5` |
 | Human | `human:<id>` | `human:thim` |
 | Process | `process:<id>` | `process:finance-nightly` |
 

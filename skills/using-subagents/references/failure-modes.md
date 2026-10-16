@@ -55,6 +55,10 @@ The anti-pattern catalog: what goes wrong in sub-agent orchestration, how to rec
 
 ## Quality-loop failures
 
+**Split feedback loop:** Red writer → source worker → Green worker for one behavior. Keep tests/source/Red–Green–Refactor in implementer; TDD reviews completed work.
+
+**Duplicate verification/review:** repeated identical baselines or a specialist already scheduled by coordinator. Use revision/version/environment-bound evidence, focused doubts and scheduled-seat contracts.
+
 **Self-review acceptance.** Marking work done on the implementer's own say-so.
 *Prevention:* independent review is mandatory (Phase 5). No exceptions for "small" work.
 

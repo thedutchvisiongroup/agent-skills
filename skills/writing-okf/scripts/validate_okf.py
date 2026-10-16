@@ -28,7 +28,7 @@ v0.2 provenance/trust/freshness/lifecycle checks (concept documents, spec §5):
     - generated.at / verified[].at / stale_after not valid ISO 8601 →
       ERROR iso-datetime; valid but without explicit UTC offset → WARN
     - generated.by / verified[].by not matching the actor convention
-      (opencode/<name>, human:<id>, process:<name>) → WARN actor-format
+      (<harness>/<name> with opencode or claude-code, human:<id>, process:<name>) → WARN actor-format
     - 'status' outside draft/stable/deprecated → WARN status-vocabulary
     - sources entry without 'resource' → ERROR sources-resource (spec §5.1)
     - body footnote [^id] without matching sources[].id → WARN footnote-source
@@ -86,10 +86,10 @@ EXTERNAL_PATTERN = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.\-]*:")
 # First body line that looks like 'key: value' without --- delimiters
 PSEUDO_FRONTMATTER_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*\s*:\s*\S")
 
-# v0.2 actor convention for 'by' fields (house rule): opencode/<name>,
-# human:<id>, process:<name>
+# v0.2 actor convention for 'by' fields (house rule): <harness>/<name> with
+# harness opencode or claude-code, human:<id>, process:<name>
 ACTOR_PATTERN = re.compile(
-    r"^(opencode/[A-Za-z0-9._-]+|human:[A-Za-z0-9@._-]+|process:[A-Za-z0-9._-]+)$"
+    r"^((?:opencode|claude-code)/[A-Za-z0-9._-]+|human:[A-Za-z0-9@._-]+|process:[A-Za-z0-9._-]+)$"
 )
 
 # v0.2 lifecycle vocabulary for 'status'
@@ -574,7 +574,7 @@ def validate_actor_field(field, value, result, line=None):
         return
     result.warn(
         f"'{field}' value '{value}' does not match the actor convention "
-        f"'opencode/<name>', 'human:<id>', or 'process:<name>'.",
+        f"'opencode/<name>', 'claude-code/<name>', 'human:<id>', or 'process:<name>'.",
         label="HOUSE",
         check="actor-format",
         line=line,

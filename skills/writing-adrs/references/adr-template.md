@@ -20,7 +20,7 @@ tags: [<domain>, <technology>, <component>]
 deciders: [<person>, <person>]
 status: proposed | rejected | accepted | deprecated | superseded
 generated:                           # OKF v0.2 provenance — replaces legacy `timestamp`
-  by: <actor>                        # opencode/<model-id> | human:<id> | process:<id>
+  by: <actor>                        # <harness>/<model-id> | human:<id> | process:<id>
   at: <YYYY-MM-DDTHH:MM:SS+02:00>    # last meaningful change — bump on every meaningful edit
 # Required when status is superseded:
 # superseded_by: <relative path to the superseding ADR>

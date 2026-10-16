@@ -35,13 +35,16 @@ Write the plan to the confirmed storage location (see below) using this structur
 
 ## Tasks
 ### Task 1: [name]
-- **Agent:** [discovered agent | template fallback on general-purpose]
+- **Agent:** [live implementer/review specialist; no silent general fallback]
 - **Model:** [routing choice, if the harness supports it]
 - **Scope/files:** [what it may touch — the disjointness claim]
 - **Depends on:** [nothing | Task N]
 - **Parallel-safe with:** [Task M — because scopes are disjoint] 
 - **Acceptance criteria:** [measurable]
-- **Quality loop:** code review (always) [+ security review — because: sensitive path X]
+- **Phase/batch + Definition of Done:** [acceptance boundary]
+- **Quality loop:** code + post-implementation TDD review [+ security review — reason]
+- **Exceptions:** [new tests: none | reason/alternative checks; TDD review: none | separately explicit exception]; each approved before execution
+- **Evidence:** [revision/fingerprint, scope, commands/results, versions/environment and research paths]
 [### Task 2: ...]
 
 ## Nesting (if any)

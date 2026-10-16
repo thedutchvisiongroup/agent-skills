@@ -30,7 +30,7 @@ title: "<display name>"      # recommended by OKF → REQUIRED by this skill
 description: "<one-liner>"   # recommended by OKF → REQUIRED by this skill
 tags: [<tag>, <tag>]         # recommended by OKF → REQUIRED by this skill
 generated:                   # OKF v0.2 provenance (§5.2) → REQUIRED by this skill
-  by: <actor>                #   actor convention: opencode/<model-id> | human:<id> | process:<id>
+  by: <actor>                #   actor convention: <harness>/<model-id> | human:<id> | process:<id>
   at: <ISO 8601 with UTC offset>
 deciders: [<person>]         # ADR extension (OKF-unknown key) → REQUIRED by this skill
 status: <lifecycle value>    # ADR extension (OKF-unknown key) → REQUIRED by this skill
@@ -107,7 +107,7 @@ Consumers MUST NOT reject an ADR because of (OKF §11):
 | Required frontmatter | Only `type` | `type` + `title`, `description`, `tags`, `generated` (tightened OKF v0.2) + `deciders`, `status` (extensions) |
 | `type` value | Any descriptive string | MUST be `ADR` |
 | Body sections | None required | MADR 4.0 core required, rest optional |
-| Provenance | v0.2 `generated {by, at}` (§5.2); actors `opencode/<model-id>`, `human:<id>`, `process:<id>`; `verified`/`stale_after` optional, never fabricated | Same actor convention; `generated` tightened to REQUIRED |
+| Provenance | v0.2 `generated {by, at}` (§5.2); actors `<harness>/<model-id>`, `human:<id>`, `process:<id>`; `verified`/`stale_after` optional, never fabricated | Same actor convention; `generated` tightened to REQUIRED |
 | Citations | v0.2 `sources` frontmatter (§5.1): `resource` required per entry; footnote `[^id]` for per-claim attribution | Same `sources` convention; evidence links live in MADR's `## More Information` |
 | Status | v0.2 `status`: draft / stable / deprecated (absent = stable) | **House exception:** ADR lifecycle `status`: proposed / rejected / accepted / deprecated / superseded — OKF `status` vocabulary intentionally NOT applied (see Status Lifecycle in SKILL.md) |
 | File naming | Any `.md` except reserved | `NNNN-kebab-case-title.md` |
