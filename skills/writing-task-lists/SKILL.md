@@ -1,5 +1,5 @@
 ---
-name: takenlijsten-formuleren
+name: writing-task-lists
 description: Formulates executable software development task lists from a source document (FTD, spec, plan), organised in phases with a to-do and a Definition of Done per phase, every item wikilinked to its place in the source. Supports three variants - one person, a team (shared list plus one list per person), or one person working with an agent - at a level a beginning programmer can follow. Use when creating or revising task lists, backlogs, work plans or sprint tasks for software development.
 ---
 
