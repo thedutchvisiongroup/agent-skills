@@ -42,7 +42,7 @@ Write the plan to the confirmed storage location (see below) using this structur
 - **Parallel-safe with:** [Task M — because scopes are disjoint] 
 - **Acceptance criteria:** [measurable]
 - **Phase/batch + Definition of Done:** [acceptance boundary]
-- **Quality loop:** code + post-implementation TDD review [+ security review — reason]
+- **Quality loop:** code + post-implementation TDD review [+ security review — reason] [+ optional UI review — screenshots/URL source, or "no UI review — reason"]
 - **Exceptions:** [new tests: none | reason/alternative checks; TDD review: none | separately explicit exception]; each approved before execution
 - **Evidence:** [revision/fingerprint, scope, commands/results, versions/environment and research paths]
 [### Task 2: ...]

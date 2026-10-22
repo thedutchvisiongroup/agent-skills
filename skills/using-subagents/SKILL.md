@@ -161,6 +161,7 @@ Self-review NEVER replaces independent review.
 1. **Code review — ALWAYS per phase/batch.** An independent reviewer, scope per approved plan; never suppress or pre-rate findings.
 2. **TDD review — ALWAYS after implementation per phase/batch**, unless explicitly exempted in advance. Advisory B assesses assertions, requirements/edges, Red/Green proof, determinism/coverage and test-contract changes; never authors fixes.
 3. **Security review when relevant:** auth/permissions, payments, PII, crypto/secrets, uploads/external input, dependencies/lockfiles or security-relevant config/IaC. Missing required specialists block acceptance; a handoff note is not a passing verdict.
+   - **Optional UI review:** for visible UI changes the coordinator may schedule the visual-only `ui-reviewer` (needs screenshots or a browser). Record the choice in the plan; it never replaces the seats above. See `references/quality-loops.md`.
 4. **Fix loop:** consolidate findings, resume implementer, verify amended evidence and obtain affected re-reviews. Changes invalidating another seat require its recheck. Three unsuccessful iterations maximum, then escalate.
 5. **Acceptance:** all required verdicts present and no Critical/Important or equivalent blocking High findings before dependent work. Parallel reviews need stable inputs/non-conflicting probes; no duplicated scheduled seats.
 
