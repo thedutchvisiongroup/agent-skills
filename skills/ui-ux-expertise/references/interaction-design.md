@@ -21,7 +21,7 @@ Every interactive element needs these states designed:
 | State | When | Visual Treatment |
 |-------|------|------------------|
 | **Default** | At rest | Base styling |
-| **Hover** | Pointer over (not touch) | Subtle lift, color shift |
+| **Hover** | Pointer over (not touch) | Color or tone shift; lift only when the visual world calls for it |
 | **Focus** | Keyboard/programmatic focus | Visible ring (see below) |
 | **Active** | Being pressed | Pressed in, darker |
 | **Disabled** | Not interactive | Reduced opacity, no pointer |
