@@ -213,6 +213,7 @@ class RegistryTests(unittest.TestCase):
             "positive-tabindex": "warning",
             "emoji-icon": "warning",
             "marketing-buzzword": "warning",
+            "missing-reduced-motion": "warning",
         }
         self.assertEqual({r.id: r.severity for r in detect.RULES}, expected)
         self.assertEqual(len(detect.RULES), len(expected))
@@ -409,6 +410,58 @@ class LayoutTransitionTests(DetectTestCase):
         self.assertNotFlags(
             "layout-transition",
             '<a style="transition: opacity 1s" class="top-0 left-0">',
+        )
+
+    def test_flags_layout_properties_in_keyframes_at_the_declaration(self):
+        self.assertFlags(
+            "layout-transition",
+            "@keyframes grow {\n"
+            "  from { width: 0; opacity: 0; }\n"
+            "  50% { transform: scale(1.1); }\n"
+            "  to { margin-top: 8px; height: 10px; }\n"
+            "}\n",
+            "a.css",
+            lines=[2, 4, 4],
+        )
+        self.assertFlags(
+            "layout-transition",
+            "@-webkit-keyframes slide { 0% { left: 0 } 100% { left: 10px } }",
+            "a.css",
+            lines=[1, 1],
+        )
+        self.assertFlags(
+            "layout-transition",
+            "<style>@keyframes x { to { padding: 4px } }</style>",
+        )
+
+    def test_each_keyframes_block_ends_at_its_closing_brace(self):
+        self.assertFlags(
+            "layout-transition",
+            "@keyframes a { to { width: 1px } }\n"
+            ".k { margin: 0 }\n"
+            "@keyframes b { to { height: 2px } }\n",
+            "a.css",
+            lines=[1, 3],
+        )
+
+    def test_ignores_compositor_properties_and_lookalikes_in_keyframes(self):
+        self.assertNotFlags(
+            "layout-transition",
+            "@keyframes fade {\n"
+            "  from { opacity: 0; transform: translateY(4px); filter: blur(2px); }\n"
+            "  to { clip-path: inset(0); max-width: 10px; line-height: 2;"
+            " border-width: 2px; }\n"
+            "}\n",
+            "a.css",
+        )
+
+    def test_ignores_layout_properties_outside_keyframes(self):
+        self.assertNotFlags(
+            "layout-transition",
+            "@keyframes fade { to { opacity: 1 } }\n"
+            ".card { width: 10px; margin: 0 auto; }\n"
+            "@media (min-width: 600px) { .card { height: 4px; } }\n",
+            "a.css",
         )
 
 
@@ -1093,6 +1146,137 @@ class MarketingBuzzwordTests(DetectTestCase):
         self.assertNotFlags(
             "marketing-buzzword", '.a::after { content: "world-class"; }', "a.css"
         )
+
+
+class MissingReducedMotionTests(DetectTestCase):
+    RULE = "missing-reduced-motion"
+
+    def test_flags_each_kind_of_animation(self):
+        for text, name in (
+            ("@keyframes spin { to { transform: rotate(1turn); } }", "a.css"),
+            ("@-webkit-keyframes spin { to { opacity: 0; } }", "a.css"),
+            (".a { animation: spin 1s linear infinite; }", "a.css"),
+            (".a { animation-name: spin; }", "a.css"),
+            ('<div style="animation: pulse 2s">x</div>', "a.html"),
+            ('<div class="p-2 animate-spin">x</div>', "a.html"),
+            ("<div className={'animate-[wiggle_1s_ease-in-out]'} />", "a.tsx"),
+            (".a { @apply animate-pulse; }", "a.css"),
+        ):
+            self.assertFlags(self.RULE, text, name)
+
+    def test_flags_once_per_file_at_the_first_animation(self):
+        text = (
+            "p { color: red; }\n"
+            ".a { animation: spin 1s; }\n"
+            "@keyframes spin { to { opacity: 0; } }\n"
+            ".b { animation-name: spin; }\n"
+        )
+        self.assertFlags(self.RULE, text, "a.css", lines=[2])
+
+    def test_first_animation_is_found_across_tailwind_and_css(self):
+        text = (
+            '<div class="animate-spin">x</div>\n'
+            "<style>.a { animation: spin 1s; }</style>\n"
+        )
+        self.assertFlags(self.RULE, text, "a.html", lines=[1])
+
+    def test_ignores_files_without_animations(self):
+        for text, name in (
+            (".a { animation: none; }", "a.css"),
+            (".a { animation-name: none !important; }", "a.css"),
+            ('<div class="animate-none">x</div>', "a.html"),
+            (".a { transition: opacity 0.2s; }", "a.css"),
+            ('<div class="transition-opacity duration-200">x</div>', "a.html"),
+            ("<p>Use animate-spin for loaders.</p>", "a.html"),
+            ("const chart = { options: { animation: false } };", "a.tsx"),
+            ("const chart = { options: { animation: true } };", "a.tsx"),
+            ("<div style={{ animation: 'none' }} />", "a.tsx"),
+            (".x { animation-duration: 1s; animation-delay: 2s; }", "a.css"),
+            ("const o = { animation: { duration: 300 } };", "a.ts"),
+        ):
+            self.assertNotFlags(self.RULE, text, name)
+
+    def test_reduced_motion_signal_in_the_file_suppresses_it(self):
+        for text, name in (
+            (
+                ".a { animation: spin 1s; }\n"
+                "@media (prefers-reduced-motion: reduce) { .a { animation: none; } }",
+                "a.css",
+            ),
+            (
+                '<div class="animate-spin"></div><script>'
+                "matchMedia('(prefers-reduced-motion: reduce)')</script>",
+                "a.html",
+            ),
+            ('<div class="motion-safe:animate-spin">x</div>', "a.html"),
+            ('<div class="animate-spin motion-reduce:animate-none">x</div>', "a.html"),
+            (
+                'const r = useReducedMotion();\n<div className="animate-pulse" />',
+                "a.tsx",
+            ),
+            ('<MotionConfig reducedMotion="user"><i class="animate-spin" />', "a.jsx"),
+            (
+                "const prefersReducedMotion = check();\n"
+                '<div className="animate-pulse" />',
+                "a.tsx",
+            ),
+            (
+                'const r = usePrefersReducedMotion();\n<div className="animate-pulse" />',
+                "a.tsx",
+            ),
+        ):
+            self.assertNotFlags(self.RULE, text, name)
+
+    def test_cli_flags_every_animated_file_when_no_file_handles_reduced_motion(self):
+        a = self.write("app/a.vue", '<p>x</p>\n<div class="animate-spin">x</div>\n')
+        self.write("app/b.css", "p { color: red; }\n")
+        c = self.write("app/c.css", "\n\n.c { animation: spin 1s; }\n")
+        code, out, _ = self.run_cli("--json", self.tmp / "app")
+        self.assertEqual(code, 1)
+        findings = json.loads(out)["findings"]
+        self.assertEqual(
+            [(f["file"], f["line"], f["rule"], f["severity"]) for f in findings],
+            [
+                (str(a), 2, self.RULE, "warning"),
+                (str(c), 3, self.RULE, "warning"),
+            ],
+        )
+
+    def test_cli_signal_in_another_scanned_file_suppresses_it_everywhere(self):
+        component = self.write("app/card.vue", '<div class="animate-spin">x</div>\n')
+        styles = self.write(
+            "css/app.css",
+            "@media (prefers-reduced-motion: reduce) {\n"
+            "  *, ::before { animation-duration: 0.01ms !important; }\n"
+            "}\n",
+        )
+        code, out, _ = self.run_cli(component, styles)
+        self.assertEqual((code, out), (0, "No findings.\n"))
+        code, out, _ = self.run_cli(component)
+        self.assertEqual(code, 1)
+        self.assertIn(f"{component}:1  [W] missing-reduced-motion  ", out)
+
+    def test_cli_signal_file_anywhere_in_the_scan_order_suppresses_it(self):
+        # The signal file is in the middle, so "last file decides" would fail.
+        a = self.write("app/a.vue", '<div class="animate-spin">x</div>\n')
+        b = self.write(
+            "app/b.css", "@media (prefers-reduced-motion: reduce) { * { x: 0 } }\n"
+        )
+        c = self.write("app/c.css", "p { color: red; }\n")
+        self.assertEqual(self.run_cli(a, b, c)[:2], (0, "No findings.\n"))
+        self.assertEqual(self.run_cli(self.tmp / "app")[:2], (0, "No findings.\n"))
+
+    def test_cli_ignore_suppresses_it(self):
+        path = self.write("a.css", ".a { animation: spin 1s; }\n")
+        code, out, _ = self.run_cli("--ignore", self.RULE, path)
+        self.assertEqual((code, out), (0, "No findings.\n"))
+
+    def test_cli_ignoring_another_rule_keeps_it(self):
+        path = self.write("a.css", "@keyframes grow { to { width: 1px; } }\n")
+        code, out, _ = self.run_cli("--json", "--ignore", "layout-transition", path)
+        self.assertEqual(code, 1)
+        findings = json.loads(out)["findings"]
+        self.assertEqual([f["rule"] for f in findings], [self.RULE])
 
 
 if __name__ == "__main__":

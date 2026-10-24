@@ -33,7 +33,7 @@ python3 <skill-dir>/scripts/detect.py [--json] [--ignore RULE[,RULE...]] PATH [P
 | `numbered-section-label` | W | `01 /`, `02 ·` section labels | Scaffolding by reflex | Keep only when the sequence carries information |
 | `bounce-easing` | W | Overshooting `cubic-bezier`, bounce/elastic animations | Dated; draws attention to the motion itself | Exponential ease-out (quart, quint, expo) |
 | `transition-all` | W | `transition: all`; `transition-all` | Animates layout properties by accident; jank | List the properties (usually transform, opacity) |
-| `layout-transition` | W | Transitions on width, height, top, left, margin, padding | Triggers layout every frame | Transform, FLIP, or grid-row techniques |
+| `layout-transition` | W | Transitions on width, height, top, left, margin, padding; the same properties inside `@keyframes` | Triggers layout every frame | Transform, FLIP, or grid-row techniques |
 | `arbitrary-z-index` | W | `z-index` ≥ 999; `z-[9999]` | Stacking wars | Semantic z-index scale |
 | `outline-removed` | E | `outline: none` / `outline-none` with no `:focus-visible` replacement in the file | Keyboard users lose their place | A visible `:focus-visible` ring with ≥3:1 contrast |
 | `zoom-disabled` | E | `user-scalable=no`, `maximum-scale=1` | Blocks zoom; WCAG 1.4.4 failure | Remove the restriction; fix the layout instead |
@@ -49,6 +49,9 @@ python3 <skill-dir>/scripts/detect.py [--json] [--ignore RULE[,RULE...]] PATH [P
 | `positive-tabindex` | W | `tabindex` ≥ 1 | Breaks the natural focus order | `0` or `-1`, and fix DOM order |
 | `emoji-icon` | W | Emoji inside buttons and links | Glyphs standing in for an icon system | One icon library or authored SVG |
 | `marketing-buzzword` | W | "seamless experience", "supercharge your", "world-class", … | Generic claims any competitor could make | Specific, provable statements about this product |
+| `missing-reduced-motion` | W | `@keyframes`, `animation`, or `animate-*` with no `prefers-reduced-motion`, `motion-safe:`/`motion-reduce:`, or a JS name such as `useReducedMotion`/`prefersReducedMotion` anywhere in the scanned files | Large or looping motion can trigger vestibular symptoms; users who ask for less motion must get it (WCAG 2.3.3) | A `prefers-reduced-motion` alternative that reduces movement but keeps meaningful feedback (fade instead of slide, a static state instead of a loop) |
+
+`missing-reduced-motion` judges all scanned paths together: one reduced-motion path anywhere clears every file, and without one each animated file is flagged at its first animation. Scan the global stylesheet along with the components, or a component file is flagged for motion the stylesheet already handles. The signal is matched as text (a mention in a comment counts), and `-webkit-animation` declarations and JS animation APIs (`element.animate()`, Motion `animate` props) are not detected.
 
 ## Manual checks
 
