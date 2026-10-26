@@ -423,10 +423,11 @@ the list.
 
 ## Open items
 
-- After round 6 the skill has not yet been tried on a fresh list. The next
-  test is the same FTD with the same prompt, compared with `ftd-tasks.md`.
-- The team variant has only been designed on paper. No list with personal
-  lists and handovers has been made yet.
+- Since round 6 the skill has been validated on two real sources (the PTA
+  Vision CRM-integration FTD and a school project) in all three variants.
+  Classmates in the school project work from lists it produced; their feedback
+  drove three revision rounds. Those rounds are not yet written up in this
+  note.
 - The rule that Obsidian drops a colon in links to headings I have seen in
   practice, but not checked in the official documentation.
 - Whether the OKF validator accepts frontmatter of the type "tasks" is
