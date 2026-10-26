@@ -21,7 +21,8 @@ Starts after: phase 0
       Expect: no errors; `node_modules/` exists.
 
 ### To-do
-- [ ] In `.github/workflows/run-tests-app.yml`, job `client`, step "Run client tests with coverage": replace `test:client:coverage` with `test:client` and rename the step to "Run client tests". The step itself stays ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
+- [ ] In `.github/workflows/run-tests-app.yml`, job `client`, step "Run client tests with coverage": replace `test:client:coverage` with `test:client`. The step itself stays ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
+- [ ] In the same step, rename "Run client tests with coverage" to "Run client tests" ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
 - [ ] In the same job, delete the whole step "Upload client coverage", from `- name:` up to and including `if-no-files-found: warn` ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
 - [ ] Check that `test:client:coverage` is still present in `packages/app/package.json` ([[ftd#3.3 Out of scope|§3.3]])
       ```bash
@@ -143,7 +144,7 @@ Personal list `ftd-tasks-eva.md`:
 Status and DoD: [[ftd-tasks#Phase 1 — US-01 Quality ratchet removed from the fast gate|general list]]
 
 ### To-do
-- [ ] Start after: [[ftd-tasks-lonneke#Phase 1 — US-01 Quality ratchet removed from the fast gate|Lonneke — ADR-0010 number]]
+- [ ] Starts after: [[ftd-tasks-lonneke#Phase 1 — US-01 Quality ratchet removed from the fast gate|Lonneke — ADR-0010 number]]
 - [ ] Close OI-03 in `packages/app/docs/specs/testing-framework/open-issues.md` as "won't do (ratchet scrapped)", with a link to ADR-0010 ([[ftd#7.1 US-01 Remove the quality ratchet|§7.1]])
 ```
 

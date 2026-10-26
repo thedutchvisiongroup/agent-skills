@@ -69,7 +69,7 @@ person sees only their own actions, while phase status stays in one place.
 - Every personal item keeps its source marker. The source link stays the
   basis, not the general list.
 - A handover between people is an explicit item in the receiving person's
-  list: `Start after: [[ftd-tasks-lonneke#…|Lonneke — schema ready]]`.
+  list: `Starts after: [[ftd-tasks-lonneke#…|Lonneke — schema ready]]`.
 
 ### Skeleton, general list
 

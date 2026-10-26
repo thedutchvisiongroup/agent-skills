@@ -109,7 +109,8 @@ Starts after: <phase or "phase 0">
 - [ ] <prerequisite, with the command that checks it>
 ```
 
-`Before you begin` is omitted when the phase has no local prerequisites.
+`Before you begin` is omitted when the phase has no local prerequisites. Its
+items carry a source marker or addition like every other item.
 Variant-specific header lines are in the variants reference.
 
 ### Step 5: Item rules
@@ -238,7 +239,7 @@ including headings and labels. Only these labels are fixed per language:
 
 | English | Dutch |
 | --- | --- |
-| Phase | Phase |
+| Phase | Fase |
 | Before you begin | Voordat je begint |
 | To-do | To-do |
 | DoD | DoD |
