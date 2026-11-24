@@ -405,9 +405,30 @@ def check_transition_all(text, path):
     yield from tailwind(text, "transition-all")
 
 
-LAYOUT_PROPERTY_RE = re.compile(
-    r"(?:width|height|top|left|right|bottom|margin(?:-[\w-]+)?|padding(?:-[\w-]+)?)$"
+LAYOUT_PROPERTY = (
+    r"width|height|top|left|right|bottom|margin(?:-[\w-]+)?|padding(?:-[\w-]+)?"
 )
+LAYOUT_PROPERTY_RE = re.compile(r"(?:%s)$" % LAYOUT_PROPERTY)
+# `@keyframes name {`, vendor-prefixed (`@-webkit-keyframes`) included.
+KEYFRAMES_RE = re.compile(r"@(?:-[a-z]+-)?keyframes\s+[\w-]+\s*\{")
+BRACE_RE = re.compile(r"[{}]")
+
+
+def keyframes(text):
+    """Yield (offset, body) for each `@keyframes` block, nested braces included.
+
+    An unterminated block runs to the end of the text.
+    """
+    m = KEYFRAMES_RE.search(text)
+    while m:
+        depth, end = 1, len(text)
+        for brace in BRACE_RE.finditer(text, m.end()):
+            depth += 1 if brace.group() == "{" else -1
+            if depth == 0:
+                end = brace.start()
+                break
+        yield m.end(), text[m.end() : end]
+        m = KEYFRAMES_RE.search(text, end)
 
 
 def check_layout_transition(text, path):
@@ -415,6 +436,9 @@ def check_layout_transition(text, path):
         words = re.sub(r"\([^()]*\)", "", value).replace(",", " ").split()
         if any(LAYOUT_PROPERTY_RE.match(word) for word in words):
             yield offset
+    for start, body in keyframes(text):
+        for offset, _ in declarations(body, LAYOUT_PROPERTY):
+            yield start + offset
 
 
 def check_arbitrary_z_index(text, path):
@@ -575,6 +599,39 @@ def check_marketing_buzzword(text, path):
         yield m.start()
 
 
+# prefers-reduced-motion, motion-safe:/motion-reduce:, and JS names such as
+# useReducedMotion, prefersReducedMotion or reducedMotion.
+REDUCED_MOTION_RE = re.compile(r"reduced-?motion|motion-(?:safe|reduce):", re.I)
+
+
+def has_reduced_motion(text):
+    return REDUCED_MOTION_RE.search(text) is not None
+
+
+def check_missing_reduced_motion(text, path):
+    """Yield the file's first animation unless the file handles reduced motion.
+
+    The verdict spans all scanned files: main() drops these findings when any
+    of them has_reduced_motion().
+    """
+    if has_reduced_motion(text):
+        return
+    animations = [m.start() for m in KEYFRAMES_RE.finditer(text)]
+    animations += [
+        offset
+        for offset, value in declarations(text, "animation|animation-name")
+        # `true`/`false` are JS options (e.g. a chart config), not CSS animations.
+        if value and not re.match(r"['`]?(?:none|false|true)(?![\w-])", value)
+    ]
+    animations += [
+        offset
+        for offset, classes in class_lists(text)
+        if any(c.startswith("animate-") and c != "animate-none" for c in classes)
+    ]
+    if animations:
+        yield min(animations)
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -639,7 +696,8 @@ RULES = [
     Rule(
         "layout-transition",
         "warning",
-        "transitioning layout properties causes reflow; animate transform/opacity",
+        "transitioning or animating layout properties causes reflow; "
+        "animate transform/opacity",
         check_layout_transition,
     ),
     Rule(
@@ -737,6 +795,13 @@ RULES = [
         "generic marketing buzzword; say concretely what the product does",
         check_marketing_buzzword,
     ),
+    Rule(
+        "missing-reduced-motion",
+        "warning",
+        "animations without a prefers-reduced-motion alternative in the scanned "
+        "files; add a reduced-motion path",
+        check_missing_reduced_motion,
+    ),
 ]
 
 
@@ -778,11 +843,6 @@ def iter_files(path):
                 yield os.path.join(root, name)
 
 
-def scan_file(path):
-    text = Path(path).read_text(encoding="utf-8", errors="replace")
-    return scan_text(text, str(path))
-
-
 def plural(count, word):
     return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
@@ -812,6 +872,7 @@ def main(argv=None):
 
     findings = []
     seen = set()  # real paths, so a file reached twice is scanned once
+    reduced_motion = False
     for path in args.paths:
         for file in iter_files(path):
             real = os.path.realpath(file)
@@ -819,12 +880,16 @@ def main(argv=None):
                 continue
             seen.add(real)
             try:
-                file_findings = scan_file(file)
+                text = Path(file).read_text(encoding="utf-8", errors="replace")
             except OSError as exc:  # unreadable file or dangling symlink
                 print(f"{file}: skipped ({exc.strerror or exc})", file=sys.stderr)
                 continue
-            findings.extend(f for f in file_findings if f["rule"] not in ignored)
+            reduced_motion = reduced_motion or has_reduced_motion(text)
+            findings.extend(scan_text(text, file))
 
+    if reduced_motion:  # one scanned file handling it covers them all
+        ignored.add("missing-reduced-motion")
+    findings = [f for f in findings if f["rule"] not in ignored]
     findings.sort(key=lambda f: (f["file"], f["line"], f["rule"]))
     if args.json:
         print(json.dumps({"findings": findings, "count": len(findings)}, indent=2))
