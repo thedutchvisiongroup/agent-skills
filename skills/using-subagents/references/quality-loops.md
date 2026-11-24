@@ -9,6 +9,7 @@ Each phase/batch needs independent code and post-implementation TDD review, plus
 - Independent code review (always)
 - Security review (conditional trigger)
 - UI review (optional, visual-only)
+- Simplicity check (optional per batch, mandatory final)
 - Reviewer rules
 - The fix loop and its limit
 - The final whole-change review
@@ -70,6 +71,16 @@ An optional seat for changes with visible UI impact (new or redesigned pages, sc
 - **Evidence is mandatory:** provide screenshots (desktop ~1440px and mobile ~390px, plus required states) in the run directory, or a reachable URL the reviewer can open with a browser tool. Without either it returns BLOCKED.
 - **Input:** the task brief with acceptance criteria, `design-brief.md` from the run directory when one exists, the screenshots or URL, and the states to review.
 - **Verdict contract:** `APPROVED` | `CHANGES_REQUESTED` | `NEEDS_CONTEXT` | `BLOCKED`, findings labeled Critical / Important / Minor. Visual fixes return to the implementer like any other finding.
+
+## Simplicity check (optional per batch, mandatory final)
+
+`simple-code-checker` applies `writing-simple-code` to a change set: can it be simpler while keeping every required behavior and guarantee? It never replaces code, TDD or security review.
+
+- **Per phase/batch (optional):** the coordinator decides and records the choice (seat or "no simplicity review — reason") in the work plan.
+- **Final (mandatory):** after the final whole-change review, one run over ALL written work. Every delegated implementation ends with it, including a single implementer task. A missing `simple-code-checker` blocks acceptance.
+- **Input:** the task brief(s) with requirements and acceptance criteria, the diff or file list of the scope, the implementer reports and the report path.
+- **Verdict contract:** `SIMPLE_ENOUGH` | `SIMPLIFICATIONS_SUGGESTED` | `NEEDS_CONTEXT` | `BLOCKED`, findings rated High / Medium / Low impact.
+- **Findings are recommendations, not blockers:** present them to the user, who decides which become fixes. Chosen fixes go to the implementer, followed by the affected re-reviews.
 
 ## Reviewer rules
 

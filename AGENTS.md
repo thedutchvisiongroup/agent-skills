@@ -24,7 +24,6 @@ na een nieuwe sessie.
 | `opencode/<alles anders>` | Toekomstige OpenCode-content (themes, ...) | `~/.config/opencode/` 1-op-1 per bestand |
 | `claude/CLAUDE.md` | Claude Code user-instructies | `~/.claude/CLAUDE.md` (symlink) |
 | `claude/agents/*.md` | Claude Code subagents (frontmatter + body = system prompt) | `~/.claude/agents/` (per bestand) |
-| `claude/hooks/tdvg-write-guard.py` | PreToolUse write guard voor reviewers/tdd-expert (`test_*.py` is repo-only) | `~/.claude/hooks/` (per bestand) |
 | `claude/configs/tdvg-settings.json` | Claude Code permissies (ask/deny, TDVG-keys) | `~/.claude/settings.json` (JSON-merge) |
 | `claude/configs/tdvg-mcp.json` | Claude Code MCP-servers (context7, deepwiki) | `~/.claude.json` → `mcpServers` (JSON-merge) |
 | `scripts/link.py` | Het sync-script | — |
@@ -84,7 +83,7 @@ uv run scripts/link.py list     # harnesses, skills en items tonen
 
 - Custom orchestrator blijft coordinator: alle implementaties/fixes gaan naar `implementer`, nooit naar uitgeschakelde `general`. Implementer bezit tests én broncode via Red–Green–Refactor, erft het model en start geen eigen subagents of automatische commits.
 - In Claude Code is het hoofdgesprek de coordinator (de orchestrator is daar nog niet geporteerd); dezelfde regels gelden: implementatie via `implementer`, reviews onafhankelijk en achteraf.
-- Iedere fase/batch met Definition of Done krijgt achteraf onafhankelijke code- en TDD-review, plus security waar relevant. Voor zichtbare UI-wijzigingen kan de coordinator optioneel de puur visuele `ui-reviewer` inplannen (vereist screenshots of browser; vervangt geen andere review). Afhankelijke fases wachten op vereiste verdicts/opgeloste blockers. Nieuwe-test- en TDD-reviewuitzonderingen vereisen elk afzonderlijk vooraf expliciet akkoord en alternatieve checks.
+- Iedere fase/batch met Definition of Done krijgt achteraf onafhankelijke code- en TDD-review, plus security waar relevant. Voor zichtbare UI-wijzigingen kan de coordinator optioneel de puur visuele `ui-reviewer` inplannen (vereist screenshots of browser; vervangt geen andere review). `simple-code-checker` is optioneel per fase, maar elke gedelegeerde implementatie eindigt met één verplichte run over al het geschreven werk; de gebruiker beslist per bevinding, en zonder de agent is het BLOCKED. Afhankelijke fases wachten op vereiste verdicts/opgeloste blockers. Nieuwe-test- en TDD-reviewuitzonderingen vereisen elk afzonderlijk vooraf expliciet akkoord en alternatieve checks.
 - Gedelegeerde TDD-expert is advisory-only en wijzigt tests noch broncode; fixes gaan via coordinator naar implementer. Direct aangeroepen mag hij tests schrijven/verbeteren, nooit broncode. Geplande reviewstoelen worden niet dubbel genest gestart.
 - Bewijshergebruik vereist passende scope, revisie/fingerprint, commando's/resultaten, versies en omgeving. Reviewers beoordelen zelfstandig; gaps/veroudering/twijfel vragen gerichte verificatie. Iedere agent levert zijn benoemde rapport in de goedgekeurde runmap.
 - Wijzig nooit iets aan de persoonlijke laag van de gebruiker buiten deze repo, behalve de gedocumenteerde Claude-merge hierboven.

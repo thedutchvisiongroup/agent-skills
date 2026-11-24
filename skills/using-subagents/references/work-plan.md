@@ -42,7 +42,7 @@ Write the plan to the confirmed storage location (see below) using this structur
 - **Parallel-safe with:** [Task M — because scopes are disjoint] 
 - **Acceptance criteria:** [measurable]
 - **Phase/batch + Definition of Done:** [acceptance boundary]
-- **Quality loop:** code + post-implementation TDD review [+ security review — reason] [+ optional UI review — screenshots/URL source, or "no UI review — reason"]
+- **Quality loop:** code + post-implementation TDD review [+ security review — reason] [+ optional UI review — screenshots/URL source, or "no UI review — reason"] [+ optional simplicity review, or "no simplicity review — reason"]
 - **Exceptions:** [new tests: none | reason/alternative checks; TDD review: none | separately explicit exception]; each approved before execution
 - **Evidence:** [revision/fingerprint, scope, commands/results, versions/environment and research paths]
 [### Task 2: ...]
@@ -52,7 +52,7 @@ Write the plan to the confirmed storage location (see below) using this structur
  Otherwise: "None — all dispatching is done by the orchestrator."]
 
 ## Integration & final verification
-[Conflict check, full test suite, final whole-change review — Phase 6]
+[Conflict check, full test suite, final whole-change review, mandatory final simplicity check — Phase 6]
 
 ## Abort criteria
 [When to stop and re-plan: e.g. "3rd fix iteration on any task", "BLOCKED twice on the same task", "scope grows beyond N files"]

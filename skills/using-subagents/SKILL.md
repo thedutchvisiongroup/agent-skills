@@ -1,6 +1,6 @@
 ---
 name: using-subagents
-description: Coordinates approval-gated implementation with bounded workers, evidence reports and independent reviews. Use for delegated features, refactors, fixes and multi-part work. In TDVG harnesses (OpenCode, Claude Code), implementer owns tests/source through Red-Green-Refactor; every phase/batch requires code and post-implementation TDD review, separate advance-approved test exceptions and risk-triggered security review. Preserves discovery, plan/storage approval, evidence reuse, resumed fixes, disjoint parallel work and bounded advisory nesting. Dedicated coordinators never implement project files themselves.
+description: Coordinates approval-gated implementation with bounded workers, evidence reports and independent reviews. Use for delegated features, refactors, fixes and multi-part work. In TDVG harnesses (OpenCode, Claude Code), implementer owns tests/source through Red-Green-Refactor; every phase/batch requires code and post-implementation TDD review, separate advance-approved test exceptions and risk-triggered security review; every delegated implementation ends with a mandatory simplicity check. Preserves discovery, plan/storage approval, evidence reuse, resumed fixes, disjoint parallel work and bounded advisory nesting. Dedicated coordinators never implement project files themselves.
 ---
 
 # Using Subagents
@@ -93,7 +93,7 @@ NEVER dispatch to an assumed agent. Inventory what actually exists in THIS envir
 1. **List available sub-agents** via the harness's live mechanism (task-tool listing, agent directories — see `references/harness-notes.md`). Never rely on memory: agents differ between projects and machines.
 2. **Read each agent's description** — it is the capability contract: what it does, when to use it, what it may not do.
 3. **Match tasks to agents**: specialist over generalist. A dedicated review agent beats a generic prompt every time.
-4. **Handle gaps:** require `implementer` for execution and `code-reviewer`/`tdd-expert` for mandatory seats. Missing agents are BLOCKED, never a silent general fallback. Other harnesses need explicitly approved equivalent role-capable workers. Coordinators recommend missing agents, never create their definitions themselves.
+4. **Handle gaps:** require `implementer` for execution, `code-reviewer`/`tdd-expert` for mandatory seats and `simple-code-checker` for the mandatory final simplicity check. Missing agents are BLOCKED, never a silent general fallback. Other harnesses need explicitly approved equivalent role-capable workers. Coordinators recommend missing agents, never create their definitions themselves.
 5. **Consider model routing**: cheap/fast models for mechanical work, strong models for planning and review — record the choices in the work plan.
 
 Read `references/subagent-discovery.md` for the matching matrix and fallback rules.
@@ -113,7 +113,7 @@ NO DISPATCH WITHOUT AN APPROVED WORK PLAN. Build the plan per `references/work-p
 1. **Goal & success criteria** (from Before You Start)
 2. **Decomposition:** phases/batches with Definitions of Done, cohesive tests + source tasks, and an independence analysis
 3. **Agent assignment** per task (from Phase 2), including model routing
-4. **Quality loops:** code + post-implementation TDD review per phase/batch; risk-triggered security review. New-test and test-review exceptions each need explicit advance approval, reason and alternative checks; one never implies the other.
+4. **Quality loops:** code + post-implementation TDD review per phase/batch; risk-triggered security review; optional simplicity review per phase/batch. New-test and test-review exceptions each need explicit advance approval, reason and alternative checks; one never implies the other.
 5. **Nesting**, if any — only advisory handoffs, total depth ≤ 2, and only because the plan says so (see `references/nesting-policy.md`)
 6. **Integration & final verification** steps (Phase 6)
 7. **Abort criteria** — when to stop and re-plan
@@ -162,6 +162,7 @@ Self-review NEVER replaces independent review.
 2. **TDD review — ALWAYS after implementation per phase/batch**, unless explicitly exempted in advance. Advisory B assesses assertions, requirements/edges, Red/Green proof, determinism/coverage and test-contract changes; never authors fixes.
 3. **Security review when relevant:** auth/permissions, payments, PII, crypto/secrets, uploads/external input, dependencies/lockfiles or security-relevant config/IaC. Missing required specialists block acceptance; a handoff note is not a passing verdict.
    - **Optional UI review:** for visible UI changes the coordinator may schedule the visual-only `ui-reviewer` (needs screenshots or a browser). Record the choice in the plan; it never replaces the seats above. See `references/quality-loops.md`.
+   - **Optional simplicity review:** the coordinator may schedule `simple-code-checker` for a phase/batch. Its findings are recommendations: present them to the user, who decides which go to implementer. See `references/quality-loops.md`.
 4. **Fix loop:** consolidate findings, resume implementer, verify amended evidence and obtain affected re-reviews. Changes invalidating another seat require its recheck. Three unsuccessful iterations maximum, then escalate.
 5. **Acceptance:** all required verdicts present and no Critical/Important or equivalent blocking High findings before dependent work. Parallel reviews need stable inputs/non-conflicting probes; no duplicated scheduled seats.
 
@@ -182,7 +183,8 @@ Sub-agent results are NOT visible to the user — you are their messenger.
 1. **Conflict check** (after parallel work): verify no two sub-agents touched the same files; reconcile before continuing (see `references/parallel-execution.md`).
 2. **Full verification:** obtain relevant full checks over the integrated revision, delegating execution when coordinator permissions require. Reuse identical batch-final evidence only when revision/config/environment match; report gaps/inapplicable checks and exceptions.
 3. **Final whole-change review**: one reviewer over the complete change set catches what per-task reviews miss (interface drift, duplicated logic across tasks).
-4. **Summarize:** implementation, code/test/security verdicts, executed/reused evidence, exceptions and report paths. A single-batch review may also be whole-change review; avoid identical duplicate seats. Close the ledger.
+4. **Final simplicity check (mandatory):** one `simple-code-checker` run over ALL written work, also for a single implementer task. Present its findings to the user, who decides which become fixes; chosen fixes go to implementer, followed by the affected re-reviews. A missing `simple-code-checker` is BLOCKED.
+5. **Summarize:** implementation, code/test/security/simplicity verdicts, executed/reused evidence, exceptions and report paths. A single-batch review may also be whole-change review; avoid identical duplicate seats. Close the ledger.
 
 ## Red Flags — STOP and Follow Process
 
@@ -236,7 +238,7 @@ If you catch yourself thinking:
 | **3. Work Plan** | Decompose, assign, loops, abort criteria, storage | Explicit user approval, incl. storage location |
 | **4. Execution** | Contracts, ledger, status handling, parallel rules | All tasks DONE-with-reports or escalated |
 | **5. Quality** | Code + post-implementation TDD reviews, security triggers, fixes ≤ 3 | Required verdicts; explicit exceptions; no blockers |
-| **6. Integration** | Conflict check, full suite, final review, summary | Verified whole; user informed; ledger closed |
+| **6. Integration** | Conflict check, full suite, final review, final simplicity check, summary | Verified whole; user decided on simplicity findings; ledger closed |
 
 ## Reference Index
 

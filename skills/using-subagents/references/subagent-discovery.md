@@ -42,6 +42,7 @@ Match each planned task to exactly one agent (or template fallback):
 | Implementation/fixes | TDVG `implementer`; explicitly approved equivalent elsewhere | Disabled `general`, reviewers, separate Red/Green workers |
 | Code review | Independent `code-reviewer` | Self-review or unapproved generic substitutes |
 | Post-implementation test review | Independent `tdd-expert` in advisory B, per phase/batch | Red-writing or test-fixing reviewers |
+| Simplicity check | `simple-code-checker`: optional per phase/batch, mandatory final run over all written work | Implementer self-assessment or reviewers outside their discipline |
 | Read-only exploration | An explore/scout agent, else `templates/explorer.md` | Anything with write permissions it doesn't need |
 | Specialist review (security, perf) | The matching specialist agent — and only when the plan calls for it | General reviewers guessing outside their discipline |
 

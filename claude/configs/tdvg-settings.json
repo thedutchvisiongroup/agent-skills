@@ -1,7 +1,12 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
-    "ask": ["Bash(rm *)", "Bash(git push *)"],
-    "deny": ["Read(**/.env.keys)", "Agent(claude)"]
+    "ask": ["Bash(rm -rf *)", "Bash(rm -fr *)"],
+    "deny": [
+      "Read(**/.env.keys)",
+      "Bash(git push *--force*)",
+      "Bash(git push *-f)",
+      "Bash(git push *-f *)"
+    ]
   }
 }

@@ -37,7 +37,7 @@ The skill's core is harness-agnostic; this file maps its concepts to concrete me
 - **Model routing**: unset models inherit — primary uses the global model, subagents inherit the invoking primary's model. Set `model` per agent definition to route.
 - **Todos**: the todo tool is disabled for subagents by default — don't rely on sub-agent-side todo tracking; your ledger is the tracker.
 - **Native explore reports:** its default permission profile is edit-denied. The mandatory report template requires a worker with explicit report-writing authority; otherwise use coordinator read-only investigation, not an unsupported explore dispatch or shell-write bypass. This does not broaden native explorer permissions.
-- **TDVG policy:** managed config disables `general`; discovered `implementer` owns tests/source and fixes, denies task/question/todo and inherits the model. Code/TDD reviews follow per phase/batch; missing required seats block acceptance.
+- **TDVG policy:** managed config disables `general`; discovered `implementer` owns tests/source and fixes, denies task/question/todo and inherits the model. Code/TDD reviews follow per phase/batch and a final `simple-code-checker` run closes every delegated implementation; missing required seats block acceptance.
 - **Prompt composition (1.18.34):** custom body replaces provider base prompt; environment/project/skill layers remain. Worker scope/tool/evidence/escalation rules must be in its prompt.
 - **Background subagents**: experimental (`OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true`) — out of scope for this skill's synchronous wave model.
 
@@ -51,10 +51,10 @@ The skill's core is harness-agnostic; this file maps its concepts to concrete me
 - **Question tool**: `AskUserQuestion` is removed from every sub-agent. The status contract is the only escalation channel, so do not invite questions in the prompt.
 - **Nesting**: allowed by default up to 3 levels below main. `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` sets the limit (`1` = off). Block nesting per agent by omitting `Agent` from `tools` or setting `disallowedTools: Agent`. Disable an agent type with `permissions.deny: ["Agent(name)"]`. The skill's depth policy (depth ≤ 2, advisory only) still applies.
 - **Model routing**: precedence is the per-invocation `model` parameter, then frontmatter `model`, then `CLAUDE_CODE_SUBAGENT_MODEL`, then the main model.
-- **Path-scoped write limits**: use a `PreToolUse` hook in the agent's frontmatter. TDVG ships `~/.claude/hooks/tdvg-write-guard.py` with profiles `reviewer` and `tdd-expert`. Shell writes remain a prompt-level rule.
+- **Path-scoped write limits**: only possible through a `PreToolUse` hook in the agent's frontmatter. TDVG ships none: reviewer write limits, including shell writes, are prompt-level rules.
 - **Isolation**: `isolation: worktree` gives the sub-agent its own git worktree — the write fan-out escape hatch (see `references/parallel-execution.md`).
 - **maxTurns**: cap turns per sub-agent (leaves ~8, mid-tier ~12) as a loop-circuit-breaker.
-- **TDVG policy**: `general-purpose` and `claude` built-ins are denied via TDVG settings. `implementer` (inherit model, no Agent tool) owns tests and source. `code-reviewer`, `security-reviewer` and `tdd-expert` run on sonnet. The coordinator role lives in the main conversation.
+- **TDVG policy**: no built-in agent types are denied; routing implementation to `implementer` is a prompt-level rule. `implementer` (inherit model, no Agent tool) owns tests and source. `code-reviewer`, `security-reviewer` and `simple-code-checker` (no Agent tool) run on `opus`; `tdd-expert` and `ui-reviewer` on `sonnet`. The coordinator role lives in the main conversation.
 
 ## Generic fallback guidance
 

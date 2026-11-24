@@ -105,6 +105,7 @@ research exercise or a rigid ranking of tools:
 | Implementer | The complete implementation and local changes permitted by the task. |
 | Orchestrator/coordinator | Early scope discussion, design choices, and technical delegation contracts. Require delegated workers to load this skill and give them the confirmed constraints and success criteria. |
 | Code reviewer | Evidence-backed complexity findings: location, current cost, and a concrete simpler alternative that preserves requirements. Advise; do not edit reviewed code. |
+| Simplicity checker | The dedicated, deeper simplicity review of an assigned change set, including duplicated knowledge across tasks. Same evidence rules as the code reviewer; findings are recommendations the user decides on. Advise; do not edit reviewed code. |
 | Security reviewer | Security-relevant recommendations and their design tradeoffs, without weakening protection. Route unrelated code-quality issues through the existing handoff workflow. |
 | Test specialist | Test code and test-design recommendations. Preserve testing discipline and hand off production-code changes. |
 

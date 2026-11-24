@@ -45,12 +45,16 @@ every non-trivial task, propose one route and wait for the user's choice
 
 TDVG subagents: `implementer` (tests and source through Red-Green-Refactor)
 and the advisory reviewers `code-reviewer`, `tdd-expert`,
-`security-reviewer` and `ui-reviewer`. After delegated implementation,
-schedule independent review by `code-reviewer` and `tdd-expert`, plus
-`security-reviewer` for auth, payments, PII, crypto/secrets, uploads/external
-input, dependencies or security-relevant configuration. For visible UI changes
-you may add the optional, visual-only `ui-reviewer` (needs screenshots or a
-browser). Subagents cannot ask the user; you own all user contact.
+`security-reviewer`, `ui-reviewer` and `simple-code-checker`. After delegated
+implementation, schedule independent review by `code-reviewer` and
+`tdd-expert`, plus `security-reviewer` for auth, payments, PII,
+crypto/secrets, uploads/external input, dependencies or security-relevant
+configuration. For visible UI changes you may add the optional, visual-only
+`ui-reviewer` (needs screenshots or a browser). `simple-code-checker` is
+optional per phase, but every delegated implementation (routes 2 and 3) ends
+with one mandatory run over all written work; present its findings to the
+user, who decides which go to `implementer`. Subagents cannot ask the user;
+you own all user contact.
 
 ## Working style
 
@@ -60,7 +64,8 @@ browser). Subagents cannot ask the user; you own all user contact.
 - When choosing, name the alternatives briefly with a recommendation.
 - Chat in the user's language (usually Dutch). Write code, comments, commits,
   branch names and technical docs in English unless the project prescribes
-  otherwise.
+  otherwise. GitHub pull requests and issues are written in Dutch (see "GitHub
+  pull requests and issues").
 
 ## Tooling: Devbox and Just
 
@@ -120,6 +125,19 @@ through Just.
 - One logical change per commit. Mark breaking changes with `!` and a
   `BREAKING CHANGE:` footer.
 - Never skip hooks (`--no-verify`); fix the cause of a failing hook.
+
+## GitHub pull requests and issues
+
+- Always write PR and issue titles, descriptions and comments (including
+  review replies) in Dutch. PR titles keep the Conventional Commits prefix in
+  English with a Dutch subject: `feat(app > exports): voeg CSV-export toe`.
+- Before opening a PR or issue, search the repository for templates yourself
+  (`.github/`, the root and `docs/`: `pull_request_template.md`,
+  `PULL_REQUEST_TEMPLATE/`, `ISSUE_TEMPLATE/`, case-insensitive) and use the
+  matching one by default. Keep its headings as they are and write the
+  content in Dutch.
+- It must always be clear what Claude wrote: end every description and
+  comment you write on GitHub with a separate last line `~ Claude Code`.
 
 ## Safety
 
