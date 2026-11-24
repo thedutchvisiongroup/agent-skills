@@ -57,16 +57,16 @@ Charts and dashboards: the "wow" is in fluidity: GPU-accelerated rendering via C
 Organized by what you're trying to achieve, not by technology name.
 
 ### Make transitions feel cinematic
-- **View Transitions API** (same-document: all browsers; cross-document: no Firefox): shared element morphing between states. A list item expanding into a detail page. A button morphing into a dialog. This is the closest thing to native FLIP animations.
+- **View Transitions API** (same-document: all browsers; cross-document: Chromium and Safari 18.2+, not Firefox): shared element morphing between states. A list item expanding into a detail page. A button morphing into a dialog. This is the closest thing to native FLIP animations.
 - **`@starting-style`** (all browsers): animate elements from `display: none` to visible with CSS only, including entry keyframes
 - **Spring physics**: natural motion with mass, tension, and damping instead of cubic-bezier. Libraries: motion (formerly Framer Motion), GSAP, or roll your own spring solver.
 
 ### Tie animation to scroll position
-- **Scroll-driven animations** (`animation-timeline: scroll()`): CSS-only, no JS. Parallax, progress bars, reveal sequences all driven by scroll position. (Chrome/Edge/Safari; Firefox: flag only; always provide a static fallback)
+- **Scroll-driven animations** (`animation-timeline: scroll()`): CSS-only, no JS. Parallax, progress bars, reveal sequences all driven by scroll position. (Chrome/Edge 115+, Safari 26+; Firefox: not by default; always provide a static fallback)
 
 ### Render beyond CSS
 - **WebGL** (all browsers): shader effects, post-processing, particle systems. Libraries: Three.js, OGL (lightweight), regl. Use for effects CSS can't express.
-- **WebGPU** (Chrome/Edge; Safari 26+; Firefox on Windows/macOS; flag only on Firefox Linux/Android): next-gen GPU compute, more powerful than WebGL. Always fall back to WebGL2.
+- **WebGPU** (Chromium; Safari 26+; Firefox on Windows and macOS, Nightly-only on Linux, flag on Android; support as of October 2026): next-gen GPU compute, more powerful than WebGL. Always fall back to WebGL2.
 - **Canvas 2D / OffscreenCanvas**: custom rendering, pixel manipulation, or moving heavy rendering off the main thread entirely via Web Workers + OffscreenCanvas.
 - **SVG filter chains**: displacement maps, turbulence, morphology for organic distortion effects. CSS-animatable.
 
